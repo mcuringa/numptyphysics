@@ -1,0 +1,61 @@
+#!/usr/bin/make -f
+# Copyright (C) 1997-1999 Joey Hess <joeyh@debian.org>
+# Copyright (C) 2002 Didier Dhollande <dholland@free.fr>
+# Copyright (C) 2002-2005 Yann Dirson <dirson@debian.org>
+# Copyright (C) 2005 Romain Francoise <rfrancoise@debian.org>
+
+build: build-stamp
+build-stamp:
+	dh_testdir
+
+	$(MAKE)
+
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp configure-stamp build-stamp-nox configure-stamp-nox
+
+	-$(MAKE) distclean
+
+	dh_clean
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
+	mkdir $(CURDIR)/debian/numptyphysics/usr
+	mkdir $(CURDIR)/debian/numptyphysics/usr/bin
+	mkdir $(CURDIR)/debian/numptyphysics/usr/share
+	mkdir $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
+	mkdir $(CURDIR)/debian/numptyphysics/usr/share/applications
+	mkdir $(CURDIR)/debian/numptyphysics/usr/share/applications/hildon
+
+	cp `uname -m`/Game $(CURDIR)/debian/numptyphysics/usr/bin/numptyphysics
+	cp *.nph *.png *.jpg $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
+	cp debian/numptyphysics.desktop $(CURDIR)/debian/numptyphysics/usr/share/applications/hildon
+
+binary-indep: build install
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	#dh_installdocs -A
+	dh_buildinfo
+	#dh_installexamples -A config.eg plugin-example
+	dh_installmenu
+	dh_installinfo -A
+	#dh_installchangelogs -A Changelog
+	dh_link -A
+	dh_strip -A
+	dh_compress -A
+	dh_fixperms
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install configure
