@@ -1017,21 +1017,28 @@ public:
 	m_quit = true;
 	break;
       case SDLK_SPACE:
+      case SDLK_KP_ENTER:
+      case SDLK_RETURN:
 	pause( !m_pause );
 	break;
       case SDLK_s:
+      case SDLK_F4:
 	m_scene.save( string(getenv("HOME"))+"/"USER_BASE_PATH"/L99_saved.nph" );
 	break;
       case SDLK_e:
+      case SDLK_F6:
 	edit( !m_edit );
 	break;
       case SDLK_r:
+      case SDLK_UP:
 	gotoLevel( m_level );
 	break;
       case SDLK_n:
+      case SDLK_RIGHT:
 	gotoLevel( m_level+1 );
 	break;
       case SDLK_p:
+      case SDLK_LEFT:
 	gotoLevel( m_level-1 );
 	break;
       default:
