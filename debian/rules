@@ -29,13 +29,16 @@ install: build
 	mkdir $(CURDIR)/debian/numptyphysics/usr
 	mkdir $(CURDIR)/debian/numptyphysics/usr/bin
 	mkdir $(CURDIR)/debian/numptyphysics/usr/share
+	mkdir $(CURDIR)/debian/numptyphysics/usr/share/pixmaps
 	mkdir $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
 	mkdir $(CURDIR)/debian/numptyphysics/usr/share/applications
 	mkdir $(CURDIR)/debian/numptyphysics/usr/share/applications/hildon
 
 	cp `uname -m`/Game $(CURDIR)/debian/numptyphysics/usr/bin/numptyphysics
-	cp *.nph *.png *.jpg $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
+	cp *.nph $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
+	cp *.png *.jpg $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
 	cp debian/numptyphysics.desktop $(CURDIR)/debian/numptyphysics/usr/share/applications/hildon
+	cp debian/numptyphysics48.png $(CURDIR)/debian/numptyphysics/usr/share/pixmaps
 
 binary-indep: build install
 binary-arch: build install
