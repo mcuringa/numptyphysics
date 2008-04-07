@@ -1,3 +1,19 @@
+/*
+ * This file is part of NumptyPhysics
+ * Copyright (C) 2008 Tim Edmonds
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ */
+
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 
@@ -1074,8 +1090,12 @@ public:
 	pause( !m_pause );
 	break;
       case SDLK_s:
-      case SDLK_F4:
-	m_scene.save( string(getenv("HOME"))+"/"USER_BASE_PATH"/L99_saved.nph" );
+      case SDLK_F4: 
+	{
+	  string p(getenv("HOME")); p+="/"USER_BASE_PATH"/L99_saved.nph";
+	  m_scene.save( p );
+	  m_levels.addPath( p.c_str() );
+	}
 	break;
       case SDLK_e:
       case SDLK_F6:
@@ -1195,6 +1215,8 @@ public:
 
   bool handleEditEvent( SDL_Event &ev )
   {
+    if ( !m_edit ) return false;
+
     switch( ev.type ) {      
     case SDL_MOUSEBUTTONDOWN: 
       if ( ev.button.button == SDL_BUTTON_RIGHT
@@ -1246,7 +1268,7 @@ public:
 	  handled = false
 	    || handleModEvent(ev)
 	    || handleGameEvent(ev)
-	    || (m_edit && handleEditEvent(ev))
+	    || handleEditEvent(ev)
 	    || handlePlayEvent(ev);
 	}
       }

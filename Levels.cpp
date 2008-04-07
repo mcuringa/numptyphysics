@@ -1,3 +1,19 @@
+/*
+ * This file is part of NumptyPhysics
+ * Copyright (C) 2008 Tim Edmonds
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ */
+
 
 #include <sys/types.h>
 #include <dirent.h>
@@ -65,7 +81,10 @@ bool Levels::addLevel( const string& file, int rank )
   printf("found level %s\n",file.c_str());
   LevelDesc *e = new LevelDesc( file, rank );
   for ( int i=0; i<m_levels.size(); i++ ) {
-    if ( m_levels[i]->rank > rank ) {
+    if ( m_levels[i]->file == file ) {
+      printf("addLevel %s already present!\n",file.c_str());
+      return false;
+    } else if ( m_levels[i]->rank > rank ) {
       printf("addLevel %s at %d\n",file.c_str(),i);
       m_levels.insert(i,e);
       return true;
