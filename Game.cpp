@@ -6,6 +6,8 @@
 #include <sstream>
 #include <fstream>
 #include <memory.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #include "Common.h"
 #include "Array.h"
@@ -17,6 +19,24 @@
 using namespace std;
 
 const Rect FULLSCREEN_RECT( 0, 0, CANVAS_WIDTH-1, CANVAS_HEIGHT-1 );
+const Rect BOUNDS_RECT( -CANVAS_WIDTH/4, -CANVAS_HEIGHT,
+			CANVAS_WIDTH*5/4, CANVAS_HEIGHT );
+
+const int brush_colours[] = {
+  0xb80000, //red
+  0xeec900, //yellow
+  0x000077, //blue
+  0x108710, //green
+  0x101010, //black
+  0x8b4513, //brown
+  0x87cefa, //lightblue
+  0xee6aa7, //pink
+  0xb23aee, //purple
+  0x00fa9a, //lightgreen
+  0xff7f00, //orange
+  0x6c7b8b, //grey
+};
+#define NUM_COLOURS (sizeof(brush_colours)/sizeof(brush_colours[0]))
 
 class Stroke
 {
@@ -84,23 +104,29 @@ public:
   Stroke( const string& str ) 
   {
     int version=1;
-    m_colour = COLOUR_BLUE;
+    int col = 0;
+    m_colour = brush_colours[2];
     m_attributes = 0;
     m_origin = Vec2(400,240);
     reset();
     const char *s = str.c_str();
     while ( *s && *s!=':' && *s!='\n' ) {
-      switch ( *s++ ) {
+      switch ( *s ) {
       case 't': setAttribute( ATTRIB_TOKEN ); break;	
       case 'g': setAttribute( ATTRIB_GOAL ); break;	
       case 'f': setAttribute( ATTRIB_GROUND ); break;
       case 's': setAttribute( ATTRIB_SLEEPING ); break;
       case 'd': setAttribute( ATTRIB_DECOR ); break;
-      case '2': setColour( COLOUR_BLUE ); break;
-      case '3': setColour( COLOUR_GREEN ); break;
-      case '4': setColour( COLOUR_BLACK ); break;
-      case '5': setColour( COLOUR_BROWN ); break;
+      default:
+	if ( *s >= '0' && *s <= '9' ) {
+	  col = col*10 + *s -'0';
+	}
+	break;
       }
+      s++;
+    }
+    if ( col >= 0 && col < NUM_COLOURS ) {
+      m_colour = brush_colours[col];
     }
     if ( *s++ == ':' ) {
       float x,y;      
@@ -306,6 +332,13 @@ public:
   {
     if ( m_hide==0 ) {
       m_hide = 1;
+      
+      if (m_body) {
+	// stash the body where no-one will find it
+	m_body->SetCenterPosition( b2Vec2(0.0f,CANVAS_HEIGHTf*2.0f), 0.0f );
+	m_body->SetLinearVelocity( b2Vec2(0.0f,0.0f) );
+	m_body->SetAngularVelocity( 0.0f );
+      }
     }
   }
 
@@ -339,9 +372,9 @@ private:
     if ( m_hide ) {
       if ( m_hide < HIDE_STEPS ) {
 	//printf("hide %d\n",m_hide);
-	Vec2 o = m_xformedPath.point(0);
+	Vec2 o = m_xformBbox.centroid();
 	m_xformedPath -= o;
-	m_xformedPath.scale( 0.95 );
+	m_xformedPath.scale( 0.99 );
 	m_xformedPath += o;
 	m_xformBbox = m_xformedPath.bbox();
 	m_hide++;
@@ -500,7 +533,7 @@ public:
     // check for token respawn
     for ( int i=0; i < m_strokes.size(); i++ ) {
       if ( m_strokes[i]->hasAttribute( Stroke::ATTRIB_TOKEN )
-	   && !FULLSCREEN_RECT.intersects( m_strokes[i]->lastDrawnBbox() ) ) {
+	   && !BOUNDS_RECT.intersects( m_strokes[i]->lastDrawnBbox() ) ) {
 	printf("RESPAWN token %d\n",i);
 	reset( m_strokes[i] );
 	activate( m_strokes[i] );
@@ -673,6 +706,7 @@ struct GameParams
 		 m_colour( 2 ),
 		 m_strokeFixed( false ),
 		 m_strokeSleep( false ),
+		 m_strokeDecor( false ),
 		 m_levels(),
                  m_level(0)
   {}
@@ -685,6 +719,7 @@ struct GameParams
   int   m_colour;
   bool  m_strokeFixed;
   bool  m_strokeSleep;
+  bool  m_strokeDecor;
   Levels m_levels;
   int    m_level;
 };
@@ -839,9 +874,8 @@ private:
 	if ( scene.load( m_game.m_levels.levelFile(m_selectedLevel) ) ) {
 	  printf("generating thumbnail %s\n",
 		 m_game.m_levels.levelFile(m_selectedLevel).c_str());
-	  Rect full( 0, 0, CANVAS_WIDTH-1, CANVAS_HEIGHT-1 );
 	  Canvas temp( CANVAS_WIDTH, CANVAS_HEIGHT );
-	  scene.draw( temp, full );
+	  scene.draw( temp, FULLSCREEN_RECT );
 	  m_icon = temp.scale( ICON_SCALE_FACTOR );
 	  printf("generating thumbnail %s done\n",
 		 m_game.m_levels.levelFile(m_selectedLevel).c_str());
@@ -864,39 +898,56 @@ private:
   string  m_caption;
 };
 
-#define NUM_COLOURS 6
 
 class PaletteOverlay : public IconOverlay
 {
 public:
   PaletteOverlay( GameParams& game )
-    : IconOverlay(game,"palette.jpg")
-  {}
-
+    : IconOverlay(game,"edit.png")
+  {
+    for ( int i=0; i<NUM_COLOURS; i++ ) {
+      m_canvas->drawRect( pos(i), m_canvas->makeColour(brush_colours[i]), true );
+    }
+  }
+  Rect pos( int i ) 
+  {
+    int c = i%3, r = i/3;
+    return Rect( c*28+13, r*28+33, c*28+33, r*28+53 );
+  }
+  int index( int x, int y ) 
+  {
+    int r = (y-33)/28;
+    int c = (x-13)/28;
+    if ( r<0 || c<0 || c>2 ) return -1; 
+    return r*3+c;
+  }
+  void outline( Canvas& screen, int i, int c ) 
+  {
+    Rect r = pos(i) + Vec2(m_x,m_y);
+    r.tl.x-=2; r.tl.y-=2;
+    r.br.x+=2; r.br.y+=2;
+    screen.drawRect( r, c, false );
+  }
   virtual void draw( Canvas& screen )
   {
     IconOverlay::draw( screen );
-    screen.drawRect( m_x+85, m_y+20+20*m_game.m_colour, 10, 10, 0, true ); 
-    if ( m_game.m_strokeFixed ) 
-      screen.drawRect( m_x+35, m_y+150, 5, 5, COLOUR_RED, true ); 
-    if ( m_game.m_strokeSleep ) 
-      screen.drawRect( m_x+65, m_y+150, 5, 5, COLOUR_RED, true ); 
+    outline( screen, m_game.m_colour, 0 );
+    if ( m_game.m_strokeFixed ) outline( screen, 15, 0 );
+    if ( m_game.m_strokeSleep ) outline( screen, 16, 0 );
+    if ( m_game.m_strokeDecor ) outline( screen, 17, 0 );
   }
 
   virtual bool onClick( int x, int y )
   {
-    //printf("click %d,%d\n",x,y);
-    if ( x > 80 && y < 20 ) {
-      m_game.m_edit = false;
-      m_game.m_refresh = true;
-    } else if ( y > 20 && y < 20+20*NUM_COLOURS && x > 20 && x < 80 ) {
-      m_game.m_colour = (y-20)/20;
-    } else if ( y > 140 && y < 180 && x > 20 && x < 45 ) {
-      m_game.m_strokeFixed = ! m_game.m_strokeFixed;
-    } else if ( y > 140 && y < 180 && x > 45 && x < 80 ) {
-      m_game.m_strokeSleep = ! m_game.m_strokeSleep;
+    int i = index(x,y);
+    switch (i) {
+    case -1: return false;
+    case 15: m_game.m_strokeFixed = ! m_game.m_strokeFixed; break;
+    case 16: m_game.m_strokeSleep = ! m_game.m_strokeSleep; break;
+    case 17: m_game.m_strokeDecor = ! m_game.m_strokeDecor; break;
+    default: if (i<NUM_COLOURS) m_game.m_colour = i; break;
     }
-    return false;
+    return true;
   }
 };
 
@@ -995,6 +1046,7 @@ public:
 	hideOverlay( m_editOverlay );
 	m_strokeFixed = false;
 	m_strokeSleep = false;
+	m_strokeDecor = false;
 	if ( m_colour < COLOUR_BLUE ) m_colour = COLOUR_BLUE;
       }
     }
@@ -1055,13 +1107,17 @@ public:
   bool handleModEvent( SDL_Event &ev )
   {
     static bool mod=0;
+    //printf("mod=%d\n",ev.key.keysym.sym,mod);
     switch( ev.type ) {      
     case SDL_KEYDOWN:
+      //printf("mod key=%x mod=%d\n",ev.key.keysym.sym,mod);
       if ( ev.key.keysym.sym == SDLK_F8 ) {
 	mod = 1;  //zoom- == middle (delete)
+	printf("button mod =1\n");
 	return true;
       } else if ( ev.key.keysym.sym == SDLK_F7 ) {
 	mod = 2;  //zoom+ == right (move)
+	printf("button mod =2\n");
 	return true;
       }
       break;
@@ -1074,9 +1130,9 @@ public:
       break;
     case SDL_MOUSEBUTTONDOWN: 
     case SDL_MOUSEBUTTONUP: 
-      if ( ev.button.button == SDL_BUTTON_LEFT && mod ) {
+      if ( ev.button.button == SDL_BUTTON_LEFT && mod != 0 ) {
 	printf("button mod click\n");
-	ev.button.button = mod==1 ? SDL_BUTTON_MIDDLE : SDL_BUTTON_RIGHT;
+	ev.button.button = ((mod==1) ? SDL_BUTTON_MIDDLE : SDL_BUTTON_RIGHT);
       }
       break;
     }
@@ -1094,16 +1150,16 @@ public:
 	  switch ( m_colour ) {
 	  case 0: m_createStroke->setAttribute( Stroke::ATTRIB_TOKEN ); break;
 	  case 1: m_createStroke->setAttribute( Stroke::ATTRIB_GOAL ); break;
-	  case 2: m_createStroke->setColour( COLOUR_BLUE  ); break;
-	  case 3: m_createStroke->setColour( COLOUR_GREEN ); break;
-	  case 4: m_createStroke->setColour( COLOUR_BLACK ); break;
-	  case 5: m_createStroke->setColour( COLOUR_BROWN ); break;
+	  default: m_createStroke->setColour( brush_colours[m_colour] ); break;
 	  }
 	  if ( m_strokeFixed ) {
 	    m_createStroke->setAttribute( Stroke::ATTRIB_GROUND );
 	  }
 	  if ( m_strokeSleep ) {
 	    m_createStroke->setAttribute( Stroke::ATTRIB_SLEEPING );
+	  }
+	  if ( m_strokeDecor ) {
+	    m_createStroke->setAttribute( Stroke::ATTRIB_DECOR );
 	  }
 	}
       }
@@ -1139,7 +1195,6 @@ public:
 
   bool handleEditEvent( SDL_Event &ev )
   {
-    if ( handleModEvent(ev) ) { return true; }
     switch( ev.type ) {      
     case SDL_MOUSEBUTTONDOWN: 
       if ( ev.button.button == SDL_BUTTON_RIGHT
@@ -1189,17 +1244,19 @@ public:
 	}
 	if ( !handled ) {
 	  handled = false
-	    || ( m_scene.isCompleted() && completedOverlay.handleEvent(ev) )
+	    || handleModEvent(ev)
 	    || handleGameEvent(ev)
-	    || handlePlayEvent(ev)
-	    || (m_edit && handleEditEvent(ev));
+	    || (m_edit && handleEditEvent(ev))
+	    || handlePlayEvent(ev);
 	}
       }
 
       if ( m_scene.isCompleted() != isComplete ) {
 	isComplete = !isComplete;
 	if ( isComplete ) {
-	  completedOverlay.onShow();	
+	  showOverlay( completedOverlay );
+	} else {
+	  hideOverlay( completedOverlay );
 	}
       }
 
@@ -1215,11 +1272,6 @@ public:
       for ( int i=0; i<m_overlays.size(); i++ ) {
 	m_overlays[i]->draw( m_window );
 	r.expand( m_overlays[i]->dirtyArea() );
-      }
-
-      if ( isComplete ) {
-	completedOverlay.draw( m_window );
-	r.expand( completedOverlay.dirtyArea() );
       }
 
       //temp
@@ -1258,12 +1310,38 @@ public:
 int main(int argc, char** argv)
 {
   try {
+
     putenv("SDL_VIDEO_X11_WMCLASS=NPhysics");
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
       throw "Couldn't initialize SDL";
     }
-    Game game( argc, (const char**)argv );
-    game.run();
+
+    if ( mkdir( (string(getenv("HOME"))+"/"USER_BASE_PATH).c_str(),
+		0755)==0 ) {
+      printf("created user dir\n");
+    } else if ( errno==EEXIST ){
+      printf("user dir ok\n");
+    } else {
+      printf("failed to create user dir\n");
+    }
+
+
+    if ( argc > 2 && strcmp(argv[1],"-bmp")==0 ) {
+      for ( int i=2; i<argc; i++ ) {
+	Scene scene( true );
+	if ( scene.load( argv[i] ) ) {
+	  printf("generating bmp %s\n", argv[i]);
+	  Canvas temp( CANVAS_WIDTH, CANVAS_HEIGHT );
+	  scene.draw( temp, FULLSCREEN_RECT );
+	  string bmp( argv[i] );
+	  bmp += ".bmp";
+	  temp.writeBMP( bmp.c_str() );
+	}	
+      }
+    } else {
+      Game game( argc, (const char**)argv );
+      game.run();
+    }
   } catch ( const char* e ) {
     cout <<"*** CAUGHT: "<<e<<endl;
   } 

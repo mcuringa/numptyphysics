@@ -588,14 +588,68 @@ Image::Image( const char* file, bool alpha )
       m_state = SDL_DisplayFormatAlpha( img );
     } else {
       m_state = SDL_DisplayFormat( img );
-      SDL_SetColorKey( SURFACE(this),
-		       SDL_SRCCOLORKEY|SDL_RLEACCEL,
-		       makeColour( 0x00ff00ff ) );
+//       SDL_SetColorKey( SURFACE(this),
+// 		       SDL_SRCCOLORKEY|SDL_RLEACCEL,
+// 		       makeColour( 0x00ff00ff ) );
     }
-    SDL_FreeSurface( img );
+    if ( m_state ) {
+      SDL_FreeSurface( img );
+    } else {
+      printf("warning image %s not converted to display format\n",(f+file).c_str());
+      m_state = img;
+    }
   } else {
     throw "image not found";
   }
   resetClip();
 }
 
+
+
+int Canvas::writeBMP( const char* filename ) const
+{
+  typedef struct {
+    unsigned short int type;                 /* Magic identifier            */
+    unsigned int size;                       /* File size in bytes          */
+    unsigned short int reserved1, reserved2;
+    unsigned int offset;                     /* Offset to image data, bytes */
+  } BMPHEADER;
+  
+  typedef struct {
+    unsigned int size;               /* Header size in bytes      */
+    int width,height;                /* Width and height of image */
+    unsigned short int planes;       /* Number of colour planes   */
+    unsigned short int bits;         /* Bits per pixel            */
+    unsigned int compression;        /* Compression type          */
+    unsigned int imagesize;          /* Image size in bytes       */
+    int xresolution,yresolution;     /* Pixels per meter          */
+    unsigned int ncolours;           /* Number of colours         */
+    unsigned int importantcolours;   /* Important colours         */
+  } BMPINFOHEADER;
+    
+  int w = width();
+  int h = height();
+  BMPHEADER     head = { 'B'|('M'<<8), 14+40+w*h*3, 0, 0, 0 };
+  BMPINFOHEADER info = { 40, w, h, 1, 24, 0, w*h*3, 100, 100, 0, 0 };
+  
+  FILE *f = fopen( filename, "wb" );
+  if ( f ) {
+    Uint32 bpp;
+    bpp = SURFACE(this)->format->BytesPerPixel;
+
+    fwrite( &head, 14, 1, f );
+    fwrite( &info, 40, 1, f );
+    for ( int y=h-1; y>=0; y-- ) {
+      for ( int x=0; x<w; x++ ) {
+	int p = readPixel( x, y );
+	if ( bpp==2 ) {
+	  p = R16G16B16_TO_RGB888( R16(p), G16(p), B16(p) );
+	}
+	fwrite( &p, 3, 1, f );
+      }
+    }
+    fclose(f);
+    return 1;
+  }
+  return 0;
+}

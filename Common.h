@@ -21,8 +21,9 @@ struct Vec2 {
   void operator*=( int o ) { x*=o; y*=o; }
   bool operator==( const Vec2& o ) const { return x==o.x && y==y; }
   operator b2Vec2() const { return b2Vec2((float)x,(float)y); } 
-  Vec2 operator+( const Vec2& b ) { return Vec2(x+b.x,y+b.y); }
-  Vec2 operator-( const Vec2& b ) { return Vec2(x-b.x,y-b.y); }
+  Vec2 operator+( const Vec2& b ) const { return Vec2(x+b.x,y+b.y); }
+  Vec2 operator-( const Vec2& b ) const { return Vec2(x-b.x,y-b.y); }
+  Vec2 operator/( int r ) const { return Vec2(x/r,y/r); }
   int x,y;
 };
 
@@ -76,6 +77,12 @@ struct Rect {
       && r.tl.y <= br.y
       && r.br.x >= tl.x 
       && r.br.y >= tl.y;
+  }
+  Vec2 centroid() const { return (tl+br)/2; }
+  Rect operator+( const Vec2& b ) const {
+    Rect r=*this;
+    r.tl += b; r.br += b;
+    return r;
   }
   Vec2 tl, br;
 };

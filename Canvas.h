@@ -30,6 +30,7 @@ public:
   void drawRect( const Rect& r, int c, bool fill=true );
   void drawWorldLine( b2Vec2 pos1, b2Vec2 pos2, int color, bool thick=false );
   void drawWorldPath( const Path& path, int color, bool thick=false );
+  int writeBMP( const char* filename ) const;
 protected:
   typedef void* State;
   Canvas( State state=NULL );

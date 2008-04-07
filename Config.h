@@ -31,7 +31,7 @@
 #define ITERATION_TIMESTEPf  (1.0f / (float)ITERATION_RATE)
 #define RENDER_INTERVAL (1000/RENDER_RATE)
 
-#define HIDE_STEPS ITERATION_RATE
+#define HIDE_STEPS (RENDER_RATE*4)
 
 #define COLOUR_RED     0xb80000
 #define COLOUR_YELLOW  0xffd700 
@@ -46,7 +46,11 @@
 #define DEFAULT_LEVEL_PATH INSTALL_BASE_PATH
 #define DEFAULT_RESOURCE_PATH DEFAULT_LEVEL_PATH
 #ifndef USER_BASE_PATH
+# ifdef ARCH_arm //maemo
+#  define USER_BASE_PATH "MyDocs/.games/NumptyPhysics"
+# else
 #  define USER_BASE_PATH ".numptyphysics"
+# endif
 #endif
 #define USER_LEVEL_PATH USER_BASE_PATH
 
