@@ -15,8 +15,9 @@ CCOPTS+=-g -D ARCH_x86_64 -D INSTALL_BASE_PATH=\".\"
 LDOPTS+=-g
 endif
 ifeq ($(ARCH),arm)
-CCOPTS+=-O3 -D ARCH_arm -fomit-frame-pointer
-CCOPTS+=-mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp 
+CCOPTS+=-O3 -D ARCH_arm 
+CCOPTS+=-fomit-frame-pointer -mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp 
+##770 CCOPTS+=-mcpu=arm1026ej-s -march=armv5te -mfpu=vfp
 #LDOPTS+=-lm_vfp
 endif
 
@@ -49,7 +50,6 @@ BOX2DSOURCES= \
 	Box2D/Source/Common/b2BlockAllocator.cpp \
 	Box2D/Source/Common/b2StackAllocator.cpp \
 	Box2D/Source/Common/b2Settings.cpp
-#BOX2DSOURCENAMES=$(notdir $(BOX2DSOURCES))
 BOX2DOBJECTS=$(BOX2DSOURCES:%.cpp=$(BINDIR)/%.o)
 
 all: $(TARGET) 
@@ -76,7 +76,7 @@ clean:
 	rm -fR $(BINDIR)
 
 distclean: clean
-	rm *~
+	rm -f *~
 
 $(TARGET): $(OBJECTS) $(BOX2DLIB)
 	g++ $^ $(LDOPTS) -o $(TARGET)
