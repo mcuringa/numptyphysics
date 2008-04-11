@@ -35,13 +35,16 @@ install: build
 	mkdir $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
 	mkdir $(CURDIR)/debian/numptyphysics/usr/share/applications
 	mkdir $(CURDIR)/debian/numptyphysics/usr/share/applications/hildon
+	mkdir $(CURDIR)/debian/numptyphysics/usr/share/dbus-1
+	mkdir $(CURDIR)/debian/numptyphysics/usr/share/dbus-1/services
 
 	cp `uname -m`/Game $(CURDIR)/debian/numptyphysics/usr/bin/numptyphysics
 	cp *.nph $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
 	cp *.png *.jpg $(CURDIR)/debian/numptyphysics/usr/share/numptyphysics
 	cp debian/numptyphysics.desktop $(CURDIR)/debian/numptyphysics/usr/share/applications/hildon
-	cp debian/numptyphysics48.png $(CURDIR)/debian/numptyphysics/usr/share/pixmaps
+	cp debian/numptyphysics64.png $(CURDIR)/debian/numptyphysics/usr/share/pixmaps
 	cp debian/numptyphysics-mime.xml $(CURDIR)/debian/numptyphysics/usr/share/mime/packages
+	cp debian/numptyphysics.service $(CURDIR)/debian/numptyphysics/usr/share/dbus-1/services/org.maemo.garage.numptyphysics.service
 
 binary-indep: build install
 binary-arch: build install
