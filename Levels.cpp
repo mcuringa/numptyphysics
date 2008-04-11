@@ -145,3 +145,12 @@ bool Levels::load( int l, void* buf, int buflen )
   return true;
 }
 
+int Levels::findLevel( char *file )
+{
+  for ( int i=0; i<m_levels.size(); i++ ) {
+    if ( m_levels[i]->file == file ) {
+      return i;
+    }
+  }
+  return -1;
+}

@@ -31,6 +31,9 @@
 #include "Path.h"
 #include "Canvas.h"
 #include "Levels.h"
+#ifdef USE_HILDON
+# include "Hildon.h"
+#endif //USE_HILDON
 
 using namespace std;
 
@@ -119,7 +122,6 @@ public:
 
   Stroke( const string& str ) 
   {
-    int version=1;
     int col = 0;
     m_colour = brush_colours[2];
     m_attributes = 0;
@@ -147,17 +149,7 @@ public:
     if ( *s++ == ':' ) {
       float x,y;      
       while ( sscanf( s, "%f,%f", &x, &y )==2) {
-	if ( version ) {
-	  m_rawPath.append( Vec2((int)x,(int)y) );
-	} else {
-	  Vec2 pt((int)(x*PIXELS_PER_METREf+0.5f*CANVAS_WIDTHf),
-		  (int)(CANVAS_HEIGHTf-y*PIXELS_PER_METREf-CANVAS_GROUNDf));
-	  m_rawPath.append( pt );
-	  printf("add pt %d,%d : %d,%d\n",pt.x,pt.y,
-		 m_rawPath.point(m_rawPath.numPoints()-1).x,
-		 m_rawPath.point(m_rawPath.numPoints()-1).y );
-
-	}
+	m_rawPath.append( Vec2((int)x,(int)y) );
 	while ( *s && *s!=' ' && *s!='\t' ) s++;
 	while ( *s==' ' || *s=='\t' ) s++;
       }
@@ -193,10 +185,10 @@ public:
     if ( hasAttribute(ATTRIB_GOAL) )     s<<'g';
     if ( hasAttribute(ATTRIB_GROUND) )   s<<'f';
     if ( hasAttribute(ATTRIB_SLEEPING) ) s<<'s';
-    if ( m_colour==COLOUR_BLUE )         s<<'2';
-    if ( m_colour==COLOUR_GREEN )        s<<'3';
-    if ( m_colour==COLOUR_BLACK )        s<<'4';
-    if ( m_colour==COLOUR_BROWN )        s<<'5';
+    if ( hasAttribute(ATTRIB_DECOR) )    s<<'d';
+    for ( int i=0; i<NUM_COLOURS; i++ ) {
+      if ( m_colour==brush_colours[i] )  s<<i;
+    }
     s << ":";
     for ( int i=0; i<m_rawPath.size(); i++ ) {
       Vec2 p = m_rawPath.point(i);
@@ -264,7 +256,7 @@ public:
 	if ( !m_jointed[end] ) {
 	  const Vec2& p = m_xformedPath.point( end ? n-1 : 0 );
 	  if ( other->distanceTo( p ) <= JOINT_TOLERANCE ) {
-	    printf("jointed end %d d=%f\n",end,other->distanceTo( p ));
+	    //printf("jointed end %d d=%f\n",end,other->distanceTo( p ));
 	    b2Vec2 pw = p;
 	    pw *= 1.0f/PIXELS_PER_METREf;
 	    JointDef j( m_body, other->m_body, pw );
@@ -363,6 +355,11 @@ public:
     return m_hide >= HIDE_STEPS;
   }
 
+  int numPoints()
+  {
+    return m_rawPath.numPoints();
+  }
+
 private:
   static float vec2Angle( b2Vec2 v ) 
   {
@@ -457,7 +454,8 @@ public:
 
   Scene( bool noWorld=false )
     : m_world( NULL ),
-      m_bgImage( NULL )
+      m_bgImage( NULL ),
+      m_protect( 0 )
   {
     if ( !noWorld ) {
       b2AABB worldAABB;
@@ -489,9 +487,12 @@ public:
 
   void deleteStroke( Stroke *s ) {
     //printf("delete stroke %p\n",s);	  
-    if ( s && m_strokes.indexOf(s) >= 0 ) {
-      reset(s);
-      m_strokes.erase( m_strokes.indexOf(s) );
+    if ( s ) {
+      int i = m_strokes.indexOf(s);
+      if ( i >= m_protect ) {
+	reset(s);
+	m_strokes.erase( m_strokes.indexOf(s) );
+      }
     }
   }
 	
@@ -676,7 +677,13 @@ public:
       }
     }
     i.close();
+    protect();
     return true;
+  }
+
+  void protect( int n=-1 )
+  {
+    m_protect = (n==-1 ? m_strokes.size() : n );
   }
 
   bool save( const std::string& file )
@@ -708,6 +715,7 @@ private:
   string          m_title, m_author, m_bg;
   Image          *m_bgImage;
   static Image   *g_bgImage;
+  int             m_protect;
 };
 
 Image *Scene::g_bgImage = NULL;
@@ -727,6 +735,8 @@ struct GameParams
                  m_level(0)
   {}
   virtual ~GameParams() {}
+  virtual bool save() { return false; }
+  virtual bool send() { return false; }
   virtual void gotoLevel( int l ) {}
   bool  m_quit;
   bool  m_pause;
@@ -772,7 +782,7 @@ public:
   {
     switch( ev.type ) {      
     case SDL_MOUSEBUTTONDOWN:
-      printf("overlay click\n"); 
+      //printf("overlay click\n"); 
       if ( ev.button.button == SDL_BUTTON_LEFT
 	   && ev.button.x >= m_x && ev.button.x <= m_x + m_canvas->width() 
 	   && ev.button.y >= m_y && ev.button.y <= m_y + m_canvas->height() ) {
@@ -917,9 +927,12 @@ private:
 
 class PaletteOverlay : public IconOverlay
 {
+  int m_saving, m_sending;
 public:
   PaletteOverlay( GameParams& game )
-    : IconOverlay(game,"edit.png")
+    : IconOverlay(game,"edit.png"),
+      m_saving(0), m_sending(0)
+      
   {
     for ( int i=0; i<NUM_COLOURS; i++ ) {
       m_canvas->drawRect( pos(i), m_canvas->makeColour(brush_colours[i]), true );
@@ -948,9 +961,9 @@ public:
   {
     IconOverlay::draw( screen );
     outline( screen, m_game.m_colour, 0 );
-    if ( m_game.m_strokeFixed ) outline( screen, 15, 0 );
-    if ( m_game.m_strokeSleep ) outline( screen, 16, 0 );
-    if ( m_game.m_strokeDecor ) outline( screen, 17, 0 );
+    if ( m_game.m_strokeFixed ) outline( screen, 12, 0 );
+    if ( m_game.m_strokeSleep ) outline( screen, 13, 0 );
+    if ( m_game.m_strokeDecor ) outline( screen, 14, 0 );
   }
 
   virtual bool onClick( int x, int y )
@@ -958,9 +971,11 @@ public:
     int i = index(x,y);
     switch (i) {
     case -1: return false;
-    case 15: m_game.m_strokeFixed = ! m_game.m_strokeFixed; break;
-    case 16: m_game.m_strokeSleep = ! m_game.m_strokeSleep; break;
-    case 17: m_game.m_strokeDecor = ! m_game.m_strokeDecor; break;
+    case 12: m_game.m_strokeFixed = ! m_game.m_strokeFixed; break;
+    case 13: m_game.m_strokeSleep = ! m_game.m_strokeSleep; break;
+    case 14: m_game.m_strokeDecor = ! m_game.m_strokeDecor; break;
+    case 16: if ( m_game.send() ) m_sending=10; break;
+    case 17: if ( m_game.save() ) m_saving=10; break;
     default: if (i<NUM_COLOURS) m_game.m_colour = i; break;
     }
     return true;
@@ -977,6 +992,9 @@ class Game : public GameParams
   Window            m_window;
   IconOverlay       m_pauseOverlay;
   PaletteOverlay    m_editOverlay;
+#ifdef USE_HILDON
+  Hildon            m_hildon;
+#endif //USE_HILDON
 public:
   Game( int argc, const char** argv ) 
   : m_createStroke(NULL),
@@ -1012,7 +1030,25 @@ public:
       m_scene.activateAll();
       m_level = l;
       m_refresh = true;
+      if ( m_edit ) {
+	m_scene.protect(0);
+      }
     }
+  }
+
+  bool save()
+  {	  
+    string p(getenv("HOME")); p+="/"USER_BASE_PATH"/L99_saved.nph";
+    if ( m_scene.save( p ) ) {
+      m_levels.addPath( p.c_str() );
+      return true;
+    }
+    return false;
+  }
+
+  bool send()
+  {
+    return save();
   }
 
   void setTool( int t )
@@ -1058,12 +1094,14 @@ public:
       m_edit = doEdit;
       if ( m_edit ) {
 	showOverlay( m_editOverlay );
+	m_scene.protect(0);
       } else {
 	hideOverlay( m_editOverlay );
 	m_strokeFixed = false;
 	m_strokeSleep = false;
 	m_strokeDecor = false;
-	if ( m_colour < COLOUR_BLUE ) m_colour = COLOUR_BLUE;
+	if ( m_colour < 2 ) m_colour = 2;
+	m_scene.protect();
       }
     }
   }
@@ -1091,11 +1129,7 @@ public:
 	break;
       case SDLK_s:
       case SDLK_F4: 
-	{
-	  string p(getenv("HOME")); p+="/"USER_BASE_PATH"/L99_saved.nph";
-	  m_scene.save( p );
-	  m_levels.addPath( p.c_str() );
-	}
+	save();
 	break;
       case SDLK_e:
       case SDLK_F6:
@@ -1187,7 +1221,11 @@ public:
     case SDL_MOUSEBUTTONUP:
       if ( ev.button.button == SDL_BUTTON_LEFT
 	   && m_createStroke ) {
-	m_scene.activate( m_createStroke );
+	if ( m_createStroke->numPoints() > 1 ) {
+	  m_scene.activate( m_createStroke );
+	} else {
+	  m_scene.deleteStroke( m_createStroke );
+	}
 	m_createStroke = NULL;
       }
       break;
@@ -1273,8 +1311,12 @@ public:
 	}
       }
 
-      if ( m_scene.isCompleted() != isComplete ) {
-	isComplete = !isComplete;
+      if ( isComplete && m_edit ) {
+	hideOverlay( completedOverlay );
+	isComplete = false;
+      }
+      if ( m_scene.isCompleted() != isComplete && !m_edit ) {
+	isComplete = m_scene.isCompleted();
 	if ( isComplete ) {
 	  showOverlay( completedOverlay );
 	} else {
@@ -1315,6 +1357,19 @@ public:
 	iterateCounter -= ITERATION_RATE;
       }
       
+#ifdef USE_HILDON
+      m_hildon.poll();      
+      for ( char *f = m_hildon.getFile(); f; f=m_hildon.getFile() ) {
+	if ( f ) {
+	  m_levels.addPath( f );
+	  int l = m_levels.findLevel( f );
+	  if ( l >= 0 ) {
+	    gotoLevel( l );
+	  }
+	}
+      }      
+#endif //USE_HILDON
+
       int sleepMs = lastTick + RENDER_INTERVAL -  SDL_GetTicks();
       if ( sleepMs > 0 ) {
 	SDL_Delay( sleepMs );
@@ -1328,11 +1383,9 @@ public:
 };
 
 
-
 int main(int argc, char** argv)
 {
   try {
-
     putenv("SDL_VIDEO_X11_WMCLASS=NPhysics");
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
       throw "Couldn't initialize SDL";
@@ -1369,3 +1422,5 @@ int main(int argc, char** argv)
   } 
   return 0;
 }
+
+

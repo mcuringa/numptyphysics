@@ -31,6 +31,7 @@ class Levels
   const std::string& levelFile( int i ); 
   int  levelSize( int l );
   bool load( int l, void* buf, int buflen );
+  int findLevel( char *file );
  private:
   bool scanCollection( std::string& file, int rank );
   struct LevelDesc

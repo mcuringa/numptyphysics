@@ -28,7 +28,7 @@
 #define SIMPLIFY_THRESHOLDf 1.0f //PIXELs //(1.0/PIXELS_PER_METREf)
 #define MULTI_VERTEX_LIMIT (b2_maxShapesPerBody)
 
-#ifdef ARCH_arm //maemo
+#ifdef USE_HILDON //maemo
 #  define ITERATION_RATE    60 //fps
 #  define RENDER_RATE       20 //fps
 #  define SOLVER_ITERATIONS 10
@@ -62,7 +62,7 @@
 #define DEFAULT_LEVEL_PATH INSTALL_BASE_PATH
 #define DEFAULT_RESOURCE_PATH DEFAULT_LEVEL_PATH
 #ifndef USER_BASE_PATH
-# ifdef ARCH_arm //maemo
+# ifdef USE_HILDON //maemo
 #  define USER_BASE_PATH "MyDocs/.games/NumptyPhysics"
 # else
 #  define USER_BASE_PATH ".numptyphysics"

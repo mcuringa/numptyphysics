@@ -561,7 +561,7 @@ Window::Window( int w, int h, const char* title, const char* winclass )
     snprintf(s,80,"SDL_VIDEO_X11_WMCLASS=%s",winclass);
     putenv(s);
   }
-#ifdef ARCH_arm //maemo
+#ifdef USE_HILDON
   m_state = SDL_SetVideoMode( w, h, 16, SDL_SWSURFACE|SDL_FULLSCREEN);
   SDL_ShowCursor( SDL_DISABLE );
 #else
@@ -571,7 +571,7 @@ Window::Window( int w, int h, const char* title, const char* winclass )
     throw "Unable to set 800x480 video";
   }
   if ( title ) {
-    SDL_WM_SetCaption( title, title );
+    SDL_WM_SetCaption( title, NULL );
   }
   resetClip();
 }
