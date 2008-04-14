@@ -70,6 +70,9 @@
 #endif
 #define USER_LEVEL_PATH USER_BASE_PATH
 
+#define DEMO_TEMP_FILE "/tmp/demo.nph"
+#define HTTP_TEMP_FILE "/tmp/http.nph"
+
 #define ICON_SCALE_FACTOR 4
 
 class Config
