@@ -20,7 +20,7 @@ CCOPTS+=-fomit-frame-pointer -mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp
 ##770 CCOPTS+=-mcpu=arm1026ej-s -march=armv5te -mfpu=vfp
 #LDOPTS+=-lm_vfp
 #hildon bits
-SOURCES+=Hildon.cpp
+SOURCES+=Hildon.cpp happyhttp.cpp
 CCOPTS+=-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include 
 CCOPTS+=-I/usr/include/dbus-1.0 -I/usr/lib/dbus-1.0/include
 LDOPTS+=-losso
