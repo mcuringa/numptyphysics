@@ -1,25 +1,92 @@
 
 #ifdef USE_HILDON
 #include <stdio.h>
+#include <string.h>
 #include <glibconfig.h>
 #include <glib/gmacros.h>
 #include <libosso.h>
 
 #include "Hildon.h"
+#include "Config.h"
+#include "happyhttp.h"
+using namespace happyhttp;
 
 #define NP_NAME       "NumptyPhysics"
 #define NP_SERVICE    "org.maemo.garage.numptyphysics"
 #define NP_OBJECT     "org/maemo/garage/numptyphysics" /* / ?? */
 #define NP_INTERFACE  "org.maemo.garage.numptyphysics"
 #define NP_VERSION    "1.0"
-#define MAX_FILES 128
+#define MAX_FILES 32
+
 
 static struct HildonState {
   GMainContext   *gcontext;
   osso_context_t *osso;
   int   numFiles;
   char* files[MAX_FILES];
+  FILE *httpFile;
+  int   httpSize;
 } g_state = {NULL,0};
+
+
+static void http_begin_cb( const Response* r, void* userdata )
+{
+  switch ( r->getstatus() ) {
+  case OK:
+    g_state.httpSize = 0;
+    break;
+  default:
+    fprintf(stderr,"http status=%d %s\n",r->getstatus(),r->getreason());
+    g_state.httpSize = -1;
+    break;
+  }
+}
+
+static void http_data_cb( const Response* r, void* userdata,
+		   const unsigned char* data, int numbytes )
+{
+  fwrite( data, 1, numbytes, g_state.httpFile );
+  g_state.httpSize += numbytes;
+}
+
+static bool http_get( const char* uri,
+		      const char* file )
+{
+  char* host = strdup(uri);
+  char* e = strchr(host,'/');
+  int port = 80;
+
+  g_state.httpFile = fopen( HTTP_TEMP_FILE, "wt" );
+  g_state.httpSize = -1;
+
+  if ( e ) {
+    *e = '\0';
+  }
+  e = strchr(host,':');
+  if ( e ) {
+    *e = '\0';
+    port=atoi(e+1);
+  }
+  e = strchr(uri,'/');
+  if ( e ) {
+    try {
+      fprintf(stderr,"http_get host=%s port=%d file=%s\n",host,port,e);
+      Connection con( host, port );
+      con.setcallbacks( http_begin_cb, http_data_cb, NULL, NULL );
+      con.request("GET",e,NULL,NULL,0);
+      while ( con.outstanding() ) {
+	fprintf(stderr,"http_get pump\n");
+	con.pump();
+      }
+    } catch ( Wobbly w ) {
+      fprintf(stderr,"http_get wobbly: %s\n",w.what());
+    }
+  }
+
+  fclose ( g_state.httpFile );
+  free( host );
+  return g_state.httpSize > 0;
+}
 
 
 static gint dbus_handler(const gchar *interface,
@@ -33,14 +100,25 @@ static gint dbus_handler(const gchar *interface,
   }
 
   if (g_ascii_strcasecmp(method, "mime_open") == 0) {
-    for(gint i = 0; i < arguments->len; ++i) {
+    for(unsigned i = 0; i < arguments->len; ++i) {
       osso_rpc_t val = g_array_index(arguments, osso_rpc_t, i);
       if (val.type == DBUS_TYPE_STRING && val.value.s != NULL) {
+	char *f = NULL;
 	fprintf(stderr,"hildon mime open \"%s\"\n",val.value.s);
-	if ( g_state.numFiles < MAX_FILES ) {
-	  g_state.files[g_state.numFiles++] = g_strdup(val.value.s+7);
+	if ( strncmp(val.value.s,"file://",7)==0 
+	     && g_state.numFiles < MAX_FILES ) {
+	  f = val.value.s+7;
+	} else if ( ( strncmp(val.value.s,"http://",7)==0 
+		     || strncmp(val.value.s,"nptp://",7)==0 )
+		    && http_get( val.value.s+7, HTTP_TEMP_FILE ) ) {
+	  f = HTTP_TEMP_FILE;
 	}
-	//g_idle_add(addfile, (gpointer)g_strdup(val.value.s));
+	if ( f ) {
+	  if ( g_state.files[g_state.numFiles] ) {
+	    g_free(g_state.files[g_state.numFiles]);
+	  }
+	  g_state.files[g_state.numFiles++] = g_strdup( f );
+	}
       }
     }
   }
