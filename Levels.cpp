@@ -78,14 +78,14 @@ bool Levels::addPath( const char* path )
 
 bool Levels::addLevel( const string& file, int rank )
 {
-  printf("found level %s\n",file.c_str());
+  //printf("found level %s\n",file.c_str());
   LevelDesc *e = new LevelDesc( file, rank );
   for ( int i=0; i<m_levels.size(); i++ ) {
     if ( m_levels[i]->file == file ) {
-      printf("addLevel %s already present!\n",file.c_str());
+      //printf("addLevel %s already present!\n",file.c_str());
       return false;
     } else if ( m_levels[i]->rank > rank ) {
-      printf("addLevel %s at %d\n",file.c_str(),i);
+      //printf("addLevel %s at %d\n",file.c_str(),i);
       m_levels.insert(i,e);
       return true;
     }
