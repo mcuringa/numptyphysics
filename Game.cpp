@@ -735,7 +735,7 @@ struct GameParams
                  m_level(0)
   {}
   virtual ~GameParams() {}
-  virtual bool save() { return false; }
+  virtual bool save( char *file=NULL ) { return false; }
   virtual bool send() { return false; }
   virtual void gotoLevel( int l ) {}
   bool  m_quit;
@@ -770,6 +770,7 @@ public:
  
   virtual void onShow() {}
   virtual void onHide() {}
+  virtual void onTick( int tick ) {}
 
   virtual void draw( Canvas& screen )
   {
@@ -925,11 +926,92 @@ private:
 };
 
 
-class PaletteOverlay : public IconOverlay
+class DemoOverlay : public IconOverlay
+{
+  struct EvEntry {
+    int t;
+    SDL_Event e;
+  };
+  typedef enum {
+    STARTING,
+    RUNNING,
+    PLAYING,
+    STOPPED
+  } State;
+    
+public:
+  DemoOverlay( GameParams& game )
+    : IconOverlay( game, "pause.png" ),
+      m_state( STARTING ),
+      m_log( 512 )
+  {
+  }
+  virtual void onTick( int tick )
+  {
+    switch ( m_state ) {
+    case STARTING:
+      m_game.save( DEMO_TEMP_FILE );
+      //todo reset motion: m_game.load( DEMO_TEMP_FILE );
+      m_t0 = tick;
+      m_state = RUNNING;
+      m_log.empty();
+      break;
+    case RUNNING:
+      m_tnow = tick;
+      break;
+    case PLAYING:
+      while ( m_playidx < m_log.size()
+	      && m_log[m_playidx].t < tick-m_t0 ) {
+	SDL_PushEvent( &m_log[m_playidx++].e );
+      }  
+    break;
+    }
+  }
+  virtual bool onClick( int x, int y )
+  {
+    switch ( m_state ) {
+    case STOPPED:
+    case RUNNING:
+      break;
+    case PLAYING:
+      m_state = STOPPED;
+      break;
+    }
+    return true;
+  }
+  virtual void draw( Canvas& screen )
+  {
+    IconOverlay::draw( screen );
+    switch ( m_state ) {
+    case STOPPED:
+    case RUNNING:
+    case PLAYING:
+      break;
+    }
+  }
+  virtual bool handleEvent( SDL_Event& ev )
+  {
+    if ( IconOverlay::handleEvent(ev) ) {
+      return true;
+    } else if ( m_state == RUNNING ) {
+      EvEntry e = { m_tnow - m_t0, ev };
+      m_log.append( e );
+    }
+  }
+
+private:
+  State            m_state;
+  int  		   m_t0, m_tnow;
+  int              m_playidx;
+  Array<EvEntry>   m_log;
+};
+
+
+class EditOverlay : public IconOverlay
 {
   int m_saving, m_sending;
 public:
-  PaletteOverlay( GameParams& game )
+  EditOverlay( GameParams& game )
     : IconOverlay(game,"edit.png"),
       m_saving(0), m_sending(0)
       
@@ -964,8 +1046,9 @@ public:
     if ( m_game.m_strokeFixed ) outline( screen, 12, 0 );
     if ( m_game.m_strokeSleep ) outline( screen, 13, 0 );
     if ( m_game.m_strokeDecor ) outline( screen, 14, 0 );
+    if ( m_sending-- ) outline( screen, 16, screen.makeColour(m_sending<<9) );
+    if ( m_saving-- )  outline( screen, 17, screen.makeColour(m_saving<<9) );
   }
-
   virtual bool onClick( int x, int y )
   {
     int i = index(x,y);
@@ -991,7 +1074,7 @@ class Game : public GameParams
   Array<Overlay*>   m_overlays;
   Window            m_window;
   IconOverlay       m_pauseOverlay;
-  PaletteOverlay    m_editOverlay;
+  EditOverlay       m_editOverlay;
 #ifdef USE_HILDON
   Hildon            m_hildon;
 #endif //USE_HILDON
@@ -1025,7 +1108,6 @@ public:
   {
     if ( l >= 0 && l < m_levels.numLevels() ) {
       printf("loading from %s\n",m_levels.levelFile(l).c_str());
-      m_scene.clear();
       m_scene.load( m_levels.levelFile(l).c_str() );
       m_scene.activateAll();
       m_level = l;
@@ -1036,9 +1118,14 @@ public:
     }
   }
 
-  bool save()
+  bool save( char *file=NULL )
   {	  
-    string p(getenv("HOME")); p+="/"USER_BASE_PATH"/L99_saved.nph";
+    string p;
+    if ( file ) {
+      p = file;
+    } else {
+      p = getenv("HOME"); p+="/"USER_BASE_PATH"/L99_saved.nph";
+    }
     if ( m_scene.save( p ) ) {
       m_levels.addPath( p.c_str() );
       return true;
@@ -1147,6 +1234,8 @@ public:
       case SDLK_LEFT:
 	gotoLevel( m_level-1 );
 	break;
+      case SDLK_x:
+	//record();
       default:
 	break;
       }
@@ -1185,8 +1274,8 @@ public:
     case SDL_MOUSEBUTTONDOWN: 
     case SDL_MOUSEBUTTONUP: 
       if ( ev.button.button == SDL_BUTTON_LEFT && mod != 0 ) {
-	printf("button mod click\n");
 	ev.button.button = ((mod==1) ? SDL_BUTTON_MIDDLE : SDL_BUTTON_RIGHT);
+	printf("button mod=%d click but=%d\n",mod,ev.button.button);
       }
       break;
     }
@@ -1296,6 +1385,10 @@ public:
     bool isComplete = false;
 
     while ( !m_quit ) {
+      for ( int i=0; i<m_overlays.size(); i++ ) {
+	m_overlays[i]->onTick( lastTick );
+      }
+
       SDL_Event ev;
       while ( SDL_PollEvent(&ev) ) { 
 	bool handled = false;
@@ -1369,7 +1462,6 @@ public:
 	}
       }      
 #endif //USE_HILDON
-
       int sleepMs = lastTick + RENDER_INTERVAL -  SDL_GetTicks();
       if ( sleepMs > 0 ) {
 	SDL_Delay( sleepMs );
@@ -1377,7 +1469,7 @@ public:
       } else {
 	printf("overrun %dms\n",-sleepMs);
       }
-      lastTick = SDL_GetTicks();
+      lastTick = SDL_GetTicks();      
     }
   }
 };

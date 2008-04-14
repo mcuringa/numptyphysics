@@ -59,6 +59,11 @@ class Array
     return m_size;
   }
 
+  void empty()
+  {
+    m_size = 0;
+  }
+
   T& at( int i )
   {
     ASSERT( i < m_size );
