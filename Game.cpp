@@ -78,7 +78,7 @@ private:
       body1 = b1;
       body2 = b2;
       anchorPoint = pt;
-      motorTorque = 20.0f;
+      motorTorque = 10.0f;
       motorSpeed = 0.0f;
       enableMotor = true;
     }
@@ -95,16 +95,17 @@ private:
       extents.Set( bar.Length()/2.0f, 0.1f );
       localPosition = 0.5f*bar + barOrigin;
       localRotation = vec2Angle( bar );
+      friction = 0.3f;
       if ( attr & ATTRIB_GROUND ) {
-	  density = 0.0f;
+	density = 0.0f;
       } else if ( attr & ATTRIB_GOAL ) {
 	density = 100.0f;
       } else if ( attr & ATTRIB_TOKEN ) {
 	density = 3.0f;
+	friction = 0.1f;
       } else {
 	density = 5.0f;
       }
-      friction = 0.3f;
       restitution = 0.2f;
     }
   };
@@ -654,6 +655,8 @@ public:
 	printf("body left over %p\n",m_world->GetBodyList());
 	m_world->DestroyBody( m_world->GetBodyList() );	       
       }
+      //step is required to actually destroy bodies and joints
+      m_world->Step( ITERATION_TIMESTEPf, SOLVER_ITERATIONS );
     }
   }
 
@@ -1046,8 +1049,8 @@ public:
     if ( m_game.m_strokeFixed ) outline( screen, 12, 0 );
     if ( m_game.m_strokeSleep ) outline( screen, 13, 0 );
     if ( m_game.m_strokeDecor ) outline( screen, 14, 0 );
-    if ( m_sending-- ) outline( screen, 16, screen.makeColour(m_sending<<9) );
-    if ( m_saving-- )  outline( screen, 17, screen.makeColour(m_saving<<9) );
+    if ( m_sending ) outline( screen, 16, screen.makeColour((m_sending--)<<9) );
+    if ( m_saving )  outline( screen, 17, screen.makeColour((m_saving--)<<9) );
   }
   virtual bool onClick( int x, int y )
   {
@@ -1135,7 +1138,11 @@ public:
 
   bool send()
   {
-    return save();
+    return save( SEND_TEMP_FILE ) 
+#ifdef USE_HILDON
+	 && m_hildon.sendFile( "nobody@", SEND_TEMP_FILE )
+#endif
+      ;
   }
 
   void setTool( int t )
@@ -1249,18 +1256,16 @@ public:
 
   bool handleModEvent( SDL_Event &ev )
   {
-    static bool mod=0;
+    static int mod=0;
     //printf("mod=%d\n",ev.key.keysym.sym,mod);
     switch( ev.type ) {      
     case SDL_KEYDOWN:
       //printf("mod key=%x mod=%d\n",ev.key.keysym.sym,mod);
       if ( ev.key.keysym.sym == SDLK_F8 ) {
 	mod = 1;  //zoom- == middle (delete)
-	printf("button mod =1\n");
 	return true;
       } else if ( ev.key.keysym.sym == SDLK_F7 ) {
 	mod = 2;  //zoom+ == right (move)
-	printf("button mod =2\n");
 	return true;
       }
       break;
@@ -1275,7 +1280,6 @@ public:
     case SDL_MOUSEBUTTONUP: 
       if ( ev.button.button == SDL_BUTTON_LEFT && mod != 0 ) {
 	ev.button.button = ((mod==1) ? SDL_BUTTON_MIDDLE : SDL_BUTTON_RIGHT);
-	printf("button mod=%d click but=%d\n",mod,ev.button.button);
       }
       break;
     }
@@ -1458,6 +1462,7 @@ public:
 	  int l = m_levels.findLevel( f );
 	  if ( l >= 0 ) {
 	    gotoLevel( l );
+	    m_window.raise();
 	  }
 	}
       }      

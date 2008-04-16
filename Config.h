@@ -72,6 +72,7 @@
 
 #define DEMO_TEMP_FILE "/tmp/demo.nph"
 #define HTTP_TEMP_FILE "/tmp/http.nph"
+#define SEND_TEMP_FILE "/tmp/mailto:numptyphysics@gmail.com.nph"
 
 #define ICON_SCALE_FACTOR 4
 

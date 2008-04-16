@@ -15,15 +15,20 @@ CCOPTS+=-g -D ARCH_x86_64 -D INSTALL_BASE_PATH=\".\"
 LDOPTS+=-g
 endif
 ifeq ($(ARCH),arm)
-CCOPTS+=-O3 -D ARCH_arm -D USE_HILDON
-CCOPTS+=-fomit-frame-pointer -mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp 
-##770 CCOPTS+=-mcpu=arm1026ej-s -march=armv5te -mfpu=vfp
+CCOPTS+=-D ARCH_arm -D USE_HILDON
+CCOPTS+=-O3 -fomit-frame-pointer -frename-registers -ffast-math
+#generic
+#CCOPTS+=-mfpu=vfp -mfloat-abi=softfp 
+#n8x0
+CCOPTS+=-mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp 
+#770
+#CCOPTS+=-mcpu=arm1026ej-s -mfpu=vfp -mfloat-abi=softfp 
 #LDOPTS+=-lm_vfp
 #hildon bits
 SOURCES+=Hildon.cpp happyhttp.cpp
 CCOPTS+=-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include 
 CCOPTS+=-I/usr/include/dbus-1.0 -I/usr/lib/dbus-1.0/include
-LDOPTS+=-losso
+LDOPTS+=-losso -lossoemailinterface
 endif
 
 BOX2DLIB=$(BINDIR)/libbox2d.a

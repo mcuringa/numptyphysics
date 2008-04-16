@@ -23,6 +23,11 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 
+#define Window X11Window //oops
+#include <SDL/SDL_syswm.h>
+#undef Window
+
+
 // extract RGB colour components as 8bit values from RGB888
 #define R32(p) (((p)>>16)&0xff)
 #define G32(p) (((p)>>8)&0xff)
@@ -571,7 +576,7 @@ Window::Window( int w, int h, const char* title, const char* winclass )
     throw "Unable to set 800x480 video";
   }
   if ( title ) {
-    SDL_WM_SetCaption( title, NULL );
+    SDL_WM_SetCaption( title, title );
   }
   resetClip();
 }
@@ -590,6 +595,14 @@ void Window::update( const Rect& r )
       SDL_UpdateRect( SURFACE(this), x1, y1, w, h );
     }
   }
+}
+
+void Window::raise()
+{
+  SDL_SysWMinfo sys ={0};
+  SDL_VERSION( &sys.version );
+  SDL_GetWMInfo( &sys );
+  XRaiseWindow( sys.info.x11.display, sys.info.x11.window );
 }
 
 

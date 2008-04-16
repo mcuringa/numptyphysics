@@ -1,10 +1,27 @@
+/*
+ * This file is part of NumptyPhysics
+ * Copyright (C) 2008 Tim Edmonds
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 3 of the
+ * License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ */
 
 #ifdef USE_HILDON
 #include <stdio.h>
 #include <string.h>
+#include <glib-object.h>
 #include <glibconfig.h>
 #include <glib/gmacros.h>
 #include <libosso.h>
+#include <ossoemailinterface.h>
 
 #include "Hildon.h"
 #include "Config.h"
@@ -132,6 +149,7 @@ Hildon::Hildon()
   if ( g_state.gcontext ) {
     throw "gmainloop already initialised";
   } else {
+    g_type_init();
     g_state.gcontext = g_main_context_new();
   }
   if ( g_state.osso ) {
@@ -180,5 +198,18 @@ char *Hildon::getFile()
   }
   return NULL;
 }
+
+bool Hildon::sendFile( char* to, char *file )
+{
+  GSList *l = g_slist_append( NULL, (gpointer)file );
+  if ( l ) {
+    if ( osso_email_files_email( g_state.osso, l ) == OSSO_OK ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
 
 #endif //USE_HILDON
