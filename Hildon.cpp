@@ -187,7 +187,7 @@ Hildon::~Hildon()
 void Hildon::poll()
 {
   if ( g_main_context_iteration( g_state.gcontext, FALSE ) ) {
-    fprintf(stderr, "Hildon::poll event!\n");
+    //fprintf(stderr, "Hildon::poll event!\n");
   }
 }
 
