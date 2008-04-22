@@ -25,6 +25,7 @@
 
 #define Window X11Window //oops
 #include <SDL/SDL_syswm.h>
+#include <X11/X.h>
 #undef Window
 
 
@@ -566,8 +567,12 @@ Window::Window( int w, int h, const char* title, const char* winclass )
     snprintf(s,80,"SDL_VIDEO_X11_WMCLASS=%s",winclass);
     putenv(s);
   }
+  if ( title ) {
+    SDL_WM_SetCaption( title, title );
+  }
 #ifdef USE_HILDON
-  m_state = SDL_SetVideoMode( w, h, 16, SDL_SWSURFACE|SDL_FULLSCREEN);
+  m_state = SDL_SetVideoMode( w, h, 16, SDL_SWSURFACE);//SDL_FULLSCREEN);
+  SDL_WM_ToggleFullScreen( SURFACE(this) );
   SDL_ShowCursor( SDL_DISABLE );
 #else
   m_state = SDL_SetVideoMode( w, h, 0, SDL_SWSURFACE);
@@ -575,10 +580,23 @@ Window::Window( int w, int h, const char* title, const char* winclass )
   if ( SURFACE(this) == NULL ) {
     throw "Unable to set 800x480 video";
   }
-  if ( title ) {
-    SDL_WM_SetCaption( title, title );
-  }
   resetClip();
+
+#ifdef USE_HILDON
+  SDL_SysWMinfo sys;
+  SDL_VERSION( &sys.version );
+  SDL_GetWMInfo( &sys );
+  printf("X11 window =%08x\n",sys.info.x11.window);
+  printf("X11 fswindow =%08x\n",sys.info.x11.fswindow);
+  printf("X11 wmwindow =%08x\n",sys.info.x11.wmwindow);
+
+  uint32_t pid = getpid();
+  XChangeProperty( sys.info.x11.display,
+		   sys.info.x11.wmwindow,
+		   XInternAtom (sys.info.x11.display, "_NET_WM_PID", False),
+		   XA_CARDINAL, 32, PropModeReplace,
+		   (unsigned char*)&pid, 1 );
+#endif
 }
 
 
@@ -599,10 +617,43 @@ void Window::update( const Rect& r )
 
 void Window::raise()
 {
-  SDL_SysWMinfo sys ={0};
+  SDL_SysWMinfo sys;
   SDL_VERSION( &sys.version );
   SDL_GetWMInfo( &sys );
-  XRaiseWindow( sys.info.x11.display, sys.info.x11.window );
+
+  // take focus...
+  XEvent ev = { 0 };
+  ev.xclient.type         = ClientMessage;
+  ev.xclient.window       = sys.info.x11.wmwindow;
+  ev.xclient.message_type = XInternAtom (sys.info.x11.display,
+					 "_NET_ACTIVE_WINDOW", False);
+  ev.xclient.format       = 32;
+  //all xewv.xclient.data==0 -> older spec?
+  
+  XSendEvent (sys.info.x11.display,
+	      DefaultRootWindow(sys.info.x11.display),
+	      False,
+	      NoEventMask, //SubstructureRedirectMask,
+	      &ev);    
+  XSync( sys.info.x11.display, False );
+
+  //XRaiseWindow( sys.info.x11.display, sys.info.x11.window );
+}
+
+
+void Window::setSubName( const char *sub )
+{
+#ifdef USE_HILDON
+  SDL_SysWMinfo sys;
+  SDL_VERSION( &sys.version );
+  SDL_GetWMInfo( &sys );
+
+  XChangeProperty( sys.info.x11.display,
+		   sys.info.x11.wmwindow,
+		   XInternAtom (sys.info.x11.display, "_MB_WIN_SUB_NAME", False),
+		   XA_STRING, 8, PropModeReplace,
+		   (unsigned char*)sub, strlen(sub) );
+#endif
 }
 
 

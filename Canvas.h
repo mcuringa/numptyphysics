@@ -62,6 +62,7 @@ class Window : public Canvas
   Window( int w, int h, const char* title=NULL, const char* winclass=NULL );
   void update( const Rect& r );
   void raise();
+  void setSubName( const char *sub );
 };
 
 

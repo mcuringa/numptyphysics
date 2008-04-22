@@ -12,7 +12,7 @@ LDOPTS=-L$(BINDIR) -lSDL -lSDL_image
 ifeq ($(ARCH),x86_64)
 #CCOPTS+=-g -O3 -D ARCH_x86_64
 CCOPTS+=-g -D ARCH_x86_64 -D INSTALL_BASE_PATH=\".\"
-LDOPTS+=-g
+LDOPTS+=-g -lX11
 endif
 ifeq ($(ARCH),arm)
 CCOPTS+=-D ARCH_arm -D USE_HILDON

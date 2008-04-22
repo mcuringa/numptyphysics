@@ -191,9 +191,9 @@ public:
       if ( m_colour==brush_colours[i] )  s<<i;
     }
     s << ":";
-    for ( int i=0; i<m_rawPath.size(); i++ ) {
-      Vec2 p = m_rawPath.point(i);
-      p += m_origin;
+    transform();
+    for ( int i=0; i<m_xformedPath.size(); i++ ) {
+      const Vec2& p = m_xformedPath.point(i);
       s <<' '<< p.x << ',' << p.y; 
     }
     s << endl;
@@ -1000,6 +1000,7 @@ public:
       EvEntry e = { m_tnow - m_t0, ev };
       m_log.append( e );
     }
+    return false;
   }
 
 private:
@@ -1114,6 +1115,7 @@ public:
       m_scene.load( m_levels.levelFile(l).c_str() );
       m_scene.activateAll();
       m_level = l;
+      m_window.setSubName( m_levels.levelFile(l).c_str() );
       m_refresh = true;
       if ( m_edit ) {
 	m_scene.protect(0);
@@ -1131,6 +1133,11 @@ public:
     }
     if ( m_scene.save( p ) ) {
       m_levels.addPath( p.c_str() );
+      int l = m_levels.findLevel( p.c_str() );
+      if ( l >= 0 ) {
+	m_level = l;
+	m_window.setSubName( p.c_str() );
+      }
       return true;
     }
     return false;
