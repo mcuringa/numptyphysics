@@ -11,3 +11,7 @@ fi
 if [ -x /usr/bin/osso-update-category-database ]; then
  osso-update-category-database /usr/share/mime
 fi
+
+if [ -x /usr/bin/gtk-update-icon-cache ]; then
+ gtk-update-icon-cache --force /usr/share/icons/hicolor
+fi
