@@ -26,6 +26,7 @@
 #define Window X11Window //oops
 #include <SDL/SDL_syswm.h>
 #include <X11/X.h>
+#include <X11/Xlib.h>
 #undef Window
 
 

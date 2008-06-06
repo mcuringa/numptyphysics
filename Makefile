@@ -9,6 +9,10 @@ OBJECTS=$(SOURCES:%.cpp=$(BINDIR)/%.o)
 CCOPTS=-Wall -I Box2D/Include 
 LDOPTS=-L$(BINDIR) -lSDL -lSDL_image 
 
+ifeq ($(ARCH),i686)
+CCOPTS+=-g -D ARCH_i686 -D INSTALL_BASE_PATH=\".\"
+LDOPTS+=-g -lX11
+endif
 ifeq ($(ARCH),x86_64)
 #CCOPTS+=-g -O3 -D ARCH_x86_64
 CCOPTS+=-g -D ARCH_x86_64 -D INSTALL_BASE_PATH=\".\"
