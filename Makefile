@@ -9,6 +9,11 @@ OBJECTS=$(SOURCES:%.cpp=$(BINDIR)/%.o)
 CCOPTS=-Wall -I Box2D/Include 
 LDOPTS=-L$(BINDIR) -lSDL -lSDL_image 
 
+ifeq ($(MSYSTEM),MINGW32)
+OBJECTS+=numptywinicon.o
+LDOPTS+=-mwindows
+CCOPTS+=-O3 -D ARCH_i686 -D INSTALL_BASE_PATH=\"./data/\"
+else
 ifeq ($(ARCH),i686)
 CCOPTS+=-g -D ARCH_i686 -D INSTALL_BASE_PATH=\".\"
 LDOPTS+=-g -lX11
@@ -33,6 +38,7 @@ SOURCES+=Hildon.cpp happyhttp.cpp
 CCOPTS+=-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include 
 CCOPTS+=-I/usr/include/dbus-1.0 -I/usr/lib/dbus-1.0/include
 LDOPTS+=-losso -lossoemailinterface
+endif
 endif
 
 BOX2DLIB=$(BINDIR)/libbox2d.a
@@ -85,6 +91,9 @@ dummy:
               -e '/^$$/ d' -e 's/$$/ :/' \
               < $(BINDIR)/$*.d >> $(BINDIR)/$*.P; \
         rm -f $(BINDIR)/$*.d
+
+numptywinicon.o: numptywinicon.res
+	windres numptywinicon.res numptywinicon.o
 
 clean:
 	rm -fR $(BINDIR)

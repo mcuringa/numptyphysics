@@ -25,8 +25,10 @@
 
 #define Window X11Window //oops
 #include <SDL/SDL_syswm.h>
+#ifndef WIN32
 #include <X11/X.h>
 #include <X11/Xlib.h>
+#endif
 #undef Window
 
 
@@ -622,6 +624,7 @@ void Window::raise()
   SDL_VERSION( &sys.version );
   SDL_GetWMInfo( &sys );
 
+#ifndef WIN32
   // take focus...
   XEvent ev = { 0 };
   ev.xclient.type         = ClientMessage;
@@ -637,7 +640,7 @@ void Window::raise()
 	      NoEventMask, //SubstructureRedirectMask,
 	      &ev);    
   XSync( sys.info.x11.display, False );
-
+#endif
   //XRaiseWindow( sys.info.x11.display, sys.info.x11.window );
 }
 

@@ -15,6 +15,7 @@
  */
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_syswm.h>
 #include <SDL/SDL_image.h>
 
 #include <cstdio>
@@ -24,6 +25,10 @@
 #include <memory.h>
 #include <errno.h>
 #include <sys/stat.h>
+
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 #include "Common.h"
 #include "Array.h"
@@ -1069,6 +1074,34 @@ public:
   }
 };
 
+/**
+ * Windows-specific code for setting the window icon
+ **/
+#ifdef WIN32
+HICON icon;
+HWND hwnd;
+
+
+void init_win32() {
+HINSTANCE handle = GetModuleHandle(NULL);
+icon = LoadIcon(handle, MAKEINTRESOURCE(1));
+SDL_SysWMinfo wminfo;
+SDL_VERSION(&wminfo.version)
+if(SDL_GetWMInfo(&wminfo) != 1) {
+//error wrong SDL version
+}
+hwnd = wminfo.window;
+SetClassLong(hwnd, GCL_HICON, (LONG)icon);
+}
+
+void deinit_win32() {
+DestroyIcon(icon);
+}
+#endif
+/**
+ * End Windows-specific code
+ **/
+
 
 class Game : public GameParams
 {
@@ -1098,8 +1131,10 @@ public:
       } else {
         m_levels.addPath( DEFAULT_LEVEL_PATH );
       }
+#ifndef WIN32
       std::string u( getenv("HOME") );
       m_levels.addPath( (u + "/" USER_LEVEL_PATH).c_str() );
+#endif
     } else {
       for ( int i=1;i<argc;i++ ) {
 	m_levels.addPath( argv[i] );
@@ -1129,7 +1164,11 @@ public:
     if ( file ) {
       p = file;
     } else {
+#ifdef WIN32
+      p = "./data/L99_saved.nph";
+#else
       p = getenv("HOME"); p+="/"USER_BASE_PATH"/L99_saved.nph";
+#endif
     }
     if ( m_scene.save( p ) ) {
       m_levels.addPath( p.c_str() );
@@ -1487,14 +1526,29 @@ public:
 };
 
 
+/**
+ * For Windows, we have to define "WinMain" instead of the
+ * usual "main" in order to get a graphical application without
+ * the console window that normally pops up otherwise
+ **/
+#ifdef WIN32
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+    LPSTR lpCmdLine, int nCmdShow)
+#else
 int main(int argc, char** argv)
+#endif
 {
   try {
     putenv("SDL_VIDEO_X11_WMCLASS=NPhysics");
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
       throw "Couldn't initialize SDL";
     }
-
+#ifdef WIN32
+    init_win32();
+    Game game( 0, (const char**)NULL );
+    game.run();
+    deinit_win32();
+#else
     if ( mkdir( (string(getenv("HOME"))+"/"USER_BASE_PATH).c_str(),
 		0755)==0 ) {
       printf("created user dir\n");
@@ -1521,6 +1575,7 @@ int main(int argc, char** argv)
       Game game( argc, (const char**)argv );
       game.run();
     }
+#endif
   } catch ( const char* e ) {
     cout <<"*** CAUGHT: "<<e<<endl;
   } 
