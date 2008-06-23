@@ -1,5 +1,12 @@
-numptyphysics (0.2) unstable; urgency=low
+numptyphysics (0.3) unstable; urgency=low
+	
+  * demo mode
+  * more levels
 
+ -- Tim Edmonds <tmedmonds@gmail.com>  Thu, 13 Jun 2008 15:48:31 +0000
+
+numptyphysics (0.2) unstable; urgency=low
+	
   * improved editor
   * more levels
   * web catalog

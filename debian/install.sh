@@ -17,9 +17,13 @@ mkdir -p ${CURDIR}/debian/numptyphysics/usr/share/pixmaps
 cp debian/numptyphysics64.png ${CURDIR}/debian/numptyphysics/usr/share/pixmaps/numptyphysics.png
 
 if [ -x /usr/bin/hildon-desktop ]; then
-  #maemo
+  echo installing for MAEMO desktop
   mkdir -p ${CURDIR}/debian/numptyphysics/usr/share/icons/hicolor/scalable/hildon/
   cp debian/numptyphysics64.png ${CURDIR}/debian/numptyphysics/usr/share/icons/hicolor/scalable/hildon/numptyphysics.png
+  mkdir -p ${CURDIR}/debian/numptyphysics/usr/share/icons/hicolor/26x26/hildon/
+  cp debian/numptyphysics26.png ${CURDIR}/debian/numptyphysics/usr/share/icons/hicolor/26x26/hildon/numptyphysics.png
+  mkdir -p ${CURDIR}/debian/numptyphysics/usr/share/icons/hicolor/48x48/hildon/
+  cp debian/numptyphysics48.png ${CURDIR}/debian/numptyphysics/usr/share/icons/hicolor//48x48/hildon/numptyphysics.png
   
   mkdir -p ${CURDIR}/debian/numptyphysics/usr/share/applications/hildon
   cp debian/numptyphysics.desktop ${CURDIR}/debian/numptyphysics/usr/share/applications/hildon
@@ -30,7 +34,7 @@ if [ -x /usr/bin/hildon-desktop ]; then
   mkdir -p ${CURDIR}/debian/numptyphysics/usr/share/mime/packages
   cp debian/numptyphysics-mime.xml ${CURDIR}/debian/numptyphysics/usr/share/mime/packages
 else
-  #ubuntu
+  echo installing for UBUNTU desktop
   mkdir -p ${CURDIR}/debian/numptyphysics/usr/share/applications
   cp debian/numptyphysics.desktop ${CURDIR}/debian/numptyphysics/usr/share/applications
 
