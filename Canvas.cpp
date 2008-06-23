@@ -574,7 +574,7 @@ Window::Window( int w, int h, const char* title, const char* winclass )
     SDL_WM_SetCaption( title, title );
   }
 #ifdef USE_HILDON
-  m_state = SDL_SetVideoMode( w, h, 16, SDL_SWSURFACE);
+  m_state = SDL_SetVideoMode( w, h, 16, SDL_SWSURFACE);//SDL_FULLSCREEN);
   SDL_WM_ToggleFullScreen( SURFACE(this) );
   SDL_ShowCursor( SDL_DISABLE );
 #else
@@ -653,7 +653,7 @@ void Window::setSubName( const char *sub )
   SDL_GetWMInfo( &sys );
 
   XChangeProperty( sys.info.x11.display,
-		   sys.info.x11.wmwindow,
+		   sys.info.x11.fswindow,
 		   XInternAtom (sys.info.x11.display, "_MB_WIN_SUB_NAME", False),
 		   XA_STRING, 8, PropModeReplace,
 		   (unsigned char*)sub, strlen(sub) );

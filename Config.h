@@ -37,7 +37,7 @@
 #  define CLICK_TOLERANCE   16 //PIXELs 
 #else
 #  define ITERATION_RATE    60 //fps
-#  define RENDER_RATE       30 //fps
+#  define RENDER_RATE       20 //fps
 #  define SOLVER_ITERATIONS 10
 #  define JOINT_TOLERANCE   4.0f //PIXELs
 #  define SELECT_TOLERANCE  5.0f //PIXELS_PER_METREf)

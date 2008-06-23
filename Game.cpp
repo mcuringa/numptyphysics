@@ -15,7 +15,6 @@
  */
 
 #include <SDL/SDL.h>
-#include <SDL/SDL_syswm.h>
 #include <SDL/SDL_image.h>
 
 #include <cstdio>
@@ -27,6 +26,7 @@
 #include <sys/stat.h>
 
 #ifdef WIN32
+#include <SDL/SDL_syswm.h>
 #include <windows.h>
 #endif
 
@@ -732,7 +732,6 @@ Image *Scene::g_bgImage = NULL;
 struct GameParams
 {
   GameParams() : m_quit(false),
-		 m_pause(false),
 		 m_edit( false ),
 		 m_refresh( true ),
 		 m_colour( 2 ),
@@ -743,11 +742,11 @@ struct GameParams
                  m_level(0)
   {}
   virtual ~GameParams() {}
-  virtual bool save( char *file=NULL ) { return false; }
+  virtual bool save( const char *file=NULL ) { return false; }
   virtual bool send() { return false; }
+  virtual bool load( const char* file ) { return false; }
   virtual void gotoLevel( int l ) {}
   bool  m_quit;
-  bool  m_pause;
   bool  m_edit;
   bool  m_refresh;
   int   m_colour;
@@ -769,7 +768,10 @@ public:
       m_dragging(false),
       m_buttonDown(false)
   {}
-  virtual ~Overlay() {}
+  virtual ~Overlay() 
+  {
+    delete m_canvas;
+  }
 
   Rect dirtyArea() 
   {
@@ -851,11 +853,16 @@ private:
 
 class IconOverlay: public Overlay
 {
+  std::string m_filename;
 public:
   IconOverlay(GameParams& game, const char* file, int x=100,int y=20)
-    : Overlay(game,x,y)
+    : Overlay(game,x,y),
+      m_filename( file )
   {
-    m_canvas = new Image(file);
+    m_canvas = new Image( m_filename.c_str() );
+  }
+  virtual void onShow()
+  {
   }
 };
 
@@ -874,6 +881,7 @@ public:
   }
   virtual void onShow()
   {
+    IconOverlay::onShow();
     m_selectedLevel = m_game.m_level+1;
   }
   virtual void draw( Canvas& screen )
@@ -937,19 +945,20 @@ private:
 class DemoOverlay : public IconOverlay
 {
   struct EvEntry {
+    EvEntry( int _t, SDL_Event& _e ) : t(_t), e(_e) {}
     int t;
     SDL_Event e;
   };
   typedef enum {
     STARTING,
-    RUNNING,
+    RECORDING,
     PLAYING,
     STOPPED
   } State;
-    
+  static const int XREL_INJECT_MAGIC = 0x4321;
 public:
   DemoOverlay( GameParams& game )
-    : IconOverlay( game, "pause.png" ),
+    : IconOverlay( game, "record.png" ),
       m_state( STARTING ),
       m_log( 512 )
   {
@@ -959,30 +968,47 @@ public:
     switch ( m_state ) {
     case STARTING:
       m_game.save( DEMO_TEMP_FILE );
-      //todo reset motion: m_game.load( DEMO_TEMP_FILE );
+      //TODO: save motion state
+      // or reset motion: 
+      m_game.load( DEMO_TEMP_FILE );
       m_t0 = tick;
-      m_state = RUNNING;
       m_log.empty();
-      break;
-    case RUNNING:
+      m_state = RECORDING;
+      // fall through
+    case RECORDING:
+    case STOPPED:
       m_tnow = tick;
       break;
     case PLAYING:
       while ( m_playidx < m_log.size()
 	      && m_log[m_playidx].t < tick-m_t0 ) {
-	SDL_PushEvent( &m_log[m_playidx++].e );
+        m_log[m_playidx].e.motion.xrel = XREL_INJECT_MAGIC;
+	SDL_PushEvent( &m_log[m_playidx].e );
+	m_playidx++;
       }  
-    break;
+      break;
     }
   }
   virtual bool onClick( int x, int y )
   {
     switch ( m_state ) {
-    case STOPPED:
-    case RUNNING:
+    case STARTING:
       break;
+    case STOPPED:
+      if ( m_game.load( DEMO_TEMP_FILE ) ) {
+	printf("playing back %d events\n",m_log.size());
+	m_state = PLAYING;
+	delete m_canvas;
+	m_canvas = new Image("play.png");
+	m_t0 = m_tnow;
+	m_playidx = 0;
+      }
+      break;
+    case RECORDING:
     case PLAYING:
       m_state = STOPPED;
+      delete m_canvas;
+      m_canvas = new Image("pause.png");
       break;
     }
     return true;
@@ -992,7 +1018,7 @@ public:
     IconOverlay::draw( screen );
     switch ( m_state ) {
     case STOPPED:
-    case RUNNING:
+    case RECORDING:
     case PLAYING:
       break;
     }
@@ -1001,9 +1027,24 @@ public:
   {
     if ( IconOverlay::handleEvent(ev) ) {
       return true;
-    } else if ( m_state == RUNNING ) {
-      EvEntry e = { m_tnow - m_t0, ev };
-      m_log.append( e );
+    } else {
+      switch ( m_state ) {
+      case STARTING:
+	break;
+      case RECORDING:
+	m_log.append( EvEntry( m_tnow - m_t0, ev ) );
+	break;
+      case PLAYING:
+	// block certain events from interfering with playback
+	switch( ev.type ) {      
+	case SDL_MOUSEBUTTONDOWN: 
+	case SDL_MOUSEBUTTONUP:
+	case SDL_MOUSEMOTION:
+	  if ( ev.motion.xrel != XREL_INJECT_MAGIC ) {
+	    return true;
+	  }
+	}
+      }
     }
     return false;
   }
@@ -1112,6 +1153,7 @@ class Game : public GameParams
   Window            m_window;
   IconOverlay       m_pauseOverlay;
   EditOverlay       m_editOverlay;
+  DemoOverlay       m_demoOverlay;
 #ifdef USE_HILDON
   Hildon            m_hildon;
 #endif //USE_HILDON
@@ -1120,8 +1162,9 @@ public:
   : m_createStroke(NULL),
     m_moveStroke(NULL),
     m_window(800,480,"Numpty Physics","NPhysics"),
-    m_pauseOverlay( *this, "pause.png",50,50),
-    m_editOverlay( *this)
+    m_pauseOverlay( *this, "pause.png",50,50 ),
+    m_editOverlay( *this ),
+    m_demoOverlay( *this )
   {
     if ( argc<=1 ) {
       FILE *f = fopen("Game.cpp","rt");
@@ -1143,22 +1186,30 @@ public:
     gotoLevel( 0 );
   }
 
-  void gotoLevel( int l )
+  bool load( const char *file )
   {
-    if ( l >= 0 && l < m_levels.numLevels() ) {
-      printf("loading from %s\n",m_levels.levelFile(l).c_str());
-      m_scene.load( m_levels.levelFile(l).c_str() );
+    if ( file && m_scene.load( file ) ) {
       m_scene.activateAll();
-      m_level = l;
-      m_window.setSubName( m_levels.levelFile(l).c_str() );
+      m_window.setSubName( file );
       m_refresh = true;
       if ( m_edit ) {
 	m_scene.protect(0);
       }
+      return true;
+    }
+    return false;
+  }
+
+  void gotoLevel( int l )
+  {
+    if ( l >= 0 && l < m_levels.numLevels() ) {
+      printf("loading from %s\n",m_levels.levelFile(l).c_str());
+      load( m_levels.levelFile(l).c_str() );
+      m_level = l;
     }
   }
 
-  bool save( char *file=NULL )
+  bool save( const char *file=NULL )
   {	  
     string p;
     if ( file ) {
@@ -1215,17 +1266,19 @@ public:
     m_overlays.erase( m_overlays.indexOf(&o) );
     m_refresh = true;
   }
-
-  void pause( bool doPause )
+  
+  void toggleOverlay( Overlay& o )
   {
-    if ( m_pause != doPause ) {
-      m_pause = doPause;
-      if ( m_pause ) {
-	showOverlay( m_pauseOverlay );
-      } else {
-	hideOverlay( m_pauseOverlay );
-      }
+    if ( m_overlays.indexOf( &o ) >= 0 ) {
+      hideOverlay( o );
+    } else {
+      showOverlay( o );
     }
+  }
+
+  bool isPaused()
+  {
+    return m_overlays.indexOf( &m_pauseOverlay ) >= 0;
   }
 
   void edit( bool doEdit )
@@ -1265,7 +1318,7 @@ public:
       case SDLK_SPACE:
       case SDLK_KP_ENTER:
       case SDLK_RETURN:
-	pause( !m_pause );
+	toggleOverlay( m_pauseOverlay );
 	break;
       case SDLK_s:
       case SDLK_F4: 
@@ -1274,6 +1327,9 @@ public:
       case SDLK_e:
       case SDLK_F6:
 	edit( !m_edit );
+	break;
+      case SDLK_d:
+	toggleOverlay( m_demoOverlay );
 	break;
       case SDLK_r:
       case SDLK_UP:
@@ -1287,8 +1343,6 @@ public:
       case SDLK_LEFT:
 	gotoLevel( m_level-1 );
 	break;
-      case SDLK_x:
-	//record();
       default:
 	break;
       }
@@ -1491,7 +1545,7 @@ public:
       } 
 
 	  
-      if ( !m_pause ) {
+      if ( !isPaused() ) {
 	//assumes RENDER_RATE <= ITERATION_RATE
 	while ( iterateCounter < ITERATION_RATE ) {
 	  m_scene.step();
@@ -1581,5 +1635,4 @@ int main(int argc, char** argv)
   } 
   return 0;
 }
-
 

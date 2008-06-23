@@ -1,4 +1,3 @@
-
 SOURCES=Path.cpp Canvas.cpp Levels.cpp Game.cpp
 
 ARCH=$(shell uname -m)
@@ -15,12 +14,12 @@ LDOPTS+=-mwindows
 CCOPTS+=-O3 -D ARCH_i686 -D INSTALL_BASE_PATH=\"./data/\"
 else
 ifeq ($(ARCH),i686)
-CCOPTS+=-g -D ARCH_i686 -D INSTALL_BASE_PATH=\".\"
+CCOPTS+=-g -D ARCH_i686
 LDOPTS+=-g -lX11
 endif
 ifeq ($(ARCH),x86_64)
 #CCOPTS+=-g -O3 -D ARCH_x86_64
-CCOPTS+=-g -D ARCH_x86_64 -D INSTALL_BASE_PATH=\".\"
+CCOPTS+=-g -D ARCH_x86_64
 LDOPTS+=-g -lX11
 endif
 ifeq ($(ARCH),arm)
