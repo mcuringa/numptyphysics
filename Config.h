@@ -17,6 +17,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <sstream>
+#include "Os.h"
+
 #define CANVAS_WIDTH  800
 #define CANVAS_HEIGHT 480
 #define CANVAS_GROUND 30
@@ -65,7 +68,11 @@
 # ifdef USE_HILDON //maemo
 #  define USER_BASE_PATH "MyDocs/.games/NumptyPhysics"
 # else
-#  define USER_BASE_PATH ".numptyphysics"
+#  ifdef WIN32
+#   define USER_BASE_PATH ".\\data"
+#  else
+#   define USER_BASE_PATH ".numptyphysics"
+#  endif
 # endif
 #endif
 #define USER_LEVEL_PATH USER_BASE_PATH
@@ -79,7 +86,16 @@
 class Config
 {
  public:
-  static int x;
+  static const std::string& userDataDir()
+  {
+    static const std::string d = std::string(getenv("HOME")) + Os::pathSep + USER_BASE_PATH;
+    return d;
+  }
+  static const std::string& planetRoot()
+  {
+    static const std::string d("http:///planet.cgi");
+    return d;
+  }
 };
 
 #endif //CONFIG_H

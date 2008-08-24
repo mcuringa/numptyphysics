@@ -25,20 +25,14 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-#ifdef WIN32
-#include <SDL/SDL_syswm.h>
-#include <windows.h>
-#endif
-
 #include "Common.h"
 #include "Array.h"
 #include "Config.h"
 #include "Path.h"
 #include "Canvas.h"
 #include "Levels.h"
-#ifdef USE_HILDON
-# include "Hildon.h"
-#endif //USE_HILDON
+#include "Http.h"
+#include "Os.h"
 
 using namespace std;
 
@@ -676,17 +670,22 @@ public:
     ifstream i( file.c_str(), ios::in );
     while ( i.is_open() && !i.eof() ) {
       getline( i, line );
-      //cout << "read: " << line << endl;;
-      switch( line[0] ) {
-      case 'T': m_title = line.substr(line.find(':')+1); break;
-      case 'B': m_bg = line.substr(line.find(':')+1); break;
-      case 'A': m_author = line.substr(line.find(':')+1); break;
-      case 'S': m_strokes.append( new Stroke(line) ); break;
-      }
+      parseLine( line );
     }
     i.close();
     protect();
     return true;
+  }
+
+  bool parseLine( const string& line )
+  {
+    switch( line[0] ) {
+    case 'T': m_title = line.substr(line.find(':')+1);  return true;
+    case 'B': m_bg = line.substr(line.find(':')+1);     return true;
+    case 'A': m_author = line.substr(line.find(':')+1); return true;
+    case 'S': m_strokes.append( new Stroke(line) );     return true;
+    }
+    return false;
   }
 
   void protect( int n=-1 )
@@ -942,6 +941,7 @@ private:
 };
 
 
+#if 0
 class DemoOverlay : public IconOverlay
 {
   struct EvEntry {
@@ -971,7 +971,7 @@ public:
       //TODO: save motion state
       // or reset motion: 
       m_game.load( DEMO_TEMP_FILE );
-      m_t0 = tick;
+      m_tickCount = 1;
       m_log.empty();
       m_state = RECORDING;
       // fall through
@@ -1051,11 +1051,12 @@ public:
 
 private:
   State            m_state;
-  int  		   m_t0, m_tnow;
+  int  		   m_tickCount;
+  int  		   m_lastTickTime;
   int              m_playidx;
   Array<EvEntry>   m_log;
 };
-
+#endif
 
 class EditOverlay : public IconOverlay
 {
@@ -1115,33 +1116,175 @@ public:
   }
 };
 
-/**
- * Windows-specific code for setting the window icon
- **/
-#ifdef WIN32
-HICON icon;
-HWND hwnd;
 
 
-void init_win32() {
-HINSTANCE handle = GetModuleHandle(NULL);
-icon = LoadIcon(handle, MAKEINTRESOURCE(1));
-SDL_SysWMinfo wminfo;
-SDL_VERSION(&wminfo.version)
-if(SDL_GetWMInfo(&wminfo) != 1) {
-//error wrong SDL version
-}
-hwnd = wminfo.window;
-SetClassLong(hwnd, GCL_HICON, (LONG)icon);
-}
+struct DemoEntry {
+  DemoEntry( int _t, int _o, SDL_Event& _e ) : t(_t), o(_o), e(_e) {}
+  int t,o;
+  SDL_Event e;
+};
 
-void deinit_win32() {
-DestroyIcon(icon);
-}
-#endif
-/**
- * End Windows-specific code
- **/
+class DemoLog : public Array<DemoEntry>
+{
+public:
+  std::string asString( int i )
+  {
+    if ( i < size() ) {
+      DemoEntry& e = at(i);
+      stringstream s;
+      s << "E: " << e.t << " " << e.o << " ";
+      switch( e.e.type ) {
+      case SDL_KEYDOWN:
+	s << "K" << e.e.key.keysym.sym;
+	break;
+      case SDL_KEYUP:
+	s << "k" << e.e.key.keysym.sym;
+	break;
+      case SDL_MOUSEBUTTONDOWN:
+	s << "B" << e.e.button.button;
+	s << "," << e.e.button.x << "," << e.e.button.y;
+	break;
+      case SDL_MOUSEBUTTONUP:
+	s << "b" << e.e.button.button;
+	s << "," << e.e.button.x << "," << e.e.button.y;
+	break;
+      case SDL_MOUSEMOTION:
+	s << "M" << e.e.button.x << "," << e.e.button.y;
+	break;
+      }
+      return s.str();
+    }
+    return std::string();
+  }
+
+  void append( int tick, int offset, SDL_Event& ev ) 
+  {
+    Array<DemoEntry>::append( DemoEntry( tick, offset, ev ) );
+  }
+
+  void appendFromString( const std::string& str ) 
+  {
+    const char *s = str.c_str();
+    int t, o, v1, v2, v3;
+    char c;
+    SDL_Event ev = {0};
+    ev.type = -1;
+    if ( sscanf(s,"E: %d %d %c%d",&t,&o,&c,&v1)==4 ) { //1 arg
+      switch ( c ) {
+      case 'K': ev.type = SDL_KEYDOWN; break;
+      case 'k': ev.type = SDL_KEYUP; break;
+      }
+      ev.key.keysym.sym = (SDLKey)v1;
+    } else if ( sscanf(s,"E: %d %d %c%d,%d",&t,&o,&c,&v1,&v2)==5 ) { //2 args
+      switch ( c ) {
+      case 'M': ev.type = SDL_MOUSEMOTION; break;
+      }
+      ev.button.x = v1;
+      ev.button.y = v2;
+    } else if ( sscanf(s,"E: %d %d %c%d,%d,%d",&t,&o,&c,&v1,&v2,&v3)==6 ) { //3 args
+      switch ( c ) {
+      case 'B': ev.type = SDL_MOUSEBUTTONDOWN; break;
+      case 'b': ev.type = SDL_MOUSEBUTTONUP; break;
+      }
+      ev.button.button = v1;
+      ev.button.x = v2;
+      ev.button.y = v3;
+    }
+    append( t, o, ev );
+  }
+};
+
+class DemoRecorder
+{
+public:
+
+  void start() 
+  {
+    m_running = true;
+    m_log.empty();
+    m_log.capacity(512);
+    m_lastTick = 0;
+    m_lastTickTime = SDL_GetTicks();
+  }
+
+  void stop()  
+  { 
+    printf("stop recording: %d events\n",m_log.size());
+    m_running = false; 
+  }
+
+  void tick() 
+  {
+    if ( m_running ) {
+      m_lastTick++;
+      m_lastTickTime = SDL_GetTicks();
+    }
+  }
+
+  void record( SDL_Event& ev )
+  {
+    if ( m_running ) {
+      m_log.append( m_lastTick, SDL_GetTicks()-m_lastTickTime, ev );
+    }
+  }
+  
+  DemoLog& getLog() { return m_log; }
+
+private:
+  bool          m_running;
+  DemoLog       m_log;
+  int 		m_lastTick;
+  int 		m_lastTickTime;
+};
+
+
+class DemoPlayer
+{
+public:
+
+  void start( const DemoLog* log ) 
+  {
+    m_playing = true;
+    m_log = log;
+    m_index = 0;
+    m_lastTick = 0;
+    m_lastTickTime = SDL_GetTicks();
+    printf("start playback: %d events\n",m_log->size());
+  }
+
+  void stop()  
+  { 
+    m_playing = false; 
+  }
+
+  void tick() 
+  {
+    if ( m_playing ) {
+      m_lastTick++;
+      m_lastTickTime = SDL_GetTicks();
+    }
+  }
+
+  bool fetchEvent( SDL_Event& ev )
+  {
+    if ( m_playing
+	 && m_index < m_log->size()
+	 && m_log->at(m_index).t <= m_lastTick
+	 && m_log->at(m_index).o <= SDL_GetTicks()-m_lastTickTime ) {
+      ev = m_log->at(m_index).e;
+      m_index++;
+      return true;
+    }
+    return false;
+  }
+  
+private:
+  bool           m_playing;
+  const DemoLog* m_log;
+  int            m_index;
+  int  		 m_lastTick;
+  int  		 m_lastTickTime;
+};
 
 
 class Game : public GameParams
@@ -1153,10 +1296,10 @@ class Game : public GameParams
   Window            m_window;
   IconOverlay       m_pauseOverlay;
   EditOverlay       m_editOverlay;
-  DemoOverlay       m_demoOverlay;
-#ifdef USE_HILDON
-  Hildon            m_hildon;
-#endif //USE_HILDON
+  //  DemoOverlay       m_demoOverlay;
+  DemoRecorder      m_recorder;
+  DemoPlayer        m_player;
+  Os               *m_os;
 public:
   Game( int argc, const char** argv ) 
   : m_createStroke(NULL),
@@ -1164,7 +1307,8 @@ public:
     m_window(800,480,"Numpty Physics","NPhysics"),
     m_pauseOverlay( *this, "pause.png",50,50 ),
     m_editOverlay( *this ),
-    m_demoOverlay( *this )
+    m_os( Os::get() )
+    //,m_demoOverlay( *this )
   {
     if ( argc<=1 ) {
       FILE *f = fopen("Game.cpp","rt");
@@ -1174,10 +1318,7 @@ public:
       } else {
         m_levels.addPath( DEFAULT_LEVEL_PATH );
       }
-#ifndef WIN32
-      std::string u( getenv("HOME") );
-      m_levels.addPath( (u + "/" USER_LEVEL_PATH).c_str() );
-#endif
+      m_levels.addPath( Config::userDataDir().c_str() );
     } else {
       for ( int i=1;i<argc;i++ ) {
 	m_levels.addPath( argv[i] );
@@ -1186,7 +1327,7 @@ public:
     gotoLevel( 0 );
   }
 
-  bool load( const char *file )
+  bool load( const char *file, bool replay=false )
   {
     if ( file && m_scene.load( file ) ) {
       m_scene.activateAll();
@@ -1195,16 +1336,26 @@ public:
       if ( m_edit ) {
 	m_scene.protect(0);
       }
+      m_recorder.stop();
+      m_player.stop();
+      if ( replay ) {
+	for ( int i=0; i<m_recorder.getLog().size(); i++ ) {
+	  printf("DEMO: %s\n",m_recorder.getLog().asString(i).c_str());
+	}
+	m_player.start( &m_recorder.getLog() );
+      } else {
+	m_recorder.start();
+      }
       return true;
     }
     return false;
   }
 
-  void gotoLevel( int l )
+  void gotoLevel( int l, bool replay=false )
   {
     if ( l >= 0 && l < m_levels.numLevels() ) {
       printf("loading from %s\n",m_levels.levelFile(l).c_str());
-      load( m_levels.levelFile(l).c_str() );
+      load( m_levels.levelFile(l).c_str(), replay );
       m_level = l;
     }
   }
@@ -1215,11 +1366,7 @@ public:
     if ( file ) {
       p = file;
     } else {
-#ifdef WIN32
-      p = "./data/L99_saved.nph";
-#else
-      p = getenv("HOME"); p+="/"USER_BASE_PATH"/L99_saved.nph";
-#endif
+      p = Config::userDataDir() + Os::pathSep + "L99_saved.nph";
     }
     if ( m_scene.save( p ) ) {
       m_levels.addPath( p.c_str() );
@@ -1235,11 +1382,22 @@ public:
 
   bool send()
   {
-    return save( SEND_TEMP_FILE ) 
-#ifdef USE_HILDON
-	 && m_hildon.sendFile( "nobody@", SEND_TEMP_FILE )
-#endif
-      ;
+    if ( save( SEND_TEMP_FILE ) ) {
+      Http h;
+      if ( h.post( Config::planetRoot().c_str(), "upload", SEND_TEMP_FILE ) ) {
+	std::string id = h.getHeader("NP-Upload-Id");
+	if ( id.length() > 0 ) {
+	  if ( !m_os->openBrowser((Config::planetRoot()+"?level="+id).c_str()) ) {
+	    showMessage("Unable to launch browser");
+	  }
+	} else {
+	  showMessage("UploadFailed: unknown error");
+	}
+      } else {
+	showMessage(std::string("UploadFailed: ")+h.errorMessage());
+      }
+    }
+    return false;
   }
 
   void setTool( int t )
@@ -1250,6 +1408,12 @@ public:
   void editMode( bool set )
   {
     m_edit = set;
+  }
+
+  void showMessage( const std::string& msg )
+  {
+    //todo
+    printf("showMessage \"%s\"\n",msg.c_str());
   }
 
   void showOverlay( Overlay& o )
@@ -1329,7 +1493,7 @@ public:
 	edit( !m_edit );
 	break;
       case SDLK_d:
-	toggleOverlay( m_demoOverlay );
+	//toggleOverlay( m_demoOverlay );
 	break;
       case SDLK_r:
       case SDLK_UP:
@@ -1342,6 +1506,9 @@ public:
       case SDLK_p:
       case SDLK_LEFT:
 	gotoLevel( m_level-1 );
+	break;
+      case SDLK_v:
+	gotoLevel( m_level, true );
 	break;
       default:
 	break;
@@ -1493,20 +1660,35 @@ public:
 	m_overlays[i]->onTick( lastTick );
       }
 
-      SDL_Event ev;
-      while ( SDL_PollEvent(&ev) ) { 
-	bool handled = false;
-	for ( int i=m_overlays.size()-1; i>=0 && !handled; i-- ) {
-	  handled = m_overlays[i]->handleEvent(ev);
+      if ( !isPaused() ) {
+	//assumes RENDER_RATE <= ITERATION_RATE
+	while ( iterateCounter < ITERATION_RATE ) {
+	  m_scene.step();
+	  m_recorder.tick();
+	  m_player.tick();
+
+	  SDL_Event ev;
+	  while ( SDL_PollEvent(&ev)
+		  || m_player.fetchEvent(ev) ) { 
+	    bool handled = false;
+	    m_recorder.record( ev );
+	    for ( int i=m_overlays.size()-1; i>=0 && !handled; i-- ) {
+	      handled = m_overlays[i]->handleEvent(ev);
+	    }
+	    if ( !handled ) {
+	      handled = false
+		|| handleModEvent(ev)
+		|| handleGameEvent(ev)
+		|| handleEditEvent(ev)
+		|| handlePlayEvent(ev);
+	    }
+	  }
+
+	  iterateCounter += RENDER_RATE;
 	}
-	if ( !handled ) {
-	  handled = false
-	    || handleModEvent(ev)
-	    || handleGameEvent(ev)
-	    || handleEditEvent(ev)
-	    || handlePlayEvent(ev);
-	}
+	iterateCounter -= ITERATION_RATE;
       }
+      
 
       if ( isComplete && m_edit ) {
 	hideOverlay( completedOverlay );
@@ -1515,6 +1697,7 @@ public:
       if ( m_scene.isCompleted() != isComplete && !m_edit ) {
 	isComplete = m_scene.isCompleted();
 	if ( isComplete ) {
+	  m_recorder.stop();
 	  showOverlay( completedOverlay );
 	} else {
 	  hideOverlay( completedOverlay );
@@ -1545,28 +1728,20 @@ public:
       } 
 
 	  
-      if ( !isPaused() ) {
-	//assumes RENDER_RATE <= ITERATION_RATE
-	while ( iterateCounter < ITERATION_RATE ) {
-	  m_scene.step();
-	  iterateCounter += RENDER_RATE;
-	}
-	iterateCounter -= ITERATION_RATE;
-      }
-      
-#ifdef USE_HILDON
-      m_hildon.poll();      
-      for ( char *f = m_hildon.getFile(); f; f=m_hildon.getFile() ) {
-	if ( f ) {
-	  m_levels.addPath( f );
-	  int l = m_levels.findLevel( f );
-	  if ( l >= 0 ) {
-	    gotoLevel( l );
-	    m_window.raise();
+      if ( m_os ) {
+	m_os->poll();      
+	for ( char *f = m_os->getLaunchFile(); f; f=m_os->getLaunchFile() ) {
+	  if ( f ) {
+	    m_levels.addPath( f );
+	    int l = m_levels.findLevel( f );
+	    if ( l >= 0 ) {
+	      gotoLevel( l );
+	      m_window.raise();
+	    }
 	  }
-	}
-      }      
-#endif //USE_HILDON
+	}    
+      }  
+
       int sleepMs = lastTick + RENDER_INTERVAL -  SDL_GetTicks();
       if ( sleepMs > 0 ) {
 	SDL_Delay( sleepMs );
@@ -1579,30 +1754,15 @@ public:
   }
 };
 
-
-/**
- * For Windows, we have to define "WinMain" instead of the
- * usual "main" in order to get a graphical application without
- * the console window that normally pops up otherwise
- **/
-#ifdef WIN32
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-    LPSTR lpCmdLine, int nCmdShow)
-#else
-int main(int argc, char** argv)
-#endif
+  
+int npmain(int argc, char** argv)
 {
   try {
     putenv("SDL_VIDEO_X11_WMCLASS=NPhysics");
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
       throw "Couldn't initialize SDL";
     }
-#ifdef WIN32
-    init_win32();
-    Game game( 0, (const char**)NULL );
-    game.run();
-    deinit_win32();
-#else
+
     if ( mkdir( (string(getenv("HOME"))+"/"USER_BASE_PATH).c_str(),
 		0755)==0 ) {
       printf("created user dir\n");
@@ -1611,7 +1771,6 @@ int main(int argc, char** argv)
     } else {
       printf("failed to create user dir\n");
     }
-
 
     if ( argc > 2 && strcmp(argv[1],"-bmp")==0 ) {
       for ( int i=2; i<argc; i++ ) {
@@ -1629,7 +1788,6 @@ int main(int argc, char** argv)
       Game game( argc, (const char**)argv );
       game.run();
     }
-#endif
   } catch ( const char* e ) {
     cout <<"*** CAUGHT: "<<e<<endl;
   } 
