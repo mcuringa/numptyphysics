@@ -1,4 +1,5 @@
-SOURCES=Path.cpp Canvas.cpp Levels.cpp Game.cpp
+SOURCES=Path.cpp Canvas.cpp Levels.cpp Game.cpp Http.cpp happyhttp.cpp
+#SOURCES=Savedialog.cpp
 
 ARCH=$(shell uname -m)
 BINDIR=$(ARCH)
@@ -6,25 +7,29 @@ TARGET=$(ARCH)/Game
 
 OBJECTS=$(SOURCES:%.cpp=$(BINDIR)/%.o)
 CCOPTS=-Wall -I Box2D/Include 
-LDOPTS=-L$(BINDIR) -lSDL -lSDL_image 
+LDOPTS=-L$(BINDIR) -lSDL -lSDL_image -lX11
 
 ifeq ($(MSYSTEM),MINGW32)
 OBJECTS+=numptywinicon.o
 LDOPTS+=-mwindows
 CCOPTS+=-O3 -D ARCH_i686 -D INSTALL_BASE_PATH=\"./data/\"
+SOURCES+=OsWin32.cpp
 else
 ifeq ($(ARCH),i686)
 CCOPTS+=-g -D ARCH_i686
-LDOPTS+=-g -lX11
+LDOPTS+=-g
+SOURCES+=OsFreeDesktop.cpp
 endif
 ifeq ($(ARCH),x86_64)
 #CCOPTS+=-g -O3 -D ARCH_x86_64
 CCOPTS+=-g -D ARCH_x86_64
-LDOPTS+=-g -lX11
+LDOPTS+=-g
+SOURCES+=OsFreeDesktop.cpp
 endif
 ifeq ($(ARCH),arm)
 CCOPTS+=-D ARCH_arm -D USE_HILDON
 CCOPTS+=-O3 -fomit-frame-pointer -frename-registers -ffast-math
+SOURCES+=OsHildon.cpp
 #generic
 #CCOPTS+=-mfpu=vfp -mfloat-abi=softfp 
 #n8x0
@@ -33,10 +38,16 @@ CCOPTS+=-mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp
 #CCOPTS+=-mcpu=arm1026ej-s -mfpu=vfp -mfloat-abi=softfp 
 #LDOPTS+=-lm_vfp
 #hildon bits
-SOURCES+=Hildon.cpp happyhttp.cpp
 CCOPTS+=-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include 
 CCOPTS+=-I/usr/include/dbus-1.0 -I/usr/lib/dbus-1.0/include
+CCOPTS+=-I/usr/include/hildon-1 
+CCOPTS+=-I/usr/include/gtk-2.0 -I/usr/lib/gtk-2.0/include
+CCOPTS+=-I/usr/include/atk-1.0 -I/usr/lib/atk-1.0/include
+CCOPTS+=-I/usr/include/cairo
+CCOPTS+=-I/usr/include/pango-1.0
+CCOPTS+=-I/usr/include/hildon-fm-2
 LDOPTS+=-losso -lossoemailinterface
+LDOPTS+=-lhildonfm
 endif
 endif
 
