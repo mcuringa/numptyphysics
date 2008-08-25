@@ -744,7 +744,7 @@ struct GameParams
   virtual bool save( const char *file=NULL ) { return false; }
   virtual bool send() { return false; }
   virtual bool load( const char* file ) { return false; }
-  virtual void gotoLevel( int l ) {}
+  virtual void gotoLevel( int l, bool replay=false ) {}
   bool  m_quit;
   bool  m_edit;
   bool  m_refresh;
@@ -893,6 +893,7 @@ public:
   }
   virtual bool onClick( int x, int y )
   {
+    printf("click %d,%d\n",x,y);
     if ( y > 180 ) {
       m_game.gotoLevel( m_selectedLevel );
     } else if ( x > 300 ) {
@@ -1304,7 +1305,7 @@ public:
   Game( int argc, const char** argv ) 
   : m_createStroke(NULL),
     m_moveStroke(NULL),
-    m_window(800,480,"Numpty Physics","NPhysics"),
+    m_window(CANVAS_WIDTH,CANVAS_HEIGHT,"Numpty Physics","NPhysics"),
     m_pauseOverlay( *this, "pause.png",50,50 ),
     m_editOverlay( *this ),
     m_os( Os::get() )
@@ -1353,6 +1354,7 @@ public:
 
   void gotoLevel( int l, bool replay=false )
   {
+    printf("gotoLevel %d\n",l);
     if ( l >= 0 && l < m_levels.numLevels() ) {
       printf("loading from %s\n",m_levels.levelFile(l).c_str());
       load( m_levels.levelFile(l).c_str(), replay );
@@ -1660,34 +1662,33 @@ public:
 	m_overlays[i]->onTick( lastTick );
       }
 
-      if ( !isPaused() ) {
-	//assumes RENDER_RATE <= ITERATION_RATE
-	while ( iterateCounter < ITERATION_RATE ) {
+      //assumes RENDER_RATE <= ITERATION_RATE
+      while ( iterateCounter < ITERATION_RATE ) {
+	if ( !isPaused() ) {
 	  m_scene.step();
 	  m_recorder.tick();
 	  m_player.tick();
-
-	  SDL_Event ev;
-	  while ( SDL_PollEvent(&ev)
-		  || m_player.fetchEvent(ev) ) { 
-	    bool handled = false;
-	    m_recorder.record( ev );
-	    for ( int i=m_overlays.size()-1; i>=0 && !handled; i-- ) {
-	      handled = m_overlays[i]->handleEvent(ev);
-	    }
-	    if ( !handled ) {
-	      handled = false
-		|| handleModEvent(ev)
-		|| handleGameEvent(ev)
-		|| handleEditEvent(ev)
-		|| handlePlayEvent(ev);
-	    }
-	  }
-
-	  iterateCounter += RENDER_RATE;
 	}
-	iterateCounter -= ITERATION_RATE;
+
+	SDL_Event ev;
+	while ( SDL_PollEvent(&ev)
+		|| m_player.fetchEvent(ev) ) { 
+	  bool handled = false;
+	  m_recorder.record( ev );
+	  for ( int i=m_overlays.size()-1; i>=0 && !handled; i-- ) {
+	    handled = m_overlays[i]->handleEvent(ev);
+	  }
+	  if ( !handled ) {
+	    handled = false
+	      || handleModEvent(ev)
+	      || handleGameEvent(ev)
+	      || handleEditEvent(ev)
+	      || handlePlayEvent(ev);
+	  }
+	}
+	iterateCounter += RENDER_RATE;
       }
+      iterateCounter -= ITERATION_RATE;
       
 
       if ( isComplete && m_edit ) {
