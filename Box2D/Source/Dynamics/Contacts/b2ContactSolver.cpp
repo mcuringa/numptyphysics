@@ -22,13 +22,15 @@
 #include "../b2World.h"
 #include "../../Common/b2StackAllocator.h"
 
-b2ContactSolver::b2ContactSolver(b2Contact** contacts, int32 contactCount, b2StackAllocator* allocator)
+b2ContactSolver::b2ContactSolver(const b2TimeStep& step, b2Contact** contacts, int32 contactCount, b2StackAllocator* allocator)
 {
+	m_step = step;
 	m_allocator = allocator;
 
 	m_constraintCount = 0;
 	for (int32 i = 0; i < contactCount; ++i)
 	{
+		b2Assert(contacts[i]->IsSolid());
 		m_constraintCount += contacts[i]->GetManifoldCount();
 	}
 
@@ -38,8 +40,9 @@ b2ContactSolver::b2ContactSolver(b2Contact** contacts, int32 contactCount, b2Sta
 	for (int32 i = 0; i < contactCount; ++i)
 	{
 		b2Contact* contact = contacts[i];
-		b2Body* b1 = contact->m_shape1->m_body;
-		b2Body* b2 = contact->m_shape2->m_body;
+
+		b2Body* b1 = contact->m_shape1->GetBody();
+		b2Body* b2 = contact->m_shape2->GetBody();
 		int32 manifoldCount = contact->GetManifoldCount();
 		b2Manifold* manifolds = contact->GetManifolds();
 		float32 friction = contact->m_friction;
@@ -70,7 +73,7 @@ b2ContactSolver::b2ContactSolver(b2Contact** contacts, int32 contactCount, b2Sta
 
 			for (int32 k = 0; k < c->pointCount; ++k)
 			{
-				b2ContactPoint* cp = manifold->points + k;
+				b2ManifoldPoint* cp = manifold->points + k;
 				b2ContactConstraintPoint* ccp = c->points + k;
 
 				ccp->normalImpulse = cp->normalImpulse;
@@ -78,29 +81,36 @@ b2ContactSolver::b2ContactSolver(b2Contact** contacts, int32 contactCount, b2Sta
 				ccp->separation = cp->separation;
 				ccp->positionImpulse = 0.0f;
 
-				b2Vec2 r1 = cp->position - b1->m_position;
-				b2Vec2 r2 = cp->position - b2->m_position;
+				ccp->localAnchor1 = cp->localPoint1;
+				ccp->localAnchor2 = cp->localPoint2;
+				ccp->r1 = b2Mul(b1->GetXForm().R, cp->localPoint1 - b1->GetLocalCenter());
+				ccp->r2 = b2Mul(b2->GetXForm().R, cp->localPoint2 - b2->GetLocalCenter());
 
-				ccp->localAnchor1 = b2MulT(b1->m_R, r1);
-				ccp->localAnchor2 = b2MulT(b2->m_R, r2);
+				float32 r1Sqr = b2Dot(ccp->r1, ccp->r1);
+				float32 r2Sqr = b2Dot(ccp->r2, ccp->r2);
+				float32 rn1 = b2Dot(ccp->r1, normal);
+				float32 rn2 = b2Dot(ccp->r2, normal);
 
-				float32 r1Sqr = b2Dot(r1, r1);
-				float32 r2Sqr = b2Dot(r2, r2);
-
-				float32 rn1 = b2Dot(r1, normal);
-				float32 rn2 = b2Dot(r2, normal);
 				float32 kNormal = b1->m_invMass + b2->m_invMass;
 				kNormal += b1->m_invI * (r1Sqr - rn1 * rn1) + b2->m_invI * (r2Sqr - rn2 * rn2);
-				b2Assert(kNormal > FLT_EPSILON);
+
+				b2Assert(kNormal > B2_FLT_EPSILON);
 				ccp->normalMass = 1.0f / kNormal;
+
+				float32 kEqualized = b1->m_mass * b1->m_invMass + b2->m_mass * b2->m_invMass;
+				kEqualized += b1->m_mass * b1->m_invI * (r1Sqr - rn1 * rn1) + b2->m_mass * b2->m_invI * (r2Sqr - rn2 * rn2);
+
+				b2Assert(kEqualized > B2_FLT_EPSILON);
+				ccp->equalizedMass = 1.0f / kEqualized;
 
 				b2Vec2 tangent = b2Cross(normal, 1.0f);
 
-				float32 rt1 = b2Dot(r1, tangent);
-				float32 rt2 = b2Dot(r2, tangent);
+				float32 rt1 = b2Dot(ccp->r1, tangent);
+				float32 rt2 = b2Dot(ccp->r2, tangent);
 				float32 kTangent = b1->m_invMass + b2->m_invMass;
 				kTangent += b1->m_invI * (r1Sqr - rt1 * rt1) + b2->m_invI * (r2Sqr - rt2 * rt2);
-				b2Assert(kTangent > FLT_EPSILON);
+
+				b2Assert(kTangent > B2_FLT_EPSILON);
 				ccp->tangentMass = 1.0f /  kTangent;
 
 				// Setup a velocity bias for restitution.
@@ -110,7 +120,7 @@ b2ContactSolver::b2ContactSolver(b2Contact** contacts, int32 contactCount, b2Sta
 					ccp->velocityBias = -60.0f * ccp->separation; // TODO_ERIN b2TimeStep
 				}
 
-				float32 vRel = b2Dot(c->normal, v2 + b2Cross(w2, r2) - v1 - b2Cross(w1, r1));
+				float32 vRel = b2Dot(c->normal, v2 + b2Cross(w2, ccp->r2) - v1 - b2Cross(w1, ccp->r1));
 				if (vRel < -b2_velocityThreshold)
 				{
 					ccp->velocityBias += -c->restitution * vRel;
@@ -129,7 +139,7 @@ b2ContactSolver::~b2ContactSolver()
 	m_allocator->Free(m_constraints);
 }
 
-void b2ContactSolver::InitVelocityConstraints()
+void b2ContactSolver::InitVelocityConstraints(const b2TimeStep& step)
 {
 	// Warm start.
 	for (int32 i = 0; i < m_constraintCount; ++i)
@@ -145,17 +155,17 @@ void b2ContactSolver::InitVelocityConstraints()
 		b2Vec2 normal = c->normal;
 		b2Vec2 tangent = b2Cross(normal, 1.0f);
 
-		if (b2World::s_enableWarmStarting)
+		if (step.warmStarting)
 		{
 			for (int32 j = 0; j < c->pointCount; ++j)
 			{
 				b2ContactConstraintPoint* ccp = c->points + j;
+				ccp->normalImpulse *= step.dtRatio;
+				ccp->tangentImpulse *= step.dtRatio;
 				b2Vec2 P = ccp->normalImpulse * normal + ccp->tangentImpulse * tangent;
-				b2Vec2 r1 = b2Mul(b1->m_R, ccp->localAnchor1);
-				b2Vec2 r2 = b2Mul(b2->m_R, ccp->localAnchor2);
-				b1->m_angularVelocity -= invI1 * b2Cross(r1, P);
+				b1->m_angularVelocity -= invI1 * b2Cross(ccp->r1, P);
 				b1->m_linearVelocity -= invMass1 * P;
-				b2->m_angularVelocity += invI2 * b2Cross(r2, P);
+				b2->m_angularVelocity += invI2 * b2Cross(ccp->r2, P);
 				b2->m_linearVelocity += invMass2 * P;
 			}
 		}
@@ -178,23 +188,31 @@ void b2ContactSolver::SolveVelocityConstraints()
 		b2ContactConstraint* c = m_constraints + i;
 		b2Body* b1 = c->body1;
 		b2Body* b2 = c->body2;
+		float32 w1 = b1->m_angularVelocity;
+		float32 w2 = b2->m_angularVelocity;
+		b2Vec2 v1 = b1->m_linearVelocity;
+		b2Vec2 v2 = b2->m_linearVelocity;
 		float32 invMass1 = b1->m_invMass;
 		float32 invI1 = b1->m_invI;
 		float32 invMass2 = b2->m_invMass;
 		float32 invI2 = b2->m_invI;
 		b2Vec2 normal = c->normal;
 		b2Vec2 tangent = b2Cross(normal, 1.0f);
-
-		// Solver normal constraints
+		float32 friction = c->friction;
+//#define DEFERRED_UPDATE
+#ifdef DEFERRED_UPDATE
+		b2Vec2 b1_linearVelocity = b1->m_linearVelocity;
+		float32 b1_angularVelocity = b1->m_angularVelocity;
+		b2Vec2 b2_linearVelocity = b2->m_linearVelocity;
+		float32 b2_angularVelocity = b2->m_angularVelocity;
+#endif
+		// Solve normal constraints
 		for (int32 j = 0; j < c->pointCount; ++j)
 		{
 			b2ContactConstraintPoint* ccp = c->points + j;
 
-			b2Vec2 r1 = b2Mul(b1->m_R, ccp->localAnchor1);
-			b2Vec2 r2 = b2Mul(b2->m_R, ccp->localAnchor2);
-
 			// Relative velocity at contact
-			b2Vec2 dv = b2->m_linearVelocity + b2Cross(b2->m_angularVelocity, r2) - b1->m_linearVelocity - b2Cross(b1->m_angularVelocity, r1);
+			b2Vec2 dv = v2 + b2Cross(w2, ccp->r2) - v1 - b2Cross(w1, ccp->r1);
 
 			// Compute normal impulse
 			float32 vn = b2Dot(dv, normal);
@@ -206,47 +224,61 @@ void b2ContactSolver::SolveVelocityConstraints()
 
 			// Apply contact impulse
 			b2Vec2 P = lambda * normal;
+#ifdef DEFERRED_UPDATE
+			b1_linearVelocity -= invMass1 * P;
+			b1_angularVelocity -= invI1 * b2Cross(r1, P);
 
-			b1->m_linearVelocity -= invMass1 * P;
-			b1->m_angularVelocity -= invI1 * b2Cross(r1, P);
+			b2_linearVelocity += invMass2 * P;
+			b2_angularVelocity += invI2 * b2Cross(r2, P);
+#else
+			v1 -= invMass1 * P;
+			w1 -= invI1 * b2Cross(ccp->r1, P);
 
-			b2->m_linearVelocity += invMass2 * P;
-			b2->m_angularVelocity += invI2 * b2Cross(r2, P);
-
+			v2 += invMass2 * P;
+			w2 += invI2 * b2Cross(ccp->r2, P);
+#endif
 			ccp->normalImpulse = newImpulse;
 		}
 
-		// Solver tangent constraints
+#ifdef DEFERRED_UPDATE
+		b1->m_linearVelocity = b1_linearVelocity;
+		b1->m_angularVelocity = b1_angularVelocity;
+		b2->m_linearVelocity = b2_linearVelocity;
+		b2->m_angularVelocity = b2_angularVelocity;
+#endif
+		// Solve tangent constraints
 		for (int32 j = 0; j < c->pointCount; ++j)
 		{
 			b2ContactConstraintPoint* ccp = c->points + j;
 
-			b2Vec2 r1 = b2Mul(b1->m_R, ccp->localAnchor1);
-			b2Vec2 r2 = b2Mul(b2->m_R, ccp->localAnchor2);
-
 			// Relative velocity at contact
-			b2Vec2 dv = b2->m_linearVelocity + b2Cross(b2->m_angularVelocity, r2) - b1->m_linearVelocity - b2Cross(b1->m_angularVelocity, r1);
+			b2Vec2 dv = v2 + b2Cross(w2, ccp->r2) - v1 - b2Cross(w1, ccp->r1);
 
-			// Compute tangent impulse
+			// Compute tangent force
 			float32 vt = b2Dot(dv, tangent);
 			float32 lambda = ccp->tangentMass * (-vt);
 
-			// b2Clamp the accumulated impulse
-			float32 maxFriction = c->friction * ccp->normalImpulse;
+			// b2Clamp the accumulated force
+			float32 maxFriction = friction * ccp->normalImpulse;
 			float32 newImpulse = b2Clamp(ccp->tangentImpulse + lambda, -maxFriction, maxFriction);
 			lambda = newImpulse - ccp->tangentImpulse;
 
 			// Apply contact impulse
 			b2Vec2 P = lambda * tangent;
 
-			b1->m_linearVelocity -= invMass1 * P;
-			b1->m_angularVelocity -= invI1 * b2Cross(r1, P);
+			v1 -= invMass1 * P;
+			w1 -= invI1 * b2Cross(ccp->r1, P);
 
-			b2->m_linearVelocity += invMass2 * P;
-			b2->m_angularVelocity += invI2 * b2Cross(r2, P);
+			v2 += invMass2 * P;
+			w2 += invI2 * b2Cross(ccp->r2, P);
 
 			ccp->tangentImpulse = newImpulse;
 		}
+
+		b1->m_linearVelocity = v1;
+		b1->m_angularVelocity = w1;
+		b2->m_linearVelocity = v2;
+		b2->m_angularVelocity = w2;
 	}
 }
 
@@ -265,12 +297,7 @@ void b2ContactSolver::FinalizeVelocityConstraints()
 	}
 }
 
-void b2ContactSolver::InitPositionConstraints()
-{
-	// TODO_ERIN anything here?
-}
-
-bool b2ContactSolver::SolvePositionConstraints()
+bool b2ContactSolver::SolvePositionConstraints(float32 baumgarte)
 {
 	float32 minSeparation = 0.0f;
 
@@ -279,23 +306,23 @@ bool b2ContactSolver::SolvePositionConstraints()
 		b2ContactConstraint* c = m_constraints + i;
 		b2Body* b1 = c->body1;
 		b2Body* b2 = c->body2;
-		float32 invMass1 = b1->m_invMass;
-		float32 invI1 = b1->m_invI;
-		float32 invMass2 = b2->m_invMass;
-		float32 invI2 = b2->m_invI;
+		float32 invMass1 = b1->m_mass * b1->m_invMass;
+		float32 invI1 = b1->m_mass * b1->m_invI;
+		float32 invMass2 = b2->m_mass * b2->m_invMass;
+		float32 invI2 = b2->m_mass * b2->m_invI;
+		
 		b2Vec2 normal = c->normal;
-		b2Vec2 tangent = b2Cross(normal, 1.0f);
 
 		// Solver normal constraints
 		for (int32 j = 0; j < c->pointCount; ++j)
 		{
 			b2ContactConstraintPoint* ccp = c->points + j;
 
-			b2Vec2 r1 = b2Mul(b1->m_R, ccp->localAnchor1);
-			b2Vec2 r2 = b2Mul(b2->m_R, ccp->localAnchor2);
+			b2Vec2 r1 = b2Mul(b1->GetXForm().R, ccp->localAnchor1 - b1->GetLocalCenter());
+			b2Vec2 r2 = b2Mul(b2->GetXForm().R, ccp->localAnchor2 - b2->GetLocalCenter());
 
-			b2Vec2 p1 = b1->m_position + r1;
-			b2Vec2 p2 = b2->m_position + r2;
+			b2Vec2 p1 = b1->m_sweep.c + r1;
+			b2Vec2 p2 = b2->m_sweep.c + r2;
 			b2Vec2 dp = p2 - p1;
 
 			// Approximate the current separation.
@@ -305,10 +332,10 @@ bool b2ContactSolver::SolvePositionConstraints()
 			minSeparation = b2Min(minSeparation, separation);
 
 			// Prevent large corrections and allow slop.
-			float32 C = b2_contactBaumgarte * b2Clamp(separation + b2_linearSlop, -b2_maxLinearCorrection, 0.0f);
+			float32 C = baumgarte * b2Clamp(separation + b2_linearSlop, -b2_maxLinearCorrection, 0.0f);
 
 			// Compute normal impulse
-			float32 dImpulse = -ccp->normalMass * C;
+			float32 dImpulse = -ccp->equalizedMass * C;
 
 			// b2Clamp the accumulated impulse
 			float32 impulse0 = ccp->positionImpulse;
@@ -317,15 +344,17 @@ bool b2ContactSolver::SolvePositionConstraints()
 
 			b2Vec2 impulse = dImpulse * normal;
 
-			b1->m_position -= invMass1 * impulse;
-			b1->m_rotation -= invI1 * b2Cross(r1, impulse);
-			b1->m_R.Set(b1->m_rotation);
+			b1->m_sweep.c -= invMass1 * impulse;
+			b1->m_sweep.a -= invI1 * b2Cross(r1, impulse);
+			b1->SynchronizeTransform();
 
-			b2->m_position += invMass2 * impulse;
-			b2->m_rotation += invI2 * b2Cross(r2, impulse);
-			b2->m_R.Set(b2->m_rotation);
+			b2->m_sweep.c += invMass2 * impulse;
+			b2->m_sweep.a += invI2 * b2Cross(r2, impulse);
+			b2->SynchronizeTransform();
 		}
 	}
 
-	return minSeparation >= -b2_linearSlop;
+	// We can't expect minSpeparation >= -b2_linearSlop because we don't
+	// push the separation above -b2_linearSlop.
+	return minSeparation >= -1.5f * b2_linearSlop;
 }

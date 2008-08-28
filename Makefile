@@ -12,22 +12,23 @@ LDOPTS=-L$(BINDIR) -lSDL -lSDL_image -lX11
 ifeq ($(MSYSTEM),MINGW32)
 OBJECTS+=numptywinicon.o
 LDOPTS+=-mwindows
-CCOPTS+=-O3 -D ARCH_i686 -D INSTALL_BASE_PATH=\"./data/\"
+CCOPTS+=-O3 -DARCH_i686 -D INSTALL_BASE_PATH=\"./data/\"
 SOURCES+=OsWin32.cpp
 else
 ifeq ($(ARCH),i686)
-CCOPTS+=-g -D ARCH_i686
+CCOPTS+=-g -DARCH_i686
 LDOPTS+=-g
 SOURCES+=OsFreeDesktop.cpp
 endif
 ifeq ($(ARCH),x86_64)
 #CCOPTS+=-g -O3 -D ARCH_x86_64
-CCOPTS+=-g -D ARCH_x86_64
+CCOPTS+=-g -D ARCH_x86_64 -DTARGET_FLOAT32_IS_FIXED
 LDOPTS+=-g
 SOURCES+=OsFreeDesktop.cpp
 endif
 ifeq ($(ARCH),arm)
-CCOPTS+=-D ARCH_arm -D USE_HILDON
+CCOPTS+=-DARCH_arm -D USE_HILDON
+# -DTARGET_FLOAT32_IS_FIXED
 CCOPTS+=-O3 -fomit-frame-pointer -frename-registers -ffast-math
 SOURCES+=OsHildon.cpp
 #generic
@@ -49,15 +50,24 @@ CCOPTS+=-I/usr/include/hildon-fm-2
 LDOPTS+=-losso -lossoemailinterface
 LDOPTS+=-lhildonfm
 endif
+ifeq ($(ARCH),armv4tl)
+CCOPTS+=-g -DARCH_armv4tl -DTARGET_FLOAT32_IS_FIXED
+LDOPTS+=-g
+SOURCES+=OsFreeDesktop.cpp
+endif
 endif
 
 BOX2DLIB=$(BINDIR)/libbox2d.a
 BOX2DSOURCES= \
 	Box2D/Source/Collision/b2Distance.cpp \
+	Box2D/Source/Collision/b2TimeOfImpact.cpp \
 	Box2D/Source/Collision/b2CollideCircle.cpp \
 	Box2D/Source/Collision/b2CollidePoly.cpp \
+	Box2D/Source/Collision/Shapes/b2PolygonShape.cpp \
+	Box2D/Source/Collision/Shapes/b2CircleShape.cpp \
+	Box2D/Source/Collision/Shapes/b2Shape.cpp \
 	Box2D/Source/Collision/b2PairManager.cpp \
-	Box2D/Source/Collision/b2Shape.cpp \
+	Box2D/Source/Collision/b2Collision.cpp \
 	Box2D/Source/Collision/b2BroadPhase.cpp \
 	Box2D/Source/Dynamics/b2WorldCallbacks.cpp \
 	Box2D/Source/Dynamics/Joints/b2PrismaticJoint.cpp \
@@ -72,14 +82,14 @@ BOX2DSOURCES= \
 	Box2D/Source/Dynamics/Contacts/b2Contact.cpp \
 	Box2D/Source/Dynamics/Contacts/b2PolyContact.cpp \
 	Box2D/Source/Dynamics/Contacts/b2ContactSolver.cpp \
-	Box2D/Source/Dynamics/Contacts/b2Conservative.cpp \
 	Box2D/Source/Dynamics/b2Island.cpp \
 	Box2D/Source/Dynamics/b2Body.cpp \
 	Box2D/Source/Dynamics/b2ContactManager.cpp \
 	Box2D/Source/Dynamics/b2World.cpp \
 	Box2D/Source/Common/b2BlockAllocator.cpp \
 	Box2D/Source/Common/b2StackAllocator.cpp \
-	Box2D/Source/Common/b2Settings.cpp
+	Box2D/Source/Common/b2Settings.cpp \
+	Box2D/Source/Common/b2Math.cpp
 BOX2DOBJECTS=$(BOX2DSOURCES:%.cpp=$(BINDIR)/%.o)
 
 all: $(TARGET) 

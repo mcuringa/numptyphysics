@@ -29,7 +29,7 @@
 #define PIXELS_PER_METREf 10.0f
 #define CLOSED_SHAPE_THREHOLDf 0.4f
 #define SIMPLIFY_THRESHOLDf 1.0f //PIXELs //(1.0/PIXELS_PER_METREf)
-#define MULTI_VERTEX_LIMIT (b2_maxShapesPerBody)
+#define MULTI_VERTEX_LIMIT 64
 
 #ifdef USE_HILDON //maemo
 #  define ITERATION_RATE    60 //fps
@@ -93,7 +93,7 @@ class Config
   }
   static const std::string& planetRoot()
   {
-    static const std::string d("http:///planet.cgi");
+    static const std::string d("http://xxx/planet.cgi");
     return d;
   }
 };

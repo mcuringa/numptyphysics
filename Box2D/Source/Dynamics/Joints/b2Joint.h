@@ -57,14 +57,20 @@ struct b2Jacobian
 	float32 Compute(const b2Vec2& x1, float32 a1, const b2Vec2& x2, float32 a2);
 };
 
-struct b2JointNode
+/// A joint edge is used to connect bodies and joints together
+/// in a joint graph where each body is a node and each joint
+/// is an edge. A joint edge belongs to a doubly linked list
+/// maintained in each attached body. Each joint has two joint
+/// nodes, one for each attached body.
+struct b2JointEdge
 {
-	b2Body* other;
-	b2Joint* joint;
-	b2JointNode* prev;
-	b2JointNode* next;
+	b2Body* other;			///< provides quick access to the other body attached.
+	b2Joint* joint;			///< the joint
+	b2JointEdge* prev;		///< the previous joint edge in the body's joint list
+	b2JointEdge* next;		///< the next joint edge in the body's joint list
 };
 
+/// Joint definitions are used to construct joints.
 struct b2JointDef
 {
 	b2JointDef()
@@ -76,32 +82,63 @@ struct b2JointDef
 		collideConnected = false;
 	}
 
+	/// The joint type is set automatically for concrete joint types.
 	b2JointType type;
+
+	/// Use this to attach application specific data to your joints.
 	void* userData;
+
+	/// The first attached body.
 	b2Body* body1;
+
+	/// The second attached body.
 	b2Body* body2;
+
+	/// Set this flag to true if the attached bodies should collide.
 	bool collideConnected;
 };
 
+/// The base joint class. Joints are used to constraint two bodies together in
+/// various fashions. Some joints also feature limits and motors.
 class b2Joint
 {
 public:
+
+	/// Get the type of the concrete joint.
 	b2JointType GetType() const;
 
+	/// Get the first body attached to this joint.
 	b2Body* GetBody1();
+
+	/// Get the second body attached to this joint.
 	b2Body* GetBody2();
 
+	/// Get the anchor point on body1 in world coordinates.
 	virtual b2Vec2 GetAnchor1() const = 0;
+
+	/// Get the anchor point on body2 in world coordinates.
 	virtual b2Vec2 GetAnchor2() const = 0;
 
-	virtual b2Vec2 GetReactionForce(float32 invTimeStep) const = 0;
-	virtual float32 GetReactionTorque(float32 invTimeStep) const = 0;
+	/// Get the reaction force on body2 at the joint anchor.
+	virtual b2Vec2 GetReactionForce() const = 0;
 
+	/// Get the reaction torque on body2.
+	virtual float32 GetReactionTorque() const = 0;
+
+	/// Get the next joint the world joint list.
 	b2Joint* GetNext();
 
+	/// Get the user data pointer.
 	void* GetUserData();
 
+	/// Set the user data pointer.
+	void SetUserData(void* data);
+
 	//--------------- Internals Below -------------------
+protected:
+	friend class b2World;
+	friend class b2Body;
+	friend class b2Island;
 
 	static b2Joint* Create(const b2JointDef* def, b2BlockAllocator* allocator);
 	static void Destroy(b2Joint* joint, b2BlockAllocator* allocator);
@@ -109,7 +146,7 @@ public:
 	b2Joint(const b2JointDef* def);
 	virtual ~b2Joint() {}
 
-	virtual void InitVelocityConstraints() = 0;
+	virtual void InitVelocityConstraints(const b2TimeStep& step) = 0;
 	virtual void SolveVelocityConstraints(const b2TimeStep& step) = 0;
 
 	// This returns true if the position errors are within tolerance.
@@ -119,10 +156,12 @@ public:
 	b2JointType m_type;
 	b2Joint* m_prev;
 	b2Joint* m_next;
-	b2JointNode m_node1;
-	b2JointNode m_node2;
+	b2JointEdge m_node1;
+	b2JointEdge m_node2;
 	b2Body* m_body1;
 	b2Body* m_body2;
+
+	float32 m_inv_dt;
 
 	bool m_islandFlag;
 	bool m_collideConnected;
@@ -170,6 +209,11 @@ inline b2Joint* b2Joint::GetNext()
 inline void* b2Joint::GetUserData()
 {
 	return m_userData;
+}
+
+inline void b2Joint::SetUserData(void* data)
+{
+	m_userData = data;
 }
 
 #endif

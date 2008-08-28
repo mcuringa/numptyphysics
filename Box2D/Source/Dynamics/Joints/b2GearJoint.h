@@ -24,17 +24,9 @@
 class b2RevoluteJoint;
 class b2PrismaticJoint;
 
-// A gear joint is used to connect two joints together. Either joint
-// can be a revolute or prismatic joint. You specify a gear ratio
-// to bind the motions together:
-// coordinate1 + ratio * coordinate2 = constant
-// The ratio can be negative or positive. If one joint is a revolute joint
-// and the other joint is a prismatic joint, then the ratio will have units
-// of length or units of 1/length.
-//
-// RESTRICITON: The revolute and prismatic joints must be attached to
-// a fixed body (which must be body1 on those joints).
-
+/// Gear joint definition. This definition requires two existing
+/// revolute or prismatic joints (any combination will work).
+/// The provided joints must attach a dynamic body to a static body.
 struct b2GearJointDef : public b2JointDef
 {
 	b2GearJointDef()
@@ -45,27 +37,43 @@ struct b2GearJointDef : public b2JointDef
 		ratio = 1.0f;
 	}
 
+	/// The first revolute/prismatic joint attached to the gear joint.
 	b2Joint* joint1;
+
+	/// The second revolute/prismatic joint attached to the gear joint.
 	b2Joint* joint2;
+
+	/// The gear ratio.
+	/// @see b2GearJoint for explanation.
 	float32 ratio;
 };
 
+/// A gear joint is used to connect two joints together. Either joint
+/// can be a revolute or prismatic joint. You specify a gear ratio
+/// to bind the motions together:
+/// coordinate1 + ratio * coordinate2 = constant
+/// The ratio can be negative or positive. If one joint is a revolute joint
+/// and the other joint is a prismatic joint, then the ratio will have units
+/// of length or units of 1/length.
+/// @warning The revolute and prismatic joints must be attached to
+/// fixed bodies (which must be body1 on those joints).
 class b2GearJoint : public b2Joint
 {
 public:
 	b2Vec2 GetAnchor1() const;
 	b2Vec2 GetAnchor2() const;
 
-	b2Vec2 GetReactionForce(float32 invTimeStep) const;
-	float32 GetReactionTorque(float32 invTimeStep) const;
+	b2Vec2 GetReactionForce() const;
+	float32 GetReactionTorque() const;
 
+	/// Get the gear ratio.
 	float32 GetRatio() const;
 
 	//--------------- Internals Below -------------------
 
 	b2GearJoint(const b2GearJointDef* data);
 
-	void InitVelocityConstraints();
+	void InitVelocityConstraints(const b2TimeStep& step);
 	void SolveVelocityConstraints(const b2TimeStep& step);
 	bool SolvePositionConstraints();
 
@@ -95,7 +103,7 @@ public:
 	float32 m_mass;
 
 	// Impulse for accumulation/warm starting.
-	float32 m_impulse;
+	float32 m_force;
 };
 
 #endif

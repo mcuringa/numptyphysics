@@ -17,20 +17,47 @@
 */
 
 #include "b2WorldCallbacks.h"
-#include "../Collision/b2Shape.h"
+#include "../Collision/Shapes/b2Shape.h"
 
-b2CollisionFilter b2_defaultFilter;
+b2ContactFilter b2_defaultFilter;
 
 // Return true if contact calculations should be performed between these two shapes.
 // If you implement your own collision filter you may want to build from this implementation.
-bool b2CollisionFilter::ShouldCollide(b2Shape* shape1, b2Shape* shape2)
+bool b2ContactFilter::ShouldCollide(b2Shape* shape1, b2Shape* shape2)
 {
-	if (shape1->m_groupIndex == shape2->m_groupIndex && shape1->m_groupIndex != 0)
+	const b2FilterData& filter1 = shape1->GetFilterData();
+	const b2FilterData& filter2 = shape2->GetFilterData();
+
+	if (filter1.groupIndex == filter2.groupIndex && filter1.groupIndex != 0)
 	{
-		return shape1->m_groupIndex > 0;
+		return filter1.groupIndex > 0;
 	}
 
-	bool collide = (shape1->m_maskBits & shape2->m_categoryBits) != 0 && (shape1->m_categoryBits & shape2->m_maskBits) != 0;
+	bool collide = (filter1.maskBits & filter2.categoryBits) != 0 && (filter1.categoryBits & filter2.maskBits) != 0;
 	return collide;
 }
 
+b2DebugDraw::b2DebugDraw()
+{
+	m_drawFlags = 0;
+}
+
+void b2DebugDraw::SetFlags(uint32 flags)
+{
+	m_drawFlags = flags;
+}
+
+uint32 b2DebugDraw::GetFlags() const
+{
+	return m_drawFlags;
+}
+
+void b2DebugDraw::AppendFlags(uint32 flags)
+{
+	m_drawFlags |= flags;
+}
+
+void b2DebugDraw::ClearFlags(uint32 flags)
+{
+	m_drawFlags &= ~flags;
+}

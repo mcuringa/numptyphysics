@@ -21,62 +21,97 @@
 
 #include "b2Joint.h"
 
-// The pulley joint is connected to two bodies and two fixed ground points.
-// The pulley supports a ratio such that:
-// length1 + ratio * length2 = constant
-// Yes, the force transmitted is scaled by the ratio.
-// The pulley also enforces a maximum length limit on both sides. This is
-// useful to prevent one side of the pulley hitting the top.
+const float32 b2_minPulleyLength = 2.0f;
 
-// We need a minimum pulley length to help prevent one side going to zero.
-const float32 b2_minPulleyLength = b2_lengthUnitsPerMeter;
-
+/// Pulley joint definition. This requires two ground anchors,
+/// two dynamic body anchor points, max lengths for each side,
+/// and a pulley ratio.
 struct b2PulleyJointDef : public b2JointDef
 {
 	b2PulleyJointDef()
 	{
 		type = e_pulleyJoint;
-		groundPoint1.Set(-1.0f, 1.0f);
-		groundPoint2.Set(1.0f, 1.0f);
-		anchorPoint1.Set(-1.0f, 0.0f);
-		anchorPoint2.Set(1.0f, 0.0f);
-		maxLength1 = 0.5f * b2_minPulleyLength;
-		maxLength2 = 0.5f * b2_minPulleyLength;
+		groundAnchor1.Set(-1.0f, 1.0f);
+		groundAnchor2.Set(1.0f, 1.0f);
+		localAnchor1.Set(-1.0f, 0.0f);
+		localAnchor2.Set(1.0f, 0.0f);
+		length1 = 0.0f;
+		maxLength1 = 0.0f;
+		length2 = 0.0f;
+		maxLength2 = 0.0f;
 		ratio = 1.0f;
 		collideConnected = true;
 	}
 
-	b2Vec2 groundPoint1;
-	b2Vec2 groundPoint2;
-	b2Vec2 anchorPoint1;
-	b2Vec2 anchorPoint2;
+	/// Initialize the bodies, anchors, lengths, max lengths, and ratio using the world anchors.
+	void Initialize(b2Body* body1, b2Body* body2,
+					const b2Vec2& groundAnchor1, const b2Vec2& groundAnchor2,
+					const b2Vec2& anchor1, const b2Vec2& anchor2,
+					float32 ratio);
+
+	/// The first ground anchor in world coordinates. This point never moves.
+	b2Vec2 groundAnchor1;
+
+	/// The second ground anchor in world coordinates. This point never moves.
+	b2Vec2 groundAnchor2;
+
+	/// The local anchor point relative to body1's origin.
+	b2Vec2 localAnchor1;
+
+	/// The local anchor point relative to body2's origin.
+	b2Vec2 localAnchor2;
+
+	/// The a reference length for the segment attached to body1.
+	float32 length1;
+
+	/// The maximum length of the segment attached to body1.
 	float32 maxLength1;
+
+	/// The a reference length for the segment attached to body2.
+	float32 length2;
+
+	/// The maximum length of the segment attached to body2.
 	float32 maxLength2;
+
+	/// The pulley ratio, used to simulate a block-and-tackle.
 	float32 ratio;
 };
 
+/// The pulley joint is connected to two bodies and two fixed ground points.
+/// The pulley supports a ratio such that:
+/// length1 + ratio * length2 <= constant
+/// Yes, the force transmitted is scaled by the ratio.
+/// The pulley also enforces a maximum length limit on both sides. This is
+/// useful to prevent one side of the pulley hitting the top.
 class b2PulleyJoint : public b2Joint
 {
 public:
 	b2Vec2 GetAnchor1() const;
 	b2Vec2 GetAnchor2() const;
 
-	b2Vec2 GetGroundPoint1() const;
-	b2Vec2 GetGroundPoint2() const;
+	b2Vec2 GetReactionForce() const;
+	float32 GetReactionTorque() const;
 
-	b2Vec2 GetReactionForce(float32 invTimeStep) const;
-	float32 GetReactionTorque(float32 invTimeStep) const;
+	/// Get the first ground anchor.
+	b2Vec2 GetGroundAnchor1() const;
 
+	/// Get the second ground anchor.
+	b2Vec2 GetGroundAnchor2() const;
+
+	/// Get the current length of the segment attached to body1.
 	float32 GetLength1() const;
+
+	/// Get the current length of the segment attached to body2.
 	float32 GetLength2() const;
 
+	/// Get the pulley ratio.
 	float32 GetRatio() const;
 
 	//--------------- Internals Below -------------------
 
 	b2PulleyJoint(const b2PulleyJointDef* data);
 
-	void InitVelocityConstraints();
+	void InitVelocityConstraints(const b2TimeStep& step);
 	void SolveVelocityConstraints(const b2TimeStep& step);
 	bool SolvePositionConstraints();
 
@@ -101,14 +136,16 @@ public:
 	float32 m_limitMass2;
 
 	// Impulses for accumulation/warm starting.
-	float32 m_pulleyImpulse;
-	float32 m_limitImpulse1;
-	float32 m_limitImpulse2;
+	float32 m_force;
+	float32 m_limitForce1;
+	float32 m_limitForce2;
 
 	// Position impulses for accumulation.
+	float32 m_positionImpulse;
 	float32 m_limitPositionImpulse1;
 	float32 m_limitPositionImpulse2;
 
+	b2LimitState m_state;
 	b2LimitState m_limitState1;
 	b2LimitState m_limitState2;
 };

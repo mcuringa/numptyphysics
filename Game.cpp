@@ -66,6 +66,8 @@ public:
     ATTRIB_GOAL = 4,
     ATTRIB_DECOR = 8,
     ATTRIB_SLEEPING = 16,
+    ATTRIB_HIDDEN = 32,
+    ATTRIB_DELETED = 64,
     ATTRIB_CLASSBITS = ATTRIB_TOKEN | ATTRIB_GOAL
   } Attribute;
 
@@ -74,16 +76,14 @@ private:
   {
     JointDef( b2Body* b1, b2Body* b2, const b2Vec2& pt )
     {
-      body1 = b1;
-      body2 = b2;
-      anchorPoint = pt;
-      motorTorque = 10.0f;
+      Initialize( b1, b2, pt );
+      maxMotorTorque = 10.0f;
       motorSpeed = 0.0f;
       enableMotor = true;
     }
   };
 
-  struct BoxDef : public b2BoxDef
+  struct BoxDef : public b2PolygonDef
   {
     void init( const Vec2& p1, const Vec2& p2, int attr )
     {
@@ -91,9 +91,10 @@ private:
       b2Vec2 bar = p2 - p1;
       bar *= 1.0f/PIXELS_PER_METREf;
       barOrigin *= 1.0f/PIXELS_PER_METREf;;
-      extents.Set( bar.Length()/2.0f, 0.1f );
-      localPosition = 0.5f*bar + barOrigin;
-      localRotation = vec2Angle( bar );
+      SetAsBox( bar.Length()/2.0f, 0.1f,
+		0.5f*bar + barOrigin, vec2Angle( bar ));
+      //      SetAsBox( bar.Length()/2.0f+b2_toiSlop, b2_toiSlop*2.0f,
+      //	0.5f*bar + barOrigin, vec2Angle( bar ));
       friction = 0.3f;
       if ( attr & ATTRIB_GROUND ) {
 	density = 0.0f;
@@ -223,14 +224,7 @@ public:
     }
     int n = m_shapePath.numPoints();
     if ( n > 1 ) {
-      BoxDef boxDef[n];
       b2BodyDef bodyDef;
-      for ( int i=1; i<n; i++ ) {
-	boxDef[i].init( m_shapePath.point(i-1),
-			m_shapePath.point(i),
-			m_attributes );
-	bodyDef.AddShape( &boxDef[i] );
-      }
       bodyDef.position = m_origin;
       bodyDef.position *= 1.0f/PIXELS_PER_METREf;
       bodyDef.userData = this;
@@ -238,6 +232,15 @@ public:
 	bodyDef.isSleeping = true;
       }
       m_body = world.CreateBody( &bodyDef );
+      for ( int i=1; i<n; i++ ) {
+	BoxDef boxDef;
+	boxDef.init( m_shapePath.point(i-1),
+		     m_shapePath.point(i),
+		     m_attributes );
+	m_body->CreateShape( &boxDef );
+      }
+      m_body->SetMassFromShapes();
+
     }
     transform();
   }
@@ -298,7 +301,7 @@ public:
     if ( m_body ) {
       b2Vec2 pw = p;
       pw *= 1.0f/PIXELS_PER_METREf;
-      m_body->SetOriginPosition( pw, m_body->GetRotation() );
+      m_body->SetXForm( pw, m_body->GetAngle() );
     }
     m_origin = p;
   }
@@ -343,7 +346,7 @@ public:
       
       if (m_body) {
 	// stash the body where no-one will find it
-	m_body->SetCenterPosition( b2Vec2(0.0f,CANVAS_HEIGHTf*2.0f), 0.0f );
+	m_body->SetXForm( b2Vec2(0.0f,CANVAS_HEIGHTf*2.0f), 0.0f );
 	m_body->SetLinearVelocity( b2Vec2(0.0f,0.0f) );
 	m_body->SetAngularVelocity( 0.0f );
       }
@@ -363,8 +366,7 @@ public:
 private:
   static float vec2Angle( b2Vec2 v ) 
   {
-    float a=atan(v.y/v.x);
-    return v.y>0?a:a+b2_pi;
+    return b2Atan2(v.y, v.x);
   } 
 
   void process()
@@ -397,25 +399,25 @@ private:
       if ( hasAttribute( ATTRIB_DECOR ) ) {
 	return false; // decor never moves
       } else if ( hasAttribute( ATTRIB_GROUND )	   
-		  && m_xformAngle == m_body->GetRotation() ) {
+		  && m_xformAngle == m_body->GetAngle() ) {
 	return false; // ground strokes never move.
-      } else if ( m_xformAngle != m_body->GetRotation() 
-	   ||  ! (m_xformPos == m_body->GetOriginPosition()) ) {
+      } else if ( m_xformAngle != m_body->GetAngle() 
+	   ||  ! (m_xformPos == m_body->GetPosition()) ) {
 	//printf("transform stroke - rot or pos\n");
-	b2Mat22 rot( m_body->GetRotation() );
-	b2Vec2 orig = PIXELS_PER_METREf * m_body->GetOriginPosition();
+	b2Mat22 rot( m_body->GetAngle() );
+	b2Vec2 orig = PIXELS_PER_METREf * m_body->GetPosition();
 	m_xformedPath = m_rawPath;
 	m_xformedPath.rotate( rot );
 	m_xformedPath.translate( Vec2(orig) );
-	m_xformAngle = m_body->GetRotation();
-	m_xformPos = m_body->GetOriginPosition();
+	m_xformAngle = m_body->GetAngle();
+	m_xformPos = m_body->GetPosition();
 	m_xformBbox = m_xformedPath.bbox();
-      } else if ( ! (m_xformPos == m_body->GetOriginPosition() ) ) {
+      } else if ( ! (m_xformPos == m_body->GetPosition() ) ) {
 	//NOT WORKING printf("transform stroke - pos\n");
-	b2Vec2 move = m_body->GetOriginPosition() - m_xformPos;
+	b2Vec2 move = m_body->GetPosition() - m_xformPos;
 	move *= PIXELS_PER_METREf;
 	m_xformedPath.translate( Vec2(move) );
-	m_xformPos = m_body->GetOriginPosition();
+	m_xformPos = m_body->GetPosition();
 	m_xformBbox = m_xformedPath.bbox();//TODO translate instead of recalc
       } else {
 	//printf("transform none\n");
@@ -448,7 +450,7 @@ private:
 };
 
 
-class Scene
+class Scene : private b2ContactListener
 {
 public:
 
@@ -459,12 +461,13 @@ public:
   {
     if ( !noWorld ) {
       b2AABB worldAABB;
-      worldAABB.minVertex.Set(-100.0f, -100.0f);
-      worldAABB.maxVertex.Set(100.0f, 100.0f);
+      worldAABB.lowerBound.Set(-100.0f, -100.0f);
+      worldAABB.upperBound.Set(100.0f, 100.0f);
       
       b2Vec2 gravity(0.0f, 10.0f);
       bool doSleep = true;
       m_world = new b2World(worldAABB, gravity, doSleep);
+      m_world->SetContactListener( this );
     }
   }
 
@@ -528,22 +531,30 @@ public:
   void step()
   {
     m_world->Step( ITERATION_TIMESTEPf, SOLVER_ITERATIONS );
-    
+    for ( int i=0; i< m_strokes.size(); i++ ) {
+      if ( m_strokes[i]->hasAttribute(Stroke::ATTRIB_DELETED)
+	   && !m_strokes[i]->hasAttribute(Stroke::ATTRIB_HIDDEN)) {
+	m_strokes[i]->hide();
+	m_strokes[i]->setAttribute(Stroke::ATTRIB_HIDDEN);
+      }
+    }
+  }
+
+  // b2ContactListener callback when a new contact is detected
+  virtual void Add(const b2ContactPoint* point) 
+  {     
     // check for completion
-    for (b2Contact* c = m_world->GetContactList(); c; c = c->GetNext()) {
-      if (c->GetManifoldCount() > 0) {
-	Stroke* s1 = (Stroke*)c->GetShape1()->GetBody()->GetUserData();
-	Stroke* s2 = (Stroke*)c->GetShape2()->GetBody()->GetUserData();
-	if ( s1 && s2 ) {
-	  if ( s2->hasAttribute(Stroke::ATTRIB_TOKEN) ) {
-	    b2Swap( s1, s2 );
-	  }
-	  if ( s1->hasAttribute(Stroke::ATTRIB_TOKEN) 
-	       && s2->hasAttribute(Stroke::ATTRIB_GOAL) ) {
-	    s2->hide();
-	    //printf("SUCCESS!! level complete\n");
-	  }
-	}
+    //if (c->GetManifoldCount() > 0) {
+    Stroke* s1 = (Stroke*)point->shape1->GetBody()->GetUserData();
+    Stroke* s2 = (Stroke*)point->shape2->GetBody()->GetUserData();
+    if ( s1 && s2 ) {
+      if ( s2->hasAttribute(Stroke::ATTRIB_TOKEN) ) {
+	b2Swap( s1, s2 );
+      }
+      if ( s1->hasAttribute(Stroke::ATTRIB_TOKEN) 
+	   && s2->hasAttribute(Stroke::ATTRIB_GOAL) ) {
+	s2->setAttribute(Stroke::ATTRIB_DELETED);
+	printf("SUCCESS!! level complete\n");
       }
     }
 

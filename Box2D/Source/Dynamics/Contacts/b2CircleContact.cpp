@@ -17,6 +17,8 @@
 */
 
 #include "b2CircleContact.h"
+#include "../b2Body.h"
+#include "../b2WorldCallbacks.h"
 #include "../../Common/b2BlockAllocator.h"
 
 #include <new>
@@ -36,24 +38,84 @@ void b2CircleContact::Destroy(b2Contact* contact, b2BlockAllocator* allocator)
 b2CircleContact::b2CircleContact(b2Shape* s1, b2Shape* s2)
 : b2Contact(s1, s2)
 {
-	b2Assert(m_shape1->m_type == e_circleShape);
-	b2Assert(m_shape2->m_type == e_circleShape);
+	b2Assert(m_shape1->GetType() == e_circleShape);
+	b2Assert(m_shape2->GetType() == e_circleShape);
 	m_manifold.pointCount = 0;
 	m_manifold.points[0].normalImpulse = 0.0f;
 	m_manifold.points[0].tangentImpulse = 0.0f;
 }
 
-void b2CircleContact::Evaluate()
+void b2CircleContact::Evaluate(b2ContactListener* listener)
 {
-	b2CollideCircle(&m_manifold, (b2CircleShape*)m_shape1, (b2CircleShape*)m_shape2, false);
+	b2Body* b1 = m_shape1->GetBody();
+	b2Body* b2 = m_shape2->GetBody();
+
+	b2Manifold m0;
+	memcpy(&m0, &m_manifold, sizeof(b2Manifold));
+
+	b2CollideCircles(&m_manifold, (b2CircleShape*)m_shape1, b1->GetXForm(), (b2CircleShape*)m_shape2, b2->GetXForm());
+
+	b2ContactPoint cp;
+	cp.shape1 = m_shape1;
+	cp.shape2 = m_shape2;
+	cp.friction = m_friction;
+	cp.restitution = m_restitution;
 
 	if (m_manifold.pointCount > 0)
 	{
 		m_manifoldCount = 1;
+		b2ManifoldPoint* mp = m_manifold.points + 0;
+
+		if (m0.pointCount == 0)
+		{
+			mp->normalImpulse = 0.0f;
+			mp->tangentImpulse = 0.0f;
+
+			if (listener)
+			{
+				cp.position = b1->GetWorldPoint(mp->localPoint1);
+				b2Vec2 v1 = b1->GetLinearVelocityFromLocalPoint(mp->localPoint1);
+				b2Vec2 v2 = b2->GetLinearVelocityFromLocalPoint(mp->localPoint2);
+				cp.velocity = v2 - v1;
+				cp.normal = m_manifold.normal;
+				cp.separation = mp->separation;
+				cp.id = mp->id;
+				listener->Add(&cp);
+			}
+		}
+		else
+		{
+			b2ManifoldPoint* mp0 = m0.points + 0;
+			mp->normalImpulse = mp0->normalImpulse;
+			mp->tangentImpulse = mp0->tangentImpulse;
+
+			if (listener)
+			{
+				cp.position = b1->GetWorldPoint(mp->localPoint1);
+				b2Vec2 v1 = b1->GetLinearVelocityFromLocalPoint(mp->localPoint1);
+				b2Vec2 v2 = b2->GetLinearVelocityFromLocalPoint(mp->localPoint2);
+				cp.velocity = v2 - v1;
+				cp.normal = m_manifold.normal;
+				cp.separation = mp->separation;
+				cp.id = mp->id;
+				listener->Persist(&cp);
+			}
+		}
 	}
 	else
 	{
 		m_manifoldCount = 0;
+		if (m0.pointCount > 0 && listener)
+		{
+			b2ManifoldPoint* mp0 = m0.points + 0;
+			cp.position = b1->GetWorldPoint(mp0->localPoint1);
+			b2Vec2 v1 = b1->GetLinearVelocityFromLocalPoint(mp0->localPoint1);
+			b2Vec2 v2 = b2->GetLinearVelocityFromLocalPoint(mp0->localPoint2);
+			cp.velocity = v2 - v1;
+			cp.normal = m0.normal;
+			cp.separation = mp0->separation;
+			cp.id = mp0->id;
+			listener->Remove(&cp);
+		}
 	}
-
 }

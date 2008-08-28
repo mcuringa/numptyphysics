@@ -65,44 +65,83 @@ Version 1.4.1
 - Improve mouse joint. DONE
 
 Version 1.4.2
-- Improve joint stability.
+- Improve joint stability. DONE.
 
 Version 1.4.3
-- Fix thin polygon collision.
-- Simplify broad-phase internally.
-- OSX patch.
-- Fix compound body freezing.
-- Collision filter callback.
+- Fix thin polygon collision. DONE
+- Simplify broad-phase internally. DONE
+- OSX patch. DONE
+- Fix compound body freezing. DONE
+- Collision filter callback. DONE
 
 Version 2.0.0
-- CCD.
-- Contact callbacks.
-- Primitives for collision queries.
-- Get rid of deferred destruction.
-- JointDefs in local coordinates so that save/load works with limits.
+- Collision doesn't include any files from Dynamics. DONE
+- User created shapes. DONE
+- Shape ray casts. DONE
+- Verify polygon convex and CCW. DONE
+- Deferred body destruction is gone. DONE
+- Deferred contact destruction is gone. DONE
+- JointDefs in local coordinates so that save/load works with limits. DONE
+- Wake up bonies on apply force/torque/impulse. DONE
+- Improve polygon collision performance. DONE
+- Optimal OBBs for polygons. DONE
+- Debug display interface. DONE
+- Access version number. DONE
+- Improved TestBed camera. DONE
+- Continuous physics with TOI islands. DONE
+- Max velocities. DONE
+- Body add/remove shape. DONE
+- Damping now works better with a variable time step. DONE
+- Time of Impact (TOI) callbacks. DONE
+- Contact solver tweak callbacks. DONE
+- Contact callbacks with impulses. DONE
+- Safe contact callback example. DONE
+- Draw world AABB in TestBed. DONE
+- Use forces instead of impulses to handle variable time step. DONE
+- Ragdoll contribution. DONE
+- Car example. DONE
+- Constraint graph and shapes support changes in center of mass. DONE
+- Sensors with overlap report. DONE
+- Doxygen. DONE
+- Update manual. DONE
 
 Version 2.1.0
 - Meshes (segment soup).
 - Ray casts.
+- Wiki. DONE
+- Pairs and proxies use small block allocator?
+- Bounds use growable array?
+- Don't sleep until position error is low?
+- Allow non-solid polygon edges.
+- User refilter.
+- CMake.
+- Kequalized crash.
+- Soft distance constraint. DONE
+- 
 
 Version 2.2.0
 - Handle orphaned gear joint.
-- Friction joint for top down games.
+- Friction/motor joint for top down games.
 - Rolling resistance for circles.
-- Re-filter function.
+- Add comments to examples and testbed.
 
 Version 2.3.0
 - Convex hull tool.
 - Angle joint.
+- Weld joint.
+- Speculative contacts.
 
 Version 2.4.0
 - Spline joints.
+- Contact block solver.
 
 Version 2.5.0
 - Convex decomposition.
+- Kinematic bodies.
 
 Version 2.6.0
 - Ropes and particles.
+- Growable vertex arrays.
 
 Version 3+
 - Performance.
@@ -115,5 +154,4 @@ Version 3+
 - Static point-grids.
 - Revolute 3x3 effective mass.
 - Use velocity lambda to control NGS clamping.
-- Sensors.
-- Add/remove shapes from a body.
+- No globals or statics.

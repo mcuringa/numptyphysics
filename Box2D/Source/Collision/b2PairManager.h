@@ -74,7 +74,7 @@ class b2PairCallback
 public:
 	virtual ~b2PairCallback() {}
 
-	// This should return the new pair user data. It is okay if the
+	// This should return the new pair user data. It is ok if the
 	// user data is null.
 	virtual void* PairAdded(void* proxyUserData1, void* proxyUserData2) = 0;
 

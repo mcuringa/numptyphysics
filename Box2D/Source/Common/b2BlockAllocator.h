@@ -29,7 +29,7 @@ const int32 b2_chunkArrayIncrement = 128;
 struct b2Block;
 struct b2Chunk;
 
-// This is a small block allocator used for allocating small
+// This is a small object allocator used for allocating small
 // objects that persist for more than one time step.
 // See: http://www.codeproject.com/useritems/Small_Block_Allocator.asp
 class b2BlockAllocator

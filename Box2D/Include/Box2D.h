@@ -19,11 +19,22 @@
 #ifndef BOX2D_H
 #define BOX2D_H
 
+/**
+\mainpage Box2D API Documentation
+
+\section intro_sec Getting Started
+
+For tutorials please see http://www.box2d.org/manual.html
+
+For discussion please visit http://www.box2d.org/forum
+*/
+
 // These include files constitute the main Box2D API
 
 #include "../Source/Common/b2Settings.h"
 
-#include "../Source/Collision/b2Shape.h"
+#include "../Source/Collision/Shapes/b2CircleShape.h"
+#include "../Source/Collision/Shapes/b2PolygonShape.h"
 #include "../Source/Collision/b2BroadPhase.h"
 #include "../Source/Dynamics/b2WorldCallbacks.h"
 #include "../Source/Dynamics/b2World.h"

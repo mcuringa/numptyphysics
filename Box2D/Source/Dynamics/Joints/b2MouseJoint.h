@@ -21,6 +21,8 @@
 
 #include "b2Joint.h"
 
+/// Mouse joint definition. This requires a world target point,
+/// tuning parameters, and the time step.
 struct b2MouseJointDef : public b2JointDef
 {
 	b2MouseJointDef()
@@ -33,29 +35,53 @@ struct b2MouseJointDef : public b2JointDef
 		timeStep = 1.0f / 60.0f;
 	}
 
+	/// The initial world target point. This is assumed
+	/// to coincide with the body anchor initially.
 	b2Vec2 target;
+
+	/// The maximum constraint force that can be exerted
+	/// to move the candidate body. Usually you will express
+	/// as some multiple of the weight (multiplier * mass * gravity).
 	float32 maxForce;
+
+	/// The response speed.
 	float32 frequencyHz;
+
+	/// The damping ratio. 0 = no damping, 1 = critical damping.
 	float32 dampingRatio;
+
+	/// The time step used in the simulation.
 	float32 timeStep;
 };
 
+/// A mouse joint is used to make a point on a body track a
+/// specified world point. This a soft constraint with a maximum
+/// force. This allows the constraint to stretch and without
+/// applying huge forces.
 class b2MouseJoint : public b2Joint
 {
 public:
+
+	/// Implements b2Joint.
 	b2Vec2 GetAnchor1() const;
+
+	/// Implements b2Joint.
 	b2Vec2 GetAnchor2() const;
 
-	b2Vec2 GetReactionForce(float32 invTimeStep) const;
-	float32 GetReactionTorque(float32 invTimeStep) const;
+	/// Implements b2Joint.
+	b2Vec2 GetReactionForce() const;
 
+	/// Implements b2Joint.
+	float32 GetReactionTorque() const;
+
+	/// Use this to update the target point.
 	void SetTarget(const b2Vec2& target);
 
 	//--------------- Internals Below -------------------
 
 	b2MouseJoint(const b2MouseJointDef* def);
 
-	void InitVelocityConstraints();
+	void InitVelocityConstraints(const b2TimeStep& step);
 	void SolveVelocityConstraints(const b2TimeStep& step);
 	bool SolvePositionConstraints()
 	{
@@ -66,7 +92,7 @@ public:
 	b2Vec2 m_target;
 	b2Vec2 m_impulse;
 
-	b2Mat22 m_ptpMass;		// effective mass for point-to-point constraint.
+	b2Mat22 m_mass;		// effective mass for point-to-point constraint.
 	b2Vec2 m_C;				// position error
 	float32 m_maxForce;
 	float32 m_beta;			// bias factor

@@ -27,15 +27,15 @@ void* b2ContactManager::PairAdded(void* proxyUserData1, void* proxyUserData2)
 	b2Shape* shape1 = (b2Shape*)proxyUserData1;
 	b2Shape* shape2 = (b2Shape*)proxyUserData2;
 
-	b2Body* body1 = shape1->m_body;
-	b2Body* body2 = shape2->m_body;
+	b2Body* body1 = shape1->GetBody();
+	b2Body* body2 = shape2->GetBody();
 
 	if (body1->IsStatic() && body2->IsStatic())
 	{
 		return &m_nullContact;
 	}
 
-	if (shape1->m_body == shape2->m_body)
+	if (shape1->GetBody() == shape2->GetBody())
 	{
 		return &m_nullContact;
 	}
@@ -45,47 +45,70 @@ void* b2ContactManager::PairAdded(void* proxyUserData1, void* proxyUserData2)
 		return &m_nullContact;
 	}
 
-	if (m_world->m_filter != NULL && m_world->m_filter->ShouldCollide(shape1, shape2) == false)
+	if (m_world->m_contactFilter != NULL && m_world->m_contactFilter->ShouldCollide(shape1, shape2) == false)
 	{
 		return &m_nullContact;
-	}
-
-	// Ensure that body2 is dynamic (body1 is static or dynamic).
-	if (body2->m_invMass == 0.0f)
-	{
-		b2Swap(shape1, shape2);
-		b2Swap(body1, body2);
 	}
 
 	// Call the factory.
-	b2Contact* contact = b2Contact::Create(shape1, shape2, &m_world->m_blockAllocator);
+	b2Contact* c = b2Contact::Create(shape1, shape2, &m_world->m_blockAllocator);
 
-	if (contact == NULL)
+	if (c == NULL)
 	{
 		return &m_nullContact;
 	}
-	else
-	{
-		// Insert into the world.
-		contact->m_prev = NULL;
-		contact->m_next = m_world->m_contactList;
-		if (m_world->m_contactList != NULL)
-		{
-			m_world->m_contactList->m_prev = contact;
-		}
-		m_world->m_contactList = contact;
-		++m_world->m_contactCount;
-	}
 
-	return contact;
+	// Contact creation may swap shapes.
+	shape1 = c->GetShape1();
+	shape2 = c->GetShape2();
+	body1 = shape1->GetBody();
+	body2 = shape2->GetBody();
+
+	// Insert into the world.
+	c->m_prev = NULL;
+	c->m_next = m_world->m_contactList;
+	if (m_world->m_contactList != NULL)
+	{
+		m_world->m_contactList->m_prev = c;
+	}
+	m_world->m_contactList = c;
+
+	// Connect to island graph.
+
+	// Connect to body 1
+	c->m_node1.contact = c;
+	c->m_node1.other = body2;
+
+	c->m_node1.prev = NULL;
+	c->m_node1.next = body1->m_contactList;
+	if (body1->m_contactList != NULL)
+	{
+		body1->m_contactList->prev = &c->m_node1;
+	}
+	body1->m_contactList = &c->m_node1;
+
+	// Connect to body 2
+	c->m_node2.contact = c;
+	c->m_node2.other = body1;
+
+	c->m_node2.prev = NULL;
+	c->m_node2.next = body2->m_contactList;
+	if (body2->m_contactList != NULL)
+	{
+		body2->m_contactList->prev = &c->m_node2;
+	}
+	body2->m_contactList = &c->m_node2;
+
+	++m_world->m_contactCount;
+	return c;
 }
 
 // This is a callback from the broadphase when two AABB proxies cease
-// to overlap. We destroy the b2Contact.
+// to overlap. We retire the b2Contact.
 void b2ContactManager::PairRemoved(void* proxyUserData1, void* proxyUserData2, void* pairUserData)
 {
-	NOT_USED(proxyUserData1);
-	NOT_USED(proxyUserData2);
+	B2_NOT_USED(proxyUserData1);
+	B2_NOT_USED(proxyUserData2);
 
 	if (pairUserData == NULL)
 	{
@@ -93,25 +116,53 @@ void b2ContactManager::PairRemoved(void* proxyUserData1, void* proxyUserData2, v
 	}
 
 	b2Contact* c = (b2Contact*)pairUserData;
-	if (c != &m_nullContact)
+	if (c == &m_nullContact)
 	{
-		b2Assert(m_world->m_contactCount > 0);
-
-		if (m_destroyImmediate == true)
-		{
-			DestroyContact(c);
-			c = NULL;
-		}
-		else
-		{
-			c->m_flags |= b2Contact::e_destroyFlag;
-		}
+		return;
 	}
+
+	// An attached body is being destroyed, we must destroy this contact
+	// immediately to avoid orphaned shape pointers.
+	Destroy(c);
 }
 
-void b2ContactManager::DestroyContact(b2Contact* c)
+void b2ContactManager::Destroy(b2Contact* c)
 {
-	b2Assert(m_world->m_contactCount > 0);
+	b2Shape* shape1 = c->GetShape1();
+	b2Shape* shape2 = c->GetShape2();
+
+	// Inform the user that this contact is ending.
+	int32 manifoldCount = c->GetManifoldCount();
+	if (manifoldCount > 0 && m_world->m_contactListener)
+	{
+		b2Body* b1 = shape1->GetBody();
+		b2Body* b2 = shape2->GetBody();
+
+		b2Manifold* manifolds = c->GetManifolds();
+		b2ContactPoint cp;
+		cp.shape1 = c->GetShape1();
+		cp.shape2 = c->GetShape2();
+		cp.friction = c->m_friction;
+		cp.restitution = c->m_restitution;
+
+		for (int32 i = 0; i < manifoldCount; ++i)
+		{
+			b2Manifold* manifold = manifolds + i;
+			cp.normal = manifold->normal;
+
+			for (int32 j = 0; j < manifold->pointCount; ++j)
+			{
+				b2ManifoldPoint* mp = manifold->points + j;
+				cp.position = b1->GetWorldPoint(mp->localPoint1);
+				b2Vec2 v1 = b1->GetLinearVelocityFromLocalPoint(mp->localPoint1);
+				b2Vec2 v2 = b2->GetLinearVelocityFromLocalPoint(mp->localPoint2);
+				cp.velocity = v2 - v1;
+				cp.separation = mp->separation;
+				cp.id = mp->id;
+				m_world->m_contactListener->Remove(&cp);
+			}
+		}
+	}
 
 	// Remove from the world.
 	if (c->m_prev)
@@ -129,53 +180,39 @@ void b2ContactManager::DestroyContact(b2Contact* c)
 		m_world->m_contactList = c->m_next;
 	}
 
-	// If there are contact points, then disconnect from the island graph.
-	if (c->GetManifoldCount() > 0)
+	b2Body* body1 = shape1->GetBody();
+	b2Body* body2 = shape2->GetBody();
+
+	// Remove from body 1
+	if (c->m_node1.prev)
 	{
-		b2Body* body1 = c->m_shape1->m_body;
-		b2Body* body2 = c->m_shape2->m_body;
+		c->m_node1.prev->next = c->m_node1.next;
+	}
 
-		// Wake up touching bodies.
-		body1->WakeUp();
-		body2->WakeUp();
+	if (c->m_node1.next)
+	{
+		c->m_node1.next->prev = c->m_node1.prev;
+	}
 
-		// Remove from body 1
-		if (c->m_node1.prev)
-		{
-			c->m_node1.prev->next = c->m_node1.next;
-		}
+	if (&c->m_node1 == body1->m_contactList)
+	{
+		body1->m_contactList = c->m_node1.next;
+	}
 
-		if (c->m_node1.next)
-		{
-			c->m_node1.next->prev = c->m_node1.prev;
-		}
+	// Remove from body 2
+	if (c->m_node2.prev)
+	{
+		c->m_node2.prev->next = c->m_node2.next;
+	}
 
-		if (&c->m_node1 == body1->m_contactList)
-		{
-			body1->m_contactList = c->m_node1.next;
-		}
+	if (c->m_node2.next)
+	{
+		c->m_node2.next->prev = c->m_node2.prev;
+	}
 
-		c->m_node1.prev = NULL;
-		c->m_node1.next = NULL;
-
-		// Remove from body 2
-		if (c->m_node2.prev)
-		{
-			c->m_node2.prev->next = c->m_node2.next;
-		}
-
-		if (c->m_node2.next)
-		{
-			c->m_node2.next->prev = c->m_node2.prev;
-		}
-
-		if (&c->m_node2 == body2->m_contactList)
-		{
-			body2->m_contactList = c->m_node2.next;
-		}
-
-		c->m_node2.prev = NULL;
-		c->m_node2.next = NULL;
+	if (&c->m_node2 == body2->m_contactList)
+	{
+		body2->m_contactList = c->m_node2.next;
 	}
 
 	// Call the factory.
@@ -183,177 +220,21 @@ void b2ContactManager::DestroyContact(b2Contact* c)
 	--m_world->m_contactCount;
 }
 
-// Destroy any contacts marked for deferred destruction.
-void b2ContactManager::CleanContactList()
-{
-	b2Contact* c = m_world->m_contactList;
-	while (c != NULL)
-	{
-		b2Contact* c0 = c;
-		c = c->m_next;
-
-		if (c0->m_flags & b2Contact::e_destroyFlag)
-		{
-			DestroyContact(c0);
-			c0 = NULL;
-		}
-	}
-}
-
 // This is the top level collision call for the time step. Here
 // all the narrow phase collision is processed for the world
 // contact list.
-void b2ContactManager::Collide(const b2TimeStep& step)
+void b2ContactManager::Collide()
 {
-	if (step.dt > 0.0f && b2World::s_enablePositionCorrection)
+	// Update awake contacts.
+	for (b2Contact* c = m_world->m_contactList; c; c = c->GetNext())
 	{
-		for (b2Body* b = m_world->m_bodyList; b; b = b->m_next)
-		{
-			b->m_toi = 1.0f;
-
-			if (b->IsSleeping())
-			{
-				b->m_flags |= b2Body::e_toiResolved;
-			}
-			else
-			{
-				b->m_flags &= ~b2Body::e_toiResolved;
-			}
-		}
-
-		bool found = true;
-		while (found)
-		{
-			found = false;
-			float32 minTOI = 1.0f;
-			b2Contact* toiContact = NULL;
-			for (b2Contact* c = m_world->m_contactList; c; c = c->m_next)
-			{
-				if (c->m_shape1->m_body->IsSleeping() &&
-					c->m_shape2->m_body->IsSleeping())
-				{
-					continue;
-				}
-
-				float32 toi = c->ComputeTOI();
-				if (toi < minTOI)
-				{
-					minTOI = toi;
-					toiContact = c;
-					found = true;
-				}
-			}
-
-			if (toiContact)
-			{
-				toiContact->m_shape1->m_body->m_flags |= b2Body::e_toiResolved;
-				toiContact->m_shape2->m_body->m_flags |= b2Body::e_toiResolved;
-			}
-		}
-
-		for (b2Body* b = m_world->m_bodyList; b; b = b->m_next)
-		{
-			if (b->IsSleeping() || b->IsFrozen())
-			{
-				continue;
-			}
-
-			float32 toi = b->m_toi;
-			b->m_position = (1.0f - toi) * b->m_position0 + toi * b->m_position;
-			b->m_rotation = (1.0f - toi) * b->m_rotation0 + toi * b->m_rotation;
-			b->m_R.Set(b->m_rotation);
-			b->QuickSyncShapes();
-		}
-	}
-
-	for (b2Contact* c = m_world->m_contactList; c; c = c->m_next)
-	{
-		if (c->m_shape1->m_body->IsSleeping() &&
-			c->m_shape2->m_body->IsSleeping())
+		b2Body* body1 = c->GetShape1()->GetBody();
+		b2Body* body2 = c->GetShape2()->GetBody();
+		if (body1->IsSleeping() && body2->IsSleeping())
 		{
 			continue;
 		}
 
-		int32 oldCount = c->GetManifoldCount();
-		c->Evaluate();
-
-		int32 newCount = c->GetManifoldCount();
-
-		if (oldCount == 0 && newCount > 0)
-		{
-			b2Assert(c->GetManifolds()->pointCount > 0);
-
-			// Connect to island graph.
-			b2Body* body1 = c->m_shape1->m_body;
-			b2Body* body2 = c->m_shape2->m_body;
-
-			// Connect to body 1
-			c->m_node1.contact = c;
-			c->m_node1.other = body2;
-
-			c->m_node1.prev = NULL;
-			c->m_node1.next = body1->m_contactList;
-			if (c->m_node1.next != NULL)
-			{
-				c->m_node1.next->prev = &c->m_node1;
-			}
-			body1->m_contactList = &c->m_node1;
-
-			// Connect to body 2
-			c->m_node2.contact = c;
-			c->m_node2.other = body1;
-
-			c->m_node2.prev = NULL;
-			c->m_node2.next = body2->m_contactList;
-			if (c->m_node2.next != NULL)
-			{
-				c->m_node2.next->prev = &c->m_node2;
-			}
-			body2->m_contactList = &c->m_node2;
-		}
-		else if (oldCount > 0 && newCount == 0)
-		{
-			// Disconnect from island graph.
-			b2Body* body1 = c->m_shape1->m_body;
-			b2Body* body2 = c->m_shape2->m_body;
-
-			// Remove from body 1
-			if (c->m_node1.prev)
-			{
-				c->m_node1.prev->next = c->m_node1.next;
-			}
-
-			if (c->m_node1.next)
-			{
-				c->m_node1.next->prev = c->m_node1.prev;
-			}
-
-			if (&c->m_node1 == body1->m_contactList)
-			{
-				body1->m_contactList = c->m_node1.next;
-			}
-
-			c->m_node1.prev = NULL;
-			c->m_node1.next = NULL;
-
-			// Remove from body 2
-			if (c->m_node2.prev)
-			{
-				c->m_node2.prev->next = c->m_node2.next;
-			}
-
-			if (c->m_node2.next)
-			{
-				c->m_node2.next->prev = c->m_node2.prev;
-			}
-
-			if (&c->m_node2 == body2->m_contactList)
-			{
-				body2->m_contactList = c->m_node2.next;
-			}
-
-			c->m_node2.prev = NULL;
-			c->m_node2.next = NULL;
-		}
+		c->Update(m_world->m_contactListener);
 	}
 }

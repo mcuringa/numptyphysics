@@ -20,9 +20,9 @@
 #include "b2CircleContact.h"
 #include "b2PolyAndCircleContact.h"
 #include "b2PolyContact.h"
-#include "b2Conservative.h"
+#include "b2ContactSolver.h"
 #include "../../Collision/b2Collision.h"
-#include "../../Collision/b2Shape.h"
+#include "../../Collision/Shapes/b2Shape.h"
 #include "../../Common/b2BlockAllocator.h"
 #include "../../Dynamics/b2World.h"
 #include "../../Dynamics/b2Body.h"
@@ -33,8 +33,8 @@ bool b2Contact::s_initialized = false;
 void b2Contact::InitializeRegisters()
 {
 	AddType(b2CircleContact::Create, b2CircleContact::Destroy, e_circleShape, e_circleShape);
-	AddType(b2PolyAndCircleContact::Create, b2PolyAndCircleContact::Destroy, e_polyShape, e_circleShape);
-	AddType(b2PolyContact::Create, b2PolyContact::Destroy, e_polyShape, e_polyShape);
+	AddType(b2PolyAndCircleContact::Create, b2PolyAndCircleContact::Destroy, e_polygonShape, e_circleShape);
+	AddType(b2PolygonContact::Create, b2PolygonContact::Destroy, e_polygonShape, e_polygonShape);
 }
 
 void b2Contact::AddType(b2ContactCreateFcn* createFcn, b2ContactDestroyFcn* destoryFcn,
@@ -63,8 +63,8 @@ b2Contact* b2Contact::Create(b2Shape* shape1, b2Shape* shape2, b2BlockAllocator*
 		s_initialized = true;
 	}
 
-	b2ShapeType type1 = shape1->m_type;
-	b2ShapeType type2 = shape2->m_type;
+	b2ShapeType type1 = shape1->GetType();
+	b2ShapeType type2 = shape2->GetType();
 
 	b2Assert(e_unknownShape < type1 && type1 < e_shapeTypeCount);
 	b2Assert(e_unknownShape < type2 && type2 < e_shapeTypeCount);
@@ -99,12 +99,12 @@ void b2Contact::Destroy(b2Contact* contact, b2BlockAllocator* allocator)
 
 	if (contact->GetManifoldCount() > 0)
 	{
-		contact->m_shape1->m_body->WakeUp();
-		contact->m_shape2->m_body->WakeUp();
+		contact->GetShape1()->GetBody()->WakeUp();
+		contact->GetShape2()->GetBody()->WakeUp();
 	}
 
-	b2ShapeType type1 = contact->m_shape1->m_type;
-	b2ShapeType type2 = contact->m_shape2->m_type;
+	b2ShapeType type1 = contact->GetShape1()->GetType();
+	b2ShapeType type2 = contact->GetShape2()->GetType();
 
 	b2Assert(e_unknownShape < type1 && type1 < e_shapeTypeCount);
 	b2Assert(e_unknownShape < type2 && type2 < e_shapeTypeCount);
@@ -117,13 +117,18 @@ b2Contact::b2Contact(b2Shape* s1, b2Shape* s2)
 {
 	m_flags = 0;
 
+	if (s1->IsSensor() || s2->IsSensor())
+	{
+		m_flags |= e_nonSolidFlag;
+	}
+
 	m_shape1 = s1;
 	m_shape2 = s2;
 
 	m_manifoldCount = 0;
 
-	m_friction = sqrtf(m_shape1->m_friction * m_shape2->m_friction);
-	m_restitution = b2Max(m_shape1->m_restitution, m_shape2->m_restitution);
+	m_friction = b2MixFriction(m_shape1->GetFriction(), m_shape2->GetFriction());
+	m_restitution = b2MixRestitution(m_shape1->GetRestitution(), m_shape2->GetRestitution());
 	m_prev = NULL;
 	m_next = NULL;
 
@@ -138,7 +143,30 @@ b2Contact::b2Contact(b2Shape* s1, b2Shape* s2)
 	m_node2.other = NULL;
 }
 
-float32 b2Contact::ComputeTOI()
+void b2Contact::Update(b2ContactListener* listener)
 {
-	return b2Conservative(m_shape1, m_shape2);
+	int32 oldCount = GetManifoldCount();
+
+	Evaluate(listener);
+
+	int32 newCount = GetManifoldCount();
+
+	b2Body* body1 = m_shape1->GetBody();
+	b2Body* body2 = m_shape2->GetBody();
+
+	if (newCount == 0 && oldCount > 0)
+	{
+		body1->WakeUp();
+		body2->WakeUp();
+	}
+
+	// Slow contacts don't generate TOI events.
+	if (body1->IsStatic() || body1->IsBullet() || body2->IsStatic() || body2->IsBullet())
+	{
+		m_flags &= ~e_slowFlag;
+	}
+	else
+	{
+		m_flags |= e_slowFlag;
+	}
 }

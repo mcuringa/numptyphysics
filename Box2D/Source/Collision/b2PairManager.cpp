@@ -81,6 +81,7 @@ b2PairManager::b2PairManager()
 	}
 	m_pairs[b2_maxPairs-1].next = b2_nullPair;
 	m_pairCount = 0;
+	m_pairBufferCount = 0;
 }
 
 void b2PairManager::Initialize(b2BroadPhase* broadPhase, b2PairCallback* callback)

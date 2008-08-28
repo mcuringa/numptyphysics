@@ -16,15 +16,39 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef B2_CONSERVATIVE_H
-#define B2_CONSERVATIVE_H
+#include "b2Math.h"
 
-#include "../../Common/b2Settings.h"
+const b2Vec2 b2Vec2_zero(0.0f, 0.0f);
+const b2Mat22 b2Mat22_identity(1.0f, 0.0f, 0.0f, 1.0f);
+const b2XForm b2XForm_identity(b2Vec2_zero, b2Mat22_identity);
 
-class b2Shape;
+void b2Sweep::GetXForm(b2XForm* xf, float32 t) const
+{
+	// center = p + R * localCenter
+	if (1.0f - t0 > B2_FLT_EPSILON)
+	{
+		float32 alpha = (t - t0) / (1.0f - t0);
+		xf->position = (1.0f - alpha) * c0 + alpha * c;
+		float32 angle = (1.0f - alpha) * a0 + alpha * a;
+		xf->R.Set(angle);
+	}
+	else
+	{
+		xf->position = c;
+		xf->R.Set(a);
+	}
 
-// Move two bodies and their shapes forward in time conservatively.
-// Returns true if the shapes collide.
-float32 b2Conservative(b2Shape* shape1, b2Shape* shape2);
+	// Shift to origin
+	xf->position -= b2Mul(xf->R, localCenter);
+}
 
-#endif
+void b2Sweep::Advance(float32 t)
+{
+	if (t0 < t && 1.0f - t0 > B2_FLT_EPSILON)
+	{
+		float32 alpha = (t - t0) / (1.0f - t0);
+		c0 = (1.0f - alpha) * c0 + alpha * c;
+		a0 = (1.0f - alpha) * a0 + alpha * a;
+		t0 = t;
+	}
+}
