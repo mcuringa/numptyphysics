@@ -22,7 +22,8 @@ SOURCES+=OsFreeDesktop.cpp
 endif
 ifeq ($(ARCH),x86_64)
 #CCOPTS+=-g -O3 -D ARCH_x86_64
-CCOPTS+=-g -D ARCH_x86_64 -DTARGET_FLOAT32_IS_FIXED
+CCOPTS+=-g -D ARCH_x86_64 
+#-DTARGET_FLOAT32_IS_FIXED
 LDOPTS+=-g
 SOURCES+=OsFreeDesktop.cpp
 endif
@@ -51,7 +52,7 @@ LDOPTS+=-losso -lossoemailinterface
 LDOPTS+=-lhildonfm
 endif
 ifeq ($(ARCH),armv4tl)
-CCOPTS+=-g -DARCH_armv4tl -DTARGET_FLOAT32_IS_FIXED
+CCOPTS+=-g -DARCH_armv4tl 
 LDOPTS+=-g
 SOURCES+=OsFreeDesktop.cpp
 endif
