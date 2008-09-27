@@ -771,11 +771,12 @@ struct GameParams
 class Overlay
 {
 public:
-  Overlay( GameParams& game, int x=10, int y=10 )
+  Overlay( GameParams& game, int x=10, int y=10, bool dragging_allowed=true )
     : m_game(game),
       m_x(x), m_y(y),
       m_canvas(NULL),
       m_dragging(false),
+      m_dragging_allowed(dragging_allowed),
       m_buttonDown(false)
   {}
   virtual ~Overlay() 
@@ -829,6 +830,7 @@ public:
     case SDL_MOUSEMOTION:
       if ( !m_dragging
 	   && m_buttonDown
+           && m_dragging_allowed
 	   && ( ABS(ev.button.x-m_orgx) >= CLICK_TOLERANCE
 		|| ABS(ev.button.y-m_orgy) >= CLICK_TOLERANCE ) ) {
 	m_dragging = true;
@@ -857,6 +859,7 @@ private:
   int     m_orgx, m_orgy;
   int     m_prevx, m_prevy;
   bool    m_dragging;
+  bool    m_dragging_allowed;
   bool    m_buttonDown;
 };
 
@@ -865,8 +868,8 @@ class IconOverlay: public Overlay
 {
   std::string m_filename;
 public:
-  IconOverlay(GameParams& game, const char* file, int x=100,int y=20)
-    : Overlay(game,x,y),
+  IconOverlay(GameParams& game, const char* file, int x=100,int y=20, bool dragging_allowed=true)
+    : Overlay(game,x,y,dragging_allowed),
       m_filename( file )
   {
     m_canvas = new Image( m_filename.c_str() );
@@ -881,7 +884,7 @@ class NextLevelOverlay : public IconOverlay
 {
 public:
   NextLevelOverlay( GameParams& game )
-    : IconOverlay(game,"next.png",CANVAS_WIDTH/2-200,100),
+    : IconOverlay(game,"next.png",CANVAS_WIDTH/2-200,100,false),
       m_levelIcon(-2),
       m_icon(NULL)
   {}
