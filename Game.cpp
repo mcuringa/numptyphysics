@@ -916,7 +916,11 @@ public:
   {
     printf("click %d,%d\n",x,y);
     if ( y > 180 ) {
-      m_game.gotoLevel( m_selectedLevel );
+      if ( x > 200 ) {
+	m_game.gotoLevel( m_selectedLevel );
+      } else {
+	m_game.gotoLevel( m_game.m_level,true );
+      }
     } else if ( x > 300 ) {
       m_selectedLevel++;
       printf("NextLevel++ = %d\n",m_selectedLevel);
@@ -1274,6 +1278,8 @@ public:
     printf("start playback: %d events\n",m_log->size());
   }
 
+  bool isRunning() { return m_playing; }
+
   void stop()  
   { 
     m_playing = false; 
@@ -1361,9 +1367,9 @@ public:
       m_recorder.stop();
       m_player.stop();
       if ( replay ) {
-	for ( int i=0; i<m_recorder.getLog().size(); i++ ) {
-	  printf("DEMO: %s\n",m_recorder.getLog().asString(i).c_str());
-	}
+	// for ( int i=0; i<m_recorder.getLog().size(); i++ ) {
+// 	  printf("DEMO: %s\n",m_recorder.getLog().asString(i).c_str());
+// 	}
 	m_player.start( &m_recorder.getLog() );
       } else {
 	m_recorder.start();
@@ -1692,19 +1698,31 @@ public:
 	}
 
 	SDL_Event ev;
-	while ( SDL_PollEvent(&ev)
-		|| m_player.fetchEvent(ev) ) { 
-	  bool handled = false;
-	  m_recorder.record( ev );
-	  for ( int i=m_overlays.size()-1; i>=0 && !handled; i-- ) {
-	    handled = m_overlays[i]->handleEvent(ev);
+	bool more = true;
+	while ( more ) {
+	  more = SDL_PollEvent(&ev);
+	  if ( m_player.isRunning() 
+	       && ( ev.type==SDL_MOUSEMOTION || 
+		    ev.type==SDL_MOUSEBUTTONDOWN || 
+		    ev.type==SDL_MOUSEBUTTONUP ) ) {
+	    more = false; //discard
 	  }
-	  if ( !handled ) {
-	    handled = false
-	      || handleModEvent(ev)
-	      || handleGameEvent(ev)
-	      || handleEditEvent(ev)
-	      || handlePlayEvent(ev);
+	  if (!more) {
+	    more = m_player.fetchEvent(ev);
+	  }
+	  if ( more ) {
+	    bool handled = false;
+	    m_recorder.record( ev );
+	    for ( int i=m_overlays.size()-1; i>=0 && !handled; i-- ) {
+	      handled = m_overlays[i]->handleEvent(ev);
+	    }
+	    if ( !handled ) {
+	      handled = false
+		|| handleModEvent(ev)
+		|| handleGameEvent(ev)
+		|| handleEditEvent(ev)
+		|| handlePlayEvent(ev);
+	    }
 	  }
 	}
 	iterateCounter += RENDER_RATE;
