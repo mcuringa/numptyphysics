@@ -479,8 +479,10 @@ public:
   ~Scene()
   {
     clear();
-    step();
-    delete m_world;
+    if ( m_world ) {
+      step();
+      delete m_world;
+    }
   }
 
   int numStrokes()
