@@ -148,7 +148,7 @@ public:
       m_colour = brush_colours[col];
     }
     if ( *s++ == ':' ) {
-      float x,y;      
+      float32 x,y;      
       while ( sscanf( s, "%f,%f", &x, &y )==2) {
 	m_rawPath.append( Vec2((int)x,(int)y) );
 	while ( *s && *s!=' ' && *s!='\t' ) s++;
@@ -205,6 +205,11 @@ public:
     m_attributes |= a;
     if ( m_attributes & ATTRIB_TOKEN )     m_colour = COLOUR_RED;
     else if ( m_attributes & ATTRIB_GOAL ) m_colour = COLOUR_YELLOW;
+  }
+
+  void clearAttribute( Stroke::Attribute a )
+  {
+    m_attributes &= ~a;
   }
 
   bool hasAttribute( Stroke::Attribute a )
@@ -308,13 +313,13 @@ public:
 
   b2Body* body() { return m_body; }
 
-  float distanceTo( const Vec2& pt )
+  float32 distanceTo( const Vec2& pt )
   {
-    float best = 100000.0;
+    float32 best = 100000.0;
     transform();
     for ( int i=1; i<m_xformedPath.numPoints(); i++ ) {    
       Segment s( m_xformedPath.point(i-1), m_xformedPath.point(i) );
-      float d = s.distanceTo( pt );
+      float32 d = s.distanceTo( pt );
       //printf("  d[%d]=%f %d,%d\n",i,d,m_rawPath.point(i-1).x,m_rawPath.point(i-1).y);
       if ( d < best ) {
         best = d;
@@ -364,14 +369,14 @@ public:
   }
 
 private:
-  static float vec2Angle( b2Vec2 v ) 
+  static float32 vec2Angle( b2Vec2 v ) 
   {
     return b2Atan2(v.y, v.x);
   } 
 
   void process()
   {
-    float thresh = 0.1*SIMPLIFY_THRESHOLDf;
+    float32 thresh = 0.1*SIMPLIFY_THRESHOLDf;
     m_rawPath.simplify( thresh );
     m_shapePath = m_rawPath;
 
@@ -439,7 +444,7 @@ private:
   Vec2      m_origin;
   Path      m_shapePath;
   Path      m_xformedPath;
-  float     m_xformAngle;
+  float32     m_xformAngle;
   b2Vec2    m_xformPos;
   Rect      m_xformBbox;
   Rect      m_drawnBbox;
@@ -474,6 +479,7 @@ public:
   ~Scene()
   {
     clear();
+    step();
     delete m_world;
   }
 
@@ -531,11 +537,20 @@ public:
   void step()
   {
     m_world->Step( ITERATION_TIMESTEPf, SOLVER_ITERATIONS );
+    // clean up delete strokes
     for ( int i=0; i< m_strokes.size(); i++ ) {
-      if ( m_strokes[i]->hasAttribute(Stroke::ATTRIB_DELETED)
-	   && !m_strokes[i]->hasAttribute(Stroke::ATTRIB_HIDDEN)) {
+      if ( m_strokes[i]->hasAttribute(Stroke::ATTRIB_DELETED) ) {
+	m_strokes[i]->clearAttribute(Stroke::ATTRIB_DELETED);
 	m_strokes[i]->hide();
-	m_strokes[i]->setAttribute(Stroke::ATTRIB_HIDDEN);
+      }	   
+    }
+    // check for token respawn
+    for ( int i=0; i < m_strokes.size(); i++ ) {
+      if ( m_strokes[i]->hasAttribute( Stroke::ATTRIB_TOKEN )
+	   && !BOUNDS_RECT.intersects( m_strokes[i]->lastDrawnBbox() ) ) {
+	printf("RESPAWN token %d\n",i);
+	reset( m_strokes[i] );
+	activate( m_strokes[i] );	  
       }
     }
   }
@@ -555,16 +570,6 @@ public:
 	   && s2->hasAttribute(Stroke::ATTRIB_GOAL) ) {
 	s2->setAttribute(Stroke::ATTRIB_DELETED);
 	printf("SUCCESS!! level complete\n");
-      }
-    }
-
-    // check for token respawn
-    for ( int i=0; i < m_strokes.size(); i++ ) {
-      if ( m_strokes[i]->hasAttribute( Stroke::ATTRIB_TOKEN )
-	   && !BOUNDS_RECT.intersects( m_strokes[i]->lastDrawnBbox() ) ) {
-	printf("RESPAWN token %d\n",i);
-	reset( m_strokes[i] );
-	activate( m_strokes[i] );
       }
     }
   }
@@ -639,11 +644,11 @@ public:
     }    
   }
 
-  Stroke* strokeAtPoint( const Vec2 pt, float max )
+  Stroke* strokeAtPoint( const Vec2 pt, float32 max )
   {
     Stroke* best = NULL;
     for ( int i=0; i<m_strokes.size(); i++ ) {
-      float d = m_strokes[i]->distanceTo( pt );
+      float32 d = m_strokes[i]->distanceTo( pt );
       //printf("stroke %d dist %f\n",i,d);
       if ( d < max ) {
 	max = d;
