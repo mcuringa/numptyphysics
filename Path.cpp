@@ -18,32 +18,32 @@
 #include "Path.h"
 
 
-static float calcDistanceToLine( const Vec2& pt,
+static float32 calcDistanceToLine( const Vec2& pt,
 				 const Vec2& l1, const Vec2& l2,
 				 bool* withinLine=NULL )
 {
   b2Vec2 l = l2 - l1; 
   b2Vec2 w = pt - l1;
-  float mag = l.Normalize();
-  float dist = b2Cross( w, l );
+  float32 mag = l.Normalize();
+  float32 dist = b2Cross( w, l );
   if ( withinLine ) {
-    float dot = b2Dot( l, w );
+    float32 dot = b2Dot( l, w );
     *withinLine = ( dot >= 0.0f && dot <= mag );
   }  
   return b2Abs( dist );
 }
 
 
-static float calcDistance( const Vec2& l1, const Vec2& l2 ) 
+static float32 calcDistance( const Vec2& l1, const Vec2& l2 ) 
 {
   return b2Vec2(l1-l2).Length();
 }
 
 
-float Segment::distanceTo( const Vec2& p )
+float32 Segment::distanceTo( const Vec2& p )
 {
   bool withinLine;
-  float d = calcDistanceToLine( p, m_p1, m_p2, &withinLine );
+  float32 d = calcDistanceToLine( p, m_p1, m_p2, &withinLine );
   if ( !(m_p1 == m_p2) && withinLine ) {
     return d;
   } else {
@@ -72,31 +72,30 @@ Path& Path::translate(const Vec2& xlate)
 
 Path& Path::rotate(const b2Mat22& rot) 
 {
-  int j1 = FLOAT_TO_FIXED(rot.col1.x);
-  int k1 = FLOAT_TO_FIXED(rot.col1.y);
-  int j2 = FLOAT_TO_FIXED(rot.col2.x);
-  int k2 = FLOAT_TO_FIXED(rot.col2.y);
+  float32 j1 = rot.col1.x;
+  float32 k1 = rot.col1.y;
+  float32 j2 = rot.col2.x;
+  float32 k2 = rot.col2.y;
   Vec2 v;
 
   for (int i=0;i<size();i++) {
     //at(i) = b2Mul( rot, at(i) );
-    at(i) = Vec2( FIXED_TO_INT(j1 * at(i).x + j2 * at(i).y),
-		  FIXED_TO_INT(k1 * at(i).x + k2 * at(i).y) );
+    at(i) = Vec2( j1 * at(i).x + j2 * at(i).y,
+		  k1 * at(i).x + k2 * at(i).y );
   }
   return *this;
 }
 
-Path& Path::scale(float factor)
+Path& Path::scale(float32 factor)
 {
-  int f = FLOAT_TO_FIXED(factor);
   for (int i=0;i<size();i++) {
-    at(i).x = FIXED_TO_INT(at(i).x * f);
-    at(i).y = FIXED_TO_INT(at(i).y * f);
+    at(i).x = at(i).x * factor;
+    at(i).y = at(i).y * factor;
   }
   return *this;
 }
 
-void Path::simplify( float threshold )
+void Path::simplify( float32 threshold )
 {
   bool keepflags[size()];
   memset( &keepflags[0], 0, sizeof(keepflags) );
@@ -122,14 +121,14 @@ void Path::simplify( float threshold )
   }
 }
 
-void Path::simplifySub( int first, int last, float threshold, bool* keepflags )
+void Path::simplifySub( int first, int last, float32 threshold, bool* keepflags )
 {
-  float furthestDist = threshold;
+  float32 furthestDist = threshold;
   int furthestIndex = 0;
   if ( last - first > 1 ) {
     Segment s( at(first), at(last) );
     for ( int i=first+1; i<last; i++ ) {
-      float d = s.distanceTo( at(i) );
+      float32 d = s.distanceTo( at(i) );
       if ( d > furthestDist ) {
 	furthestDist = d;
 	furthestIndex = i;

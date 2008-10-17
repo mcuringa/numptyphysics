@@ -23,7 +23,7 @@
 
 #define FIXED_SHIFT 16
 #define FIXED_ONE (1<<FIXED_SHIFT)
-#define FLOAT_TO_FIXED(fLOAT) ((int)(fLOAT*(float)FIXED_ONE))
+#define FLOAT32_TO_FIXED(float32) ((int)(float32*(float32)FIXED_ONE))
 #define FIXED_TO_INT(iNT) ((iNT)>>FIXED_SHIFT)
 
 struct Vec2 {
@@ -36,7 +36,7 @@ struct Vec2 {
   Vec2 operator-() { return Vec2(-x,-y); }
   void operator*=( int o ) { x*=o; y*=o; }
   bool operator==( const Vec2& o ) const { return x==o.x && y==y; }
-  operator b2Vec2() const { return b2Vec2((float)x,(float)y); } 
+  operator b2Vec2() const { return b2Vec2((float32)x,(float32)y); } 
   Vec2 operator+( const Vec2& b ) const { return Vec2(x+b.x,y+b.y); }
   Vec2 operator-( const Vec2& b ) const { return Vec2(x-b.x,y-b.y); }
   Vec2 operator/( int r ) const { return Vec2(x/r,y/r); }
