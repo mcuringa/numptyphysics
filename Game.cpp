@@ -967,122 +967,6 @@ private:
 };
 
 
-#if 0
-class DemoOverlay : public IconOverlay
-{
-  struct EvEntry {
-    EvEntry( int _t, SDL_Event& _e ) : t(_t), e(_e) {}
-    int t;
-    SDL_Event e;
-  };
-  typedef enum {
-    STARTING,
-    RECORDING,
-    PLAYING,
-    STOPPED
-  } State;
-  static const int XREL_INJECT_MAGIC = 0x4321;
-public:
-  DemoOverlay( GameParams& game )
-    : IconOverlay( game, "record.png" ),
-      m_state( STARTING ),
-      m_log( 512 )
-  {
-  }
-  virtual void onTick( int tick )
-  {
-    switch ( m_state ) {
-    case STARTING:
-      m_game.save( DEMO_TEMP_FILE );
-      //TODO: save motion state
-      // or reset motion: 
-      m_game.load( DEMO_TEMP_FILE );
-      m_tickCount = 1;
-      m_log.empty();
-      m_state = RECORDING;
-      // fall through
-    case RECORDING:
-    case STOPPED:
-      m_tnow = tick;
-      break;
-    case PLAYING:
-      while ( m_playidx < m_log.size()
-	      && m_log[m_playidx].t < tick-m_t0 ) {
-        m_log[m_playidx].e.motion.xrel = XREL_INJECT_MAGIC;
-	SDL_PushEvent( &m_log[m_playidx].e );
-	m_playidx++;
-      }  
-      break;
-    }
-  }
-  virtual bool onClick( int x, int y )
-  {
-    switch ( m_state ) {
-    case STARTING:
-      break;
-    case STOPPED:
-      if ( m_game.load( DEMO_TEMP_FILE ) ) {
-	printf("playing back %d events\n",m_log.size());
-	m_state = PLAYING;
-	delete m_canvas;
-	m_canvas = new Image("play.png");
-	m_t0 = m_tnow;
-	m_playidx = 0;
-      }
-      break;
-    case RECORDING:
-    case PLAYING:
-      m_state = STOPPED;
-      delete m_canvas;
-      m_canvas = new Image("pause.png");
-      break;
-    }
-    return true;
-  }
-  virtual void draw( Canvas& screen )
-  {
-    IconOverlay::draw( screen );
-    switch ( m_state ) {
-    case STOPPED:
-    case RECORDING:
-    case PLAYING:
-      break;
-    }
-  }
-  virtual bool handleEvent( SDL_Event& ev )
-  {
-    if ( IconOverlay::handleEvent(ev) ) {
-      return true;
-    } else {
-      switch ( m_state ) {
-      case STARTING:
-	break;
-      case RECORDING:
-	m_log.append( EvEntry( m_tnow - m_t0, ev ) );
-	break;
-      case PLAYING:
-	// block certain events from interfering with playback
-	switch( ev.type ) {      
-	case SDL_MOUSEBUTTONDOWN: 
-	case SDL_MOUSEBUTTONUP:
-	case SDL_MOUSEMOTION:
-	  if ( ev.motion.xrel != XREL_INJECT_MAGIC ) {
-	    return true;
-	  }
-	}
-      }
-    }
-    return false;
-  }
-
-private:
-  State            m_state;
-  int  		   m_tickCount;
-  int  		   m_lastTickTime;
-  int              m_playidx;
-  Array<EvEntry>   m_log;
-};
-#endif
 
 class EditOverlay : public IconOverlay
 {
@@ -1283,6 +1167,7 @@ public:
   void stop()  
   { 
     m_playing = false; 
+    m_log = NULL;
   }
 
   void tick() 
