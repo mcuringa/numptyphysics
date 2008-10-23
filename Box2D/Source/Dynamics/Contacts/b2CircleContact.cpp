@@ -16,6 +16,7 @@
 * 3. This notice may not be removed or altered from any source distribution.
 */
 
+#include <cstring>
 #include "b2CircleContact.h"
 #include "../b2Body.h"
 #include "../b2WorldCallbacks.h"

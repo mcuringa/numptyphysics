@@ -220,8 +220,8 @@ b2PolygonShape::b2PolygonShape(const b2ShapeDef* def)
 		// Shifting the edge inward by b2_toiSlop should
 		// not cause the plane to pass the centroid.
 
-		// Your shape has a radius/extent less than b2_toiSlop.
-		printf("dx=%f dy=%f\n",(float)d.x,(float)d.y);
+		// Your shape has a radius/extent less than b2_toiSlop.	       
+		//TME printf("dx=%f dy=%f\n",(float)d.x,(float)d.y);
 		b2Assert(d.x >= 0.0f);
 		b2Assert(d.y >= 0.0f);
 		b2Mat22 A;

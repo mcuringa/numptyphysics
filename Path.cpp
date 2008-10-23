@@ -14,7 +14,7 @@
  *
  */
 
-
+#include <cstring>
 #include "Path.h"
 
 
