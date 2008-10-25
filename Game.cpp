@@ -36,9 +36,11 @@
 
 using namespace std;
 
-const Rect FULLSCREEN_RECT( 0, 0, CANVAS_WIDTH-1, CANVAS_HEIGHT-1 );
-const Rect BOUNDS_RECT( -CANVAS_WIDTH/4, -CANVAS_HEIGHT,
-			CANVAS_WIDTH*5/4, CANVAS_HEIGHT );
+Rect FULLSCREEN_RECT( 0, 0, WORLD_WIDTH-1, WORLD_HEIGHT-1 );
+const Rect BOUNDS_RECT( -WORLD_WIDTH/4, -WORLD_HEIGHT,
+			WORLD_WIDTH*5/4, WORLD_HEIGHT );
+int SCREEN_WIDTH = WORLD_WIDTH;
+int SCREEN_HEIGHT = WORLD_HEIGHT;
 
 const int brush_colours[] = {
   0xb80000, //red
@@ -55,6 +57,81 @@ const int brush_colours[] = {
   0x6c7b8b, //grey
 };
 #define NUM_COLOURS (sizeof(brush_colours)/sizeof(brush_colours[0]))
+
+
+class Transform
+{
+public:
+  Transform( float32 scale, float32 rotation, const Vec2& translation )
+  {
+    set( scale, rotation, translation );
+  }
+  void set( float32 scale, float32 rotation, const Vec2& translation )
+  {
+    if ( scale==0.0f && rotation==0.0f && translation==Vec2(0,0) ) {
+      m_bypass = true;
+    } else {
+      m_rot.Set( rotation );
+      m_pos = translation;
+      m_rot.col1.x *= scale;
+      m_rot.col1.y *= scale;
+      m_rot.col2.x *= scale;
+      m_rot.col2.y *= scale;
+      m_invrot = m_rot.Invert();
+      m_bypass = false;
+    }
+  }
+  inline void transform( const Path& pin, Path& pout ) {
+    pout = pin;
+    if ( !m_bypass ) {
+      pout.rotate( m_rot );
+      pout.translate( m_pos );
+    }
+  }
+  inline void transform( Vec2& vec ) {
+    if ( !m_bypass ) {
+      vec = Vec2( b2Mul( m_rot, vec ) ) + m_pos;
+    }
+  }
+  inline void inverseTransform( Vec2& vec ) {
+    if ( !m_bypass ) {
+      vec = Vec2( b2Mul( m_invrot, vec-m_pos ) );
+    }
+  }
+private:
+  Transform() {}
+  bool m_bypass;
+  b2Mat22 m_rot;
+  b2Mat22 m_invrot;
+  Vec2 m_pos;
+};
+
+Transform worldToScreen( 0.5f, M_PI/2, Vec2(240,0) );
+
+void configureScreenTransform( int w, int h )
+{
+  SCREEN_WIDTH = w;
+  SCREEN_HEIGHT = h;
+  FULLSCREEN_RECT = Rect(0,0,w-1,h-1);
+  if ( w==WORLD_WIDTH && h==WORLD_HEIGHT ) { //unity
+    worldToScreen.set( 0.0f, 0.0f, Vec2(0,0) );
+  } else {
+    float rot = 0.0f;
+    Vec2 tr(0,0);
+    if ( h > w ) { //portrait
+      rot = M_PI/2;
+      tr = Vec2( w, 0 );
+      b2Swap( h, w );
+    }
+    float scalew = (float)w/(float)WORLD_WIDTH;
+    float scaleh = (float)h/(float)WORLD_HEIGHT;
+    if ( scalew < scaleh ) {
+      worldToScreen.set( scalew, rot, tr );
+    } else {
+      worldToScreen.set( scaleh, rot, tr );
+    }
+  }
+}
 
 class Stroke
 {
@@ -284,10 +361,10 @@ public:
   {
     if ( m_hide < HIDE_STEPS ) {
       transform();
-      canvas.drawPath( m_xformedPath, canvas.makeColour(m_colour), true );
+      canvas.drawPath( m_screenPath, canvas.makeColour(m_colour), true );
       m_drawn = true;
     }
-    m_drawnBbox = m_xformBbox;
+    m_drawnBbox = m_screenBbox;
   }
 
   void addPoint( const Vec2& pp ) 
@@ -331,7 +408,7 @@ public:
   Rect bbox() 
   {
     transform();
-    return m_xformBbox;
+    return m_screenBbox;
   }
 
   Rect lastDrawnBbox() 
@@ -351,7 +428,7 @@ public:
       
       if (m_body) {
 	// stash the body where no-one will find it
-	m_body->SetXForm( b2Vec2(0.0f,CANVAS_HEIGHTf*2.0f), 0.0f );
+	m_body->SetXForm( b2Vec2(0.0f,SCREEN_HEIGHT*2.0f), 0.0f );
 	m_body->SetLinearVelocity( b2Vec2(0.0f,0.0f) );
 	m_body->SetAngularVelocity( 0.0f );
       }
@@ -392,11 +469,11 @@ private:
     if ( m_hide ) {
       if ( m_hide < HIDE_STEPS ) {
 	//printf("hide %d\n",m_hide);
-	Vec2 o = m_xformBbox.centroid();
-	m_xformedPath -= o;
-	m_xformedPath.scale( 0.99 );
-	m_xformedPath += o;
-	m_xformBbox = m_xformedPath.bbox();
+	Vec2 o = m_screenBbox.centroid();
+	m_screenPath -= o;
+	m_screenPath.scale( 0.99 );
+	m_screenPath += o;
+	m_screenBbox = m_screenPath.bbox();      
 	m_hide++;
 	return true;
       }
@@ -416,14 +493,8 @@ private:
 	m_xformedPath.translate( Vec2(orig) );
 	m_xformAngle = m_body->GetAngle();
 	m_xformPos = m_body->GetPosition();
-	m_xformBbox = m_xformedPath.bbox();
-      } else if ( ! (m_xformPos == m_body->GetPosition() ) ) {
-	//NOT WORKING printf("transform stroke - pos\n");
-	b2Vec2 move = m_body->GetPosition() - m_xformPos;
-	move *= PIXELS_PER_METREf;
-	m_xformedPath.translate( Vec2(move) );
-	m_xformPos = m_body->GetPosition();
-	m_xformBbox = m_xformedPath.bbox();//TODO translate instead of recalc
+	worldToScreen.transform( m_xformedPath, m_screenPath );
+	m_screenBbox = m_screenPath.bbox();      
       } else {
 	//printf("transform none\n");
 	return false;
@@ -432,7 +503,8 @@ private:
       //printf("transform no body\n");
       m_xformedPath = m_rawPath;
       m_xformedPath.translate( m_origin );
-      m_xformBbox = m_xformedPath.bbox();      
+      worldToScreen.transform( m_xformedPath, m_screenPath );
+      m_screenBbox = m_screenPath.bbox();      
       return false;
     }
     return true;
@@ -444,9 +516,10 @@ private:
   Vec2      m_origin;
   Path      m_shapePath;
   Path      m_xformedPath;
-  float32     m_xformAngle;
+  Path      m_screenPath;
+  float32   m_xformAngle;
   b2Vec2    m_xformPos;
-  Rect      m_xformBbox;
+  Rect      m_screenBbox;
   Rect      m_drawnBbox;
   bool      m_drawn;
   b2Body*   m_body;
@@ -891,7 +964,7 @@ class NextLevelOverlay : public IconOverlay
 {
 public:
   NextLevelOverlay( GameParams& game )
-    : IconOverlay(game,"next.png",CANVAS_WIDTH/2-200,100,false),
+    : IconOverlay(game,"next.png",FULLSCREEN_RECT.centroid().x-200,100,false),
       m_levelIcon(-2),
       m_icon(NULL)
   {}
@@ -942,7 +1015,7 @@ private:
 	if ( scene.load( m_game.m_levels.levelFile(m_selectedLevel) ) ) {
 	  printf("generating thumbnail %s\n",
 		 m_game.m_levels.levelFile(m_selectedLevel).c_str());
-	  Canvas temp( CANVAS_WIDTH, CANVAS_HEIGHT );
+	  Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
 	  scene.draw( temp, FULLSCREEN_RECT );
 	  m_icon = temp.scale( ICON_SCALE_FACTOR );
 	  printf("generating thumbnail %s done\n",
@@ -1217,7 +1290,7 @@ public:
   Game( int argc, const char** argv ) 
   : m_createStroke(NULL),
     m_moveStroke(NULL),
-    m_window(CANVAS_WIDTH,CANVAS_HEIGHT,"Numpty Physics","NPhysics"),
+    m_window(SCREEN_WIDTH,SCREEN_HEIGHT,"Numpty Physics","NPhysics"),
     m_pauseOverlay( *this, "pause.png",50,50 ),
     m_editOverlay( *this ),
     m_os( Os::get() )
@@ -1379,7 +1452,9 @@ public:
 
   Vec2 mousePoint( SDL_Event ev )
   {
-    return Vec2( ev.button.x, ev.button.y );
+    Vec2 pt( ev.button.x, ev.button.y );
+    worldToScreen.inverseTransform( pt );
+    return pt;
   }
 
   bool handleGameEvent( SDL_Event &ev )
@@ -1702,7 +1777,7 @@ int npmain(int argc, char** argv)
 	Scene scene( true );
 	if ( scene.load( argv[i] ) ) {
 	  printf("generating bmp %s\n", argv[i]);
-	  Canvas temp( CANVAS_WIDTH, CANVAS_HEIGHT );
+	  Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
 	  scene.draw( temp, FULLSCREEN_RECT );
 	  string bmp( argv[i] );
 	  bmp += ".bmp";
@@ -1710,6 +1785,7 @@ int npmain(int argc, char** argv)
 	}	
       }
     } else {
+      configureScreenTransform( 800, 480 );
       Game game( argc, (const char**)argv );
       game.run();
     }

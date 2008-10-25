@@ -509,58 +509,6 @@ void Canvas::drawRect( const Rect& r, int c, bool fill )
   drawRect( r.tl.x, r.tl.y, r.br.x-r.tl.x, r.br.y-r.tl.y, c, fill );
 }
 
-void Canvas::drawWorldLine( b2Vec2 pos1, b2Vec2 pos2, int color, bool thick )
-{
-  if ( pos1.y < -5.0 || pos1.y >= 45.0
-       || pos2.y < -5.0 || pos2.y >= 45.0 
-       || pos1.x <= -40.0 || pos1.x >= 40.0
-       || pos2.x <= -40.0 || pos2.x >= 40.0 ) {
-    //printf("drop %f,%f-%f,%f\n",pos1.x,pos1.y,pos2.x,pos2.y);
-    return; 
-  } 
-
-  if ( thick ) {
-    b2Vec2 dir = (pos2 - pos1);
-    dir.Normalize();
-    b2Vec2 norm( -dir.y, dir.x );
-    norm = 1/PIXELS_PER_METREf * norm;
-    
-    drawLine( (int)(pos1.x*PIXELS_PER_METREf+CANVAS_WIDTHf/2.0),
-	      (int)(CANVAS_HEIGHTf-CANVAS_GROUNDf-pos1.y*PIXELS_PER_METREf),
-	      (int)(pos2.x*PIXELS_PER_METREf+CANVAS_WIDTHf/2.0),
-	      (int)(CANVAS_HEIGHTf-CANVAS_GROUNDf-pos2.y*PIXELS_PER_METREf),
-	      color );	
-    pos1 += norm; pos2 += norm;
-    drawLine( (int)(pos1.x*PIXELS_PER_METREf+CANVAS_WIDTHf/2.0),
-	      (int)(CANVAS_HEIGHTf-CANVAS_GROUNDf-pos1.y*PIXELS_PER_METREf),
-	      (int)(pos2.x*PIXELS_PER_METREf+CANVAS_WIDTHf/2.0),
-	      (int)(CANVAS_HEIGHTf-CANVAS_GROUNDf-pos2.y*PIXELS_PER_METREf),
-	      color );	
-    pos1 -= norm; pos2 -= norm;
-    pos1 -= norm; pos2 -= norm;
-    drawLine( (int)(pos1.x*PIXELS_PER_METREf+CANVAS_WIDTHf/2.0),
-	      (int)(CANVAS_HEIGHTf-CANVAS_GROUNDf-pos1.y*PIXELS_PER_METREf),
-	      (int)(pos2.x*PIXELS_PER_METREf+CANVAS_WIDTHf/2.0),
-	      (int)(CANVAS_HEIGHTf-CANVAS_GROUNDf-pos2.y*PIXELS_PER_METREf),
-	      color );	
-  } else {
-    drawLine( (int)(pos1.x*PIXELS_PER_METREf+CANVAS_WIDTHf/2.0),
-	      (int)(CANVAS_HEIGHTf-CANVAS_GROUNDf-pos1.y*PIXELS_PER_METREf),
-	      (int)(pos2.x*PIXELS_PER_METREf+CANVAS_WIDTHf/2.0),
-	      (int)(CANVAS_HEIGHTf-CANVAS_GROUNDf-pos2.y*PIXELS_PER_METREf),
-	      color );	
-  }
-
-}
-
-
-void Canvas::drawWorldPath( const Path& path, int color, bool thick )
-{
-  for ( int i=1; i<path.numPoints(); i++ ) {
-    drawWorldLine( path.point(i-1), path.point(i), color, thick );
-  }  
-}
-
 
 
 Window::Window( int w, int h, const char* title, const char* winclass )

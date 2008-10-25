@@ -20,12 +20,8 @@
 #include <sstream>
 #include "Os.h"
 
-#define CANVAS_WIDTH  800
-#define CANVAS_HEIGHT 480
-#define CANVAS_GROUND 30
-#define CANVAS_WIDTHf  800.0f
-#define CANVAS_HEIGHTf 480.0f
-#define CANVAS_GROUNDf 30.0f
+#define WORLD_WIDTH  800
+#define WORLD_HEIGHT 480
 #define PIXELS_PER_METREf 10.0f
 #define CLOSED_SHAPE_THREHOLDf 0.4f
 #define SIMPLIFY_THRESHOLDf 1.0f //PIXELs //(1.0/PIXELS_PER_METREf)
