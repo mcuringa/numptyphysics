@@ -741,10 +741,6 @@ public:
       m_strokes.erase(0);
     }
     if ( m_world ) {
-      while ( m_world->GetBodyList() ) {
-	printf("body left over %p\n",m_world->GetBodyList());
-	m_world->DestroyBody( m_world->GetBodyList() );	       
-      }
       //step is required to actually destroy bodies and joints
       m_world->Step( ITERATION_TIMESTEPf, SOLVER_ITERATIONS );
     }
@@ -1007,22 +1003,21 @@ private:
   bool genIcon()
   {
     if ( m_icon==NULL || m_levelIcon != m_selectedLevel ) {
-      printf("new thumbnail required\n");
       delete m_icon;
       m_icon = NULL;
       if ( m_selectedLevel < m_game.m_levels.numLevels() ) {
 	Scene scene( true );
 	if ( scene.load( m_game.m_levels.levelFile(m_selectedLevel) ) ) {
-	  printf("generating thumbnail %s\n",
-		 m_game.m_levels.levelFile(m_selectedLevel).c_str());
+	  //printf("generating thumbnail %s\n",
+	  // m_game.m_levels.levelFile(m_selectedLevel).c_str());
 	  Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
 	  scene.draw( temp, FULLSCREEN_RECT );
 	  m_icon = temp.scale( ICON_SCALE_FACTOR );
-	  printf("generating thumbnail %s done\n",
-		 m_game.m_levels.levelFile(m_selectedLevel).c_str());
+	  //printf("generating thumbnail %s done\n",
+	  // m_game.m_levels.levelFile(m_selectedLevel).c_str());
 	} else {
-	  printf("failed to gen scene thumbnail %s\n",
-		 m_game.m_levels.levelFile(m_selectedLevel).c_str());
+	  //printf("failed to gen scene thumbnail %s\n",
+	  // m_game.m_levels.levelFile(m_selectedLevel).c_str());
 	}
       } else {
 	m_icon = new Image("theend.png");
