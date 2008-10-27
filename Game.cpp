@@ -360,8 +360,9 @@ public:
   void draw( Canvas& canvas )
   {
     if ( m_hide < HIDE_STEPS ) {
+      bool thick = (canvas.width() > 400);
       transform();
-      canvas.drawPath( m_screenPath, canvas.makeColour(m_colour), true );
+      canvas.drawPath( m_screenPath, canvas.makeColour(m_colour), thick );
       m_drawn = true;
     }
     m_drawnBbox = m_screenBbox;
@@ -405,7 +406,7 @@ public:
     return best;
   }
 
-  Rect bbox() 
+  Rect screenBbox() 
   {
     transform();
     return m_screenBbox;
@@ -414,6 +415,11 @@ public:
   Rect lastDrawnBbox() 
   {
     return m_drawnBbox;
+  }
+
+  Rect worldBbox() 
+  {
+    return m_xformedPath.bbox();
   }
 
   bool isDirty()
@@ -622,7 +628,7 @@ public:
     // check for token respawn
     for ( int i=0; i < m_strokes.size(); i++ ) {
       if ( m_strokes[i]->hasAttribute( Stroke::ATTRIB_TOKEN )
-	   && !BOUNDS_RECT.intersects( m_strokes[i]->lastDrawnBbox() ) ) {
+	   && !BOUNDS_RECT.intersects( m_strokes[i]->worldBbox() ) ) {
 	printf("RESPAWN token %d\n",i);
 	reset( m_strokes[i] );
 	activate( m_strokes[i] );	  
@@ -668,12 +674,12 @@ public:
     for ( int i=0; i<m_strokes.size(); i++ ) {
       if ( m_strokes[i]->isDirty() ) {
 	// acumulate new areas to draw
-	temp = m_strokes[i]->bbox();
+	temp = m_strokes[i]->screenBbox();
 	if ( !temp.isEmpty() ) {
 	  if ( numDirty==0 ) {	
 	    r = temp;
 	  } else {
-	    r.expand( m_strokes[i]->bbox() );
+	    r.expand( m_strokes[i]->screenBbox() );
 	  }
 	  // plus prev areas to erase
 	  r.expand( m_strokes[i]->lastDrawnBbox() );
@@ -703,7 +709,7 @@ public:
     clipArea.br.x++;
     clipArea.br.y++;
     for ( int i=0; i<m_strokes.size(); i++ ) {
-      if ( area.intersects( m_strokes[i]->bbox() ) ) {
+      if ( area.intersects( m_strokes[i]->screenBbox() ) ) {
 	m_strokes[i]->draw( canvas );
       }
     }
@@ -751,6 +757,7 @@ public:
     clear();
     if ( g_bgImage==NULL ) {
       g_bgImage = new Image("paper.jpg");
+      g_bgImage->scale( SCREEN_WIDTH, SCREEN_HEIGHT );
     }
     m_bgImage = g_bgImage;
     string line;
@@ -832,6 +839,7 @@ struct GameParams
   virtual bool send() { return false; }
   virtual bool load( const char* file ) { return false; }
   virtual void gotoLevel( int l, bool replay=false ) {}
+  Levels& levels() { return m_levels; }
   bool  m_quit;
   bool  m_edit;
   bool  m_refresh;
@@ -960,7 +968,9 @@ class NextLevelOverlay : public IconOverlay
 {
 public:
   NextLevelOverlay( GameParams& game )
-    : IconOverlay(game,"next.png",FULLSCREEN_RECT.centroid().x-200,100,false),
+    : IconOverlay(game,"next.png",
+		  FULLSCREEN_RECT.centroid().x-200,
+		  FULLSCREEN_RECT.centroid().y-120,false),
       m_levelIcon(-2),
       m_icon(NULL)
   {}
@@ -1282,30 +1292,16 @@ class Game : public GameParams
   DemoPlayer        m_player;
   Os               *m_os;
 public:
-  Game( int argc, const char** argv ) 
+  Game( int width, int height ) 
   : m_createStroke(NULL),
     m_moveStroke(NULL),
-    m_window(SCREEN_WIDTH,SCREEN_HEIGHT,"Numpty Physics","NPhysics"),
+    m_window(width,height,"Numpty Physics","NPhysics"),
     m_pauseOverlay( *this, "pause.png",50,50 ),
     m_editOverlay( *this ),
     m_os( Os::get() )
     //,m_demoOverlay( *this )
   {
-    if ( argc<=1 ) {
-      FILE *f = fopen("Game.cpp","rt");
-      if ( f ){
-        m_levels.addPath( "." );
-	fclose(f);
-      } else {
-        m_levels.addPath( DEFAULT_LEVEL_PATH );
-      }
-      m_levels.addPath( Config::userDataDir().c_str() );
-    } else {
-      for ( int i=1;i<argc;i++ ) {
-	m_levels.addPath( argv[i] );
-      }
-    }
-    gotoLevel( 0 );
+    configureScreenTransform( m_window.width(), m_window.height() );
   }
 
   bool load( const char *file, bool replay=false )
@@ -1749,26 +1745,36 @@ public:
   }
 };
 
+
+void init()
+{
+  putenv("SDL_VIDEO_X11_WMCLASS=NPhysics");
+  if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
+    throw "Couldn't initialize SDL";
+  }
   
+  if ( mkdir( (string(getenv("HOME"))+"/"USER_BASE_PATH).c_str(),
+	      0755)==0 ) {
+    printf("created user dir\n");
+  } else if ( errno==EEXIST ){
+    printf("user dir ok\n");
+  } else {
+    printf("failed to create user dir\n");
+  }
+
+}  
+
 int npmain(int argc, char** argv)
 {
   try {
-    putenv("SDL_VIDEO_X11_WMCLASS=NPhysics");
-    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
-      throw "Couldn't initialize SDL";
+    bool thumbnailMode = false;
+    for ( int i=1; i<argc && !thumbnailMode; i++ ) {
+      if ( strcmp(argv[i],"-bmp")==0 ) {
+	thumbnailMode = true;
+      }
     }
-
-    if ( mkdir( (string(getenv("HOME"))+"/"USER_BASE_PATH).c_str(),
-		0755)==0 ) {
-      printf("created user dir\n");
-    } else if ( errno==EEXIST ){
-      printf("user dir ok\n");
-    } else {
-      printf("failed to create user dir\n");
-    }
-
-    if ( argc > 2 && strcmp(argv[1],"-bmp")==0 ) {
-      for ( int i=2; i<argc; i++ ) {
+    if ( thumbnailMode ) {
+      for ( int i=1; i<argc; i++ ) {
 	Scene scene( true );
 	if ( scene.load( argv[i] ) ) {
 	  printf("generating bmp %s\n", argv[i]);
@@ -1780,8 +1786,39 @@ int npmain(int argc, char** argv)
 	}	
       }
     } else {
-      configureScreenTransform( 800, 480 );
-      Game game( argc, (const char**)argv );
+      int width=SCREEN_WIDTH, height=SCREEN_HEIGHT;
+      for ( int i=1; i<argc; i++ ) {
+	if ( strcmp(argv[i],"-geometry")==0 && i<argc-1) {
+	  int ww, hh;
+	  if ( sscanf(argv[i+1],"%dx%d",&ww,&hh) ==2 ) {
+	    width = ww; 
+	    height = hh;
+	  }
+	  memmove( &argv[i], &argv[i+2], (argc-i-2)*sizeof(argv[0]) );
+	  argc-=2;
+	}
+      }
+      printf("using window %d x %d\n",width,height);
+      
+      Game game( width, height );
+      int levelCount = 0;
+      for ( int i=1; i<argc; i++ ) {
+	if ( argv[i][0] != '-' ) {
+	  game.levels().addPath( argv[i] );
+	  levelCount++;
+	}
+      }
+      
+      if ( levelCount==0 ) {
+	if ( FILE *f = fopen("Game.cpp","rt") ) {
+	  game.levels().addPath( "." );
+	  fclose(f);
+	} else {
+	  game.levels().addPath( DEFAULT_LEVEL_PATH );
+	}
+	game.levels().addPath( Config::userDataDir().c_str() );
+      }
+      game.gotoLevel(0);
       game.run();
     }
   } catch ( const char* e ) {

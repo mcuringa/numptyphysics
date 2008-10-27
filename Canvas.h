@@ -37,6 +37,7 @@ public:
   void clear( const Rect& r );
   void fade();
   Canvas* scale( int factor ) const;
+  void scale( int w, int h );
   void drawImage( Canvas *canvas, int x, int y );
   void drawPixel( int x, int y, int c );
   int  readPixel( int x, int y ) const;

@@ -31,6 +31,9 @@
 #endif
 #undef Window
 
+// zoomer.cpp
+extern SDL_Surface *zoomSurface(SDL_Surface * src, double zoomx, double zoomy);
+
 
 // extract RGB colour components as 8bit values from RGB888
 #define R32(p) (((p)>>16)&0xff)
@@ -145,10 +148,10 @@ struct AlphaBrush<PIX,3>
 
 
 template <typename PIX, unsigned THICK> 
-void renderLine( void *buf,
-		 int byteStride,
-		 int x1, int y1, int x2, int y2,
-		 PIX color )
+inline void renderLine( void *buf,
+			int byteStride,
+			int x1, int y1, int x2, int y2,
+			PIX color )
 {  
   PIX *pix = (PIX*)((char*)buf+byteStride*y1) + x1;
   int lg_delta, sh_delta, cycle, lg_step, sh_step;
@@ -360,6 +363,20 @@ Canvas* Canvas::scale( int factor ) const
 }
 
 
+void Canvas::scale( int w, int h )
+{
+  if ( w!=width() && h!=height() ) {
+    SDL_Surface *s = zoomSurface( SURFACE(this),
+				  (double)w/(double)width(),
+				  (double)h/(double)height() );
+    if ( s ) {
+      SDL_FreeSurface( SURFACE(this) );
+      m_state = s;
+    }
+  }
+}
+
+
 void Canvas::clear( const Rect& r )
 {
   if ( m_bgImage ) {
@@ -468,14 +485,26 @@ void Canvas::drawPath( const Path& path, int color, bool thick )
       const Vec2& p1 = path.point(i-1);
       switch ( SURFACE(this)->format->BytesPerPixel ) {
       case 2:      
-	renderLine<Uint16,3>( SURFACE(this)->pixels,
-			      SURFACE(this)->pitch,
-			      p1.x, p1.y, p2.x, p2.y, color );
+	if ( thick ) {
+	  renderLine<Uint16,3>( SURFACE(this)->pixels,
+				SURFACE(this)->pitch,
+				p1.x, p1.y, p2.x, p2.y, color );
+	} else {
+	  renderLine<Uint16,1>( SURFACE(this)->pixels,
+				SURFACE(this)->pitch,
+				p1.x, p1.y, p2.x, p2.y, color );
+	}
 	break;
       case 4:
-	renderLine<Uint32,3>( SURFACE(this)->pixels,
-			      SURFACE(this)->pitch,
-			      p1.x, p1.y, p2.x, p2.y, color );
+	if ( thick ) {
+	  renderLine<Uint32,3>( SURFACE(this)->pixels,
+				SURFACE(this)->pitch,
+				p1.x, p1.y, p2.x, p2.y, color );
+	} else {
+	  renderLine<Uint32,1>( SURFACE(this)->pixels,
+				SURFACE(this)->pitch,
+				p1.x, p1.y, p2.x, p2.y, color );
+	}
 	break;
       }
     } else {
