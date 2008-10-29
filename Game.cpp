@@ -1746,9 +1746,14 @@ public:
 };
 
 
-void init()
+void init( bool useDummyVideo=false )
 {
-  putenv("SDL_VIDEO_X11_WMCLASS=NPhysics");
+  if ( useDummyVideo ) {
+    putenv((char*)"SDL_VIDEODRIVER=dummy");
+  } else {
+    putenv((char*)"SDL_VIDEO_X11_WMCLASS=NPhysics");
+  }
+
   if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
     throw "Couldn't initialize SDL";
   }
@@ -1757,7 +1762,7 @@ void init()
 	      0755)==0 ) {
     printf("created user dir\n");
   } else if ( errno==EEXIST ){
-    printf("user dir ok\n");
+    //printf("user dir ok\n");
   } else {
     printf("failed to create user dir\n");
   }
@@ -1768,48 +1773,47 @@ int npmain(int argc, char** argv)
 {
   try {
     bool thumbnailMode = false;
-    for ( int i=1; i<argc && !thumbnailMode; i++ ) {
+    int width=SCREEN_WIDTH, height=SCREEN_HEIGHT;
+    Array<const char*> files;
+
+    for ( int i=1; i<argc; i++ ) {
       if ( strcmp(argv[i],"-bmp")==0 ) {
 	thumbnailMode = true;
+      } else if ( strcmp(argv[i],"-geometry")==0 && i<argc-1) {
+	int ww, hh;
+	if ( sscanf(argv[i+1],"%dx%d",&ww,&hh) ==2 ) {
+	  width = ww; 
+	  height = hh;
+	}
+	i++;
+      } else {
+	files.append( argv[i] );
       }
     }
+
     if ( thumbnailMode ) {
-      for ( int i=1; i<argc; i++ ) {
+      init(true);
+      configureScreenTransform( width, height );
+      for ( int i=0; i<files.size(); i++ ) {
 	Scene scene( true );
-	if ( scene.load( argv[i] ) ) {
-	  printf("generating bmp %s\n", argv[i]);
+	if ( scene.load( files[i] ) ) {
+	  printf("generating bmp %s\n", files[i]);
 	  Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
 	  scene.draw( temp, FULLSCREEN_RECT );
-	  string bmp( argv[i] );
+	  string bmp( files[i] );
 	  bmp += ".bmp";
 	  temp.writeBMP( bmp.c_str() );
-	}	
-      }
-    } else {
-      int width=SCREEN_WIDTH, height=SCREEN_HEIGHT;
-      for ( int i=1; i<argc; i++ ) {
-	if ( strcmp(argv[i],"-geometry")==0 && i<argc-1) {
-	  int ww, hh;
-	  if ( sscanf(argv[i+1],"%dx%d",&ww,&hh) ==2 ) {
-	    width = ww; 
-	    height = hh;
-	  }
-	  memmove( &argv[i], &argv[i+2], (argc-i-2)*sizeof(argv[0]) );
-	  argc-=2;
 	}
       }
-      printf("using window %d x %d\n",width,height);
-      
+    } else {      
+      init();
       Game game( width, height );
-      int levelCount = 0;
-      for ( int i=1; i<argc; i++ ) {
-	if ( argv[i][0] != '-' ) {
-	  game.levels().addPath( argv[i] );
-	  levelCount++;
+
+      if ( files.size() > 0 ) {
+	for ( int i=0; i<files.size(); i++ ) {
+	  game.levels().addPath( files[i] );
 	}
-      }
-      
-      if ( levelCount==0 ) {
+      } else {
 	if ( FILE *f = fopen("Game.cpp","rt") ) {
 	  game.levels().addPath( "." );
 	  fclose(f);

@@ -214,12 +214,22 @@ Canvas::Canvas( int w, int h )
     m_bgColour(0),
     m_bgImage(NULL)
 {
-  m_state = SDL_CreateRGBSurface( SDL_SWSURFACE, w, h, 
-				  SDL_GetVideoInfo()->vfmt->BitsPerPixel,
-				  SDL_GetVideoInfo()->vfmt->Rmask,
-				  SDL_GetVideoInfo()->vfmt->Gmask,
-				  SDL_GetVideoInfo()->vfmt->Bmask,
-				  SDL_GetVideoInfo()->vfmt->Amask );
+  switch (SDL_GetVideoInfo()->vfmt->BitsPerPixel) {
+  case 16:
+  case 32:
+    m_state = SDL_CreateRGBSurface( SDL_SWSURFACE, w, h, 
+				    SDL_GetVideoInfo()->vfmt->BitsPerPixel,
+				    SDL_GetVideoInfo()->vfmt->Rmask,
+				    SDL_GetVideoInfo()->vfmt->Gmask,
+				    SDL_GetVideoInfo()->vfmt->Bmask,
+				    SDL_GetVideoInfo()->vfmt->Amask );
+    break;
+  default:
+    // eg: dummy vid driver reports 8bpp
+    m_state = SDL_CreateRGBSurface( SDL_SWSURFACE, w, h, 32,
+				    0xFF0000, 0x00FF00, 0x0000FF, 0xFF000000 );
+    break;
+  }
   resetClip();
 }
 

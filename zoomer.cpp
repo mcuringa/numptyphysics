@@ -1,7 +1,7 @@
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
-
+#include <stdlib.h>
 
 typedef struct tColorRGBA {
    Uint8 r;
