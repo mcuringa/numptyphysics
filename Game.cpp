@@ -933,9 +933,25 @@ public:
     return false;    
   }
   
-  virtual bool onClick( int x, int y ) { return false; }
+  virtual bool onClick( int x, int y ) {
+    for ( int i=m_hotSpots.size()-1; i>=0; i-- ) {
+      if ( m_hotSpots[i].rect.contains( Vec2(x,y) )
+	   && onHotSpot( m_hotSpots[i].id ) ) {
+	return true;
+      }
+    }
+    return false; 
+  }
 
+  virtual bool onHotSpot( int id ) { return false; }
+
+  void addHotSpot( const Rect& r, int id )
+  {
+    HotSpot hs = { r, id };
+    m_hotSpots.append( hs );
+  }
 protected:
+  struct HotSpot { Rect rect; int id; };
   GameParams& m_game;
   int     m_x, m_y;
   Canvas *m_canvas;
@@ -945,6 +961,7 @@ private:
   bool    m_dragging;
   bool    m_dragging_allowed;
   bool    m_buttonDown;
+  Array<HotSpot> m_hotSpots;
 };
 
 
@@ -973,7 +990,12 @@ public:
 		  FULLSCREEN_RECT.centroid().y-120,false),
       m_levelIcon(-2),
       m_icon(NULL)
-  {}
+  {
+    addHotSpot( Rect(0,    0,100,180), 0 );
+    addHotSpot( Rect(300,  0,400,180), 1 );
+    addHotSpot( Rect(0,  180,200,240), 2 );
+    addHotSpot( Rect(200,180,400,240), 3 );
+  }
   ~NextLevelOverlay()
   {
     delete m_icon;
@@ -991,24 +1013,17 @@ public:
       screen.drawImage( m_icon, m_x+100, m_y+75 );
     }
   }
-  virtual bool onClick( int x, int y )
+  virtual bool onHotSpot( int id ) 
   {
-    printf("click %d,%d\n",x,y);
-    if ( y > 180 ) {
-      if ( x > 200 ) {
-	m_game.gotoLevel( m_selectedLevel );
-      } else {
-	m_game.gotoLevel( m_game.m_level,true );
-      }
-    } else if ( x > 300 ) {
-      m_selectedLevel++;
-      printf("NextLevel++ = %d\n",m_selectedLevel);
-    } else if ( x < 100 && m_selectedLevel > 0 ) {
-      m_selectedLevel--; 
-      printf("NextLevel-- = %d\n",m_selectedLevel);
-   }
+    switch (id) {
+    case 0: m_selectedLevel--; break;
+    case 1: m_selectedLevel++; break;
+    case 2: m_game.gotoLevel( m_game.m_level,true ); break;
+    case 3: m_game.gotoLevel( m_selectedLevel ); break;
+    default: return false;
+    }
     return true;
-  }
+  } 
 private:
   bool genIcon()
   {
@@ -1688,6 +1703,7 @@ public:
       if ( m_scene.isCompleted() != isComplete && !m_edit ) {
 	isComplete = m_scene.isCompleted();
 	if ( isComplete ) {
+	  m_player.stop();
 	  m_recorder.stop();
 	  showOverlay( completedOverlay );
 	} else {
@@ -1815,7 +1831,7 @@ int npmain(int argc, char** argv)
 	}
       } else {
 	if ( FILE *f = fopen("Game.cpp","rt") ) {
-	  game.levels().addPath( "." );
+	  game.levels().addPath( "data" );
 	  fclose(f);
 	} else {
 	  game.levels().addPath( DEFAULT_LEVEL_PATH );

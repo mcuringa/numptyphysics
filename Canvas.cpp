@@ -651,7 +651,7 @@ void Window::setSubName( const char *sub )
 Image::Image( const char* file, bool alpha )
 {
   alpha = false;
-  std::string f( "./" );
+  std::string f( "data/" );
   SDL_Surface* img = IMG_Load((f+file).c_str());
   if ( !img ) {
     f = std::string( DEFAULT_RESOURCE_PATH "/" );
