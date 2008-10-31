@@ -18,6 +18,7 @@
 #define CONFIG_H
 
 #include <sstream>
+#include "Common.h"
 #include "Os.h"
 
 #define WORLD_WIDTH  800
@@ -48,12 +49,6 @@
 
 #define HIDE_STEPS (RENDER_RATE*4)
 
-#define COLOUR_RED     0xb80000
-#define COLOUR_YELLOW  0xffd700 
-#define COLOUR_BLUE    0x000077 
-#define COLOUR_GREEN   0x108710
-#define COLOUR_BLACK   0x101010
-#define COLOUR_BROWN   0x703010
 
 #ifndef INSTALL_BASE_PATH
 #  define INSTALL_BASE_PATH "/usr/share/numptyphysics"
@@ -78,6 +73,18 @@
 #define SEND_TEMP_FILE "/tmp/mailto:numptyphysics@gmail.com.nph"
 
 #define ICON_SCALE_FACTOR 4
+
+
+
+extern Rect FULLSCREEN_RECT;
+extern const Rect BOUNDS_RECT;
+extern int SCREEN_WIDTH;
+extern int SCREEN_HEIGHT;
+extern const int brushColours[];
+extern const int NUM_BRUSHES;
+#define RED_BRUSH       0
+#define YELLOW_BRUSH    1
+#define DEFAULT_BRUSH   2
 
 class Config
 {

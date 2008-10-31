@@ -300,23 +300,32 @@ void Canvas::clear()
   }
 }
 
-void Canvas::fade() 
+void Canvas::fade( const Rect& r ) 
 {
   Uint32 bpp;
-  int count = width()*height();
   bpp = SURFACE(this)->format->BytesPerPixel;
   char* row = (char*)SURFACE(this)->pixels;
+  int pixStride = width();
+  int w = r.br.x - r.tl.x + 1;
+  int h = r.br.y - r.tl.y + 1;
+  row += (r.tl.x + r.tl.y * pixStride) * bpp;
 
   SDL_LockSurface(SURFACE(this));
   switch ( bpp ) {
   case 2: 
-    for ( int i=0;i<count;i++) {
-      ((Uint16*)row)[i] = (((Uint16*)row)[i]>>1) & 0x7bef;
+    for ( int r=h; r>0; r-- ) {
+      for ( int i=0;i<w;i++) {
+	((Uint16*)row)[i] = (((Uint16*)row)[i]>>1) & 0x7bef;
+      }
+      row += pixStride * bpp;
     }
     break;
   case 4:
-    for ( int i=0;i<count;i++) {
-      ((Uint32*)row)[i] = (((Uint32*)row)[i]>>1) & 0x7f7f7f;
+    for ( int r=h; r>0; r-- ) {
+      for ( int i=0;i<w;i++) {
+	((Uint32*)row)[i] = (((Uint32*)row)[i]>>1) & 0x7f7f7f;
+      }
+      row += pixStride * bpp;
     }
     break;
   }
@@ -568,7 +577,7 @@ Window::Window( int w, int h, const char* title, const char* winclass )
   m_state = SDL_SetVideoMode( w, h, 0, SDL_SWSURFACE);
 #endif
   if ( SURFACE(this) == NULL ) {
-    throw "Unable to set 800x480 video";
+    throw "Unable to set video mode";
   }
   resetClip();
 
@@ -597,8 +606,8 @@ void Window::update( const Rect& r )
     int y1 = MAX( 0, r.tl.y );
     int x2 = MIN( width()-1, r.br.x );
     int y2 = MIN( height()-1, r.br.y );
-    int w  = MAX( 0, x2-x1+1 );
-    int h  = MAX( 0, y2-y1+1 );
+    int w  = MAX( 0, x2-x1 );
+    int h  = MAX( 0, y2-y1 );
     if ( w > 0 && h > 0 ) {
       SDL_UpdateRect( SURFACE(this), x1, y1, w, h );
     }

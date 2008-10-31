@@ -28,6 +28,8 @@
 #include "Common.h"
 #include "Array.h"
 #include "Config.h"
+#include "Game.h"
+#include "Overlay.h"
 #include "Path.h"
 #include "Canvas.h"
 #include "Levels.h"
@@ -36,27 +38,6 @@
 
 using namespace std;
 
-Rect FULLSCREEN_RECT( 0, 0, WORLD_WIDTH-1, WORLD_HEIGHT-1 );
-const Rect BOUNDS_RECT( -WORLD_WIDTH/4, -WORLD_HEIGHT,
-			WORLD_WIDTH*5/4, WORLD_HEIGHT );
-int SCREEN_WIDTH = WORLD_WIDTH;
-int SCREEN_HEIGHT = WORLD_HEIGHT;
-
-const int brush_colours[] = {
-  0xb80000, //red
-  0xeec900, //yellow
-  0x000077, //blue
-  0x108710, //green
-  0x101010, //black
-  0x8b4513, //brown
-  0x87cefa, //lightblue
-  0xee6aa7, //pink
-  0xb23aee, //purple
-  0x00fa9a, //lightgreen
-  0xff7f00, //orange
-  0x6c7b8b, //grey
-};
-#define NUM_COLOURS (sizeof(brush_colours)/sizeof(brush_colours[0]))
 
 
 class Transform
@@ -191,7 +172,7 @@ public:
   Stroke( const Path& path )
     : m_rawPath(path)
   {
-    m_colour = COLOUR_BLUE;
+    m_colour = brushColours[DEFAULT_BRUSH];
     m_attributes = 0;
     m_origin = m_rawPath.point(0);
     m_rawPath.translate( -m_origin );
@@ -201,7 +182,7 @@ public:
   Stroke( const string& str ) 
   {
     int col = 0;
-    m_colour = brush_colours[2];
+    m_colour = brushColours[DEFAULT_BRUSH];
     m_attributes = 0;
     m_origin = Vec2(400,240);
     reset();
@@ -221,8 +202,8 @@ public:
       }
       s++;
     }
-    if ( col >= 0 && col < NUM_COLOURS ) {
-      m_colour = brush_colours[col];
+    if ( col >= 0 && col < NUM_BRUSHES ) {
+      m_colour = brushColours[col];
     }
     if ( *s++ == ':' ) {
       float32 x,y;      
@@ -264,8 +245,8 @@ public:
     if ( hasAttribute(ATTRIB_GROUND) )   s<<'f';
     if ( hasAttribute(ATTRIB_SLEEPING) ) s<<'s';
     if ( hasAttribute(ATTRIB_DECOR) )    s<<'d';
-    for ( int i=0; i<NUM_COLOURS; i++ ) {
-      if ( m_colour==brush_colours[i] )  s<<i;
+    for ( int i=0; i<NUM_BRUSHES; i++ ) {
+      if ( m_colour==brushColours[i] )  s<<i;
     }
     s << ":";
     transform();
@@ -280,8 +261,8 @@ public:
   void setAttribute( Stroke::Attribute a )
   {
     m_attributes |= a;
-    if ( m_attributes & ATTRIB_TOKEN )     m_colour = COLOUR_RED;
-    else if ( m_attributes & ATTRIB_GOAL ) m_colour = COLOUR_YELLOW;
+    if ( m_attributes & ATTRIB_TOKEN )     m_colour = brushColours[RED_BRUSH];
+    else if ( m_attributes & ATTRIB_GOAL ) m_colour = brushColours[YELLOW_BRUSH];
   }
 
   void clearAttribute( Stroke::Attribute a )
@@ -822,302 +803,6 @@ private:
 Image *Scene::g_bgImage = NULL;
 
 
-struct GameParams
-{
-  GameParams() : m_quit(false),
-		 m_edit( false ),
-		 m_refresh( true ),
-		 m_colour( 2 ),
-		 m_strokeFixed( false ),
-		 m_strokeSleep( false ),
-		 m_strokeDecor( false ),
-		 m_levels(),
-                 m_level(0)
-  {}
-  virtual ~GameParams() {}
-  virtual bool save( const char *file=NULL ) { return false; }
-  virtual bool send() { return false; }
-  virtual bool load( const char* file ) { return false; }
-  virtual void gotoLevel( int l, bool replay=false ) {}
-  Levels& levels() { return m_levels; }
-  bool  m_quit;
-  bool  m_edit;
-  bool  m_refresh;
-  int   m_colour;
-  bool  m_strokeFixed;
-  bool  m_strokeSleep;
-  bool  m_strokeDecor;
-  Levels m_levels;
-  int    m_level;
-};
-
-
-class Overlay
-{
-public:
-  Overlay( GameParams& game, int x=10, int y=10, bool dragging_allowed=true )
-    : m_game(game),
-      m_x(x), m_y(y),
-      m_canvas(NULL),
-      m_dragging(false),
-      m_dragging_allowed(dragging_allowed),
-      m_buttonDown(false)
-  {}
-  virtual ~Overlay() 
-  {
-    delete m_canvas;
-  }
-
-  Rect dirtyArea() 
-  {
-    return Rect(m_x,m_y,m_x+m_canvas->width()-1,m_y+m_canvas->height()-1);
-  }
- 
-  virtual void onShow() {}
-  virtual void onHide() {}
-  virtual void onTick( int tick ) {}
-
-  virtual void draw( Canvas& screen )
-  {
-    if ( m_canvas ) {
-      screen.drawImage( m_canvas, m_x, m_y );
-    }
-  }
-
-  virtual bool handleEvent( SDL_Event& ev )
-  {
-    switch( ev.type ) {      
-    case SDL_MOUSEBUTTONDOWN:
-      //printf("overlay click\n"); 
-      if ( ev.button.button == SDL_BUTTON_LEFT
-	   && ev.button.x >= m_x && ev.button.x <= m_x + m_canvas->width() 
-	   && ev.button.y >= m_y && ev.button.y <= m_y + m_canvas->height() ) {
-	m_orgx = ev.button.x;
-	m_orgy = ev.button.y;
-	m_prevx = ev.button.x;
-	m_prevy = ev.button.y;
-	m_buttonDown = true;
-	return true;
-      }
-      break;
-    case SDL_MOUSEBUTTONUP:
-      if ( ev.button.button == SDL_BUTTON_LEFT ) {
-	if ( m_dragging ) {
-	  m_dragging = false;
-	} else if ( ABS(ev.button.x-m_orgx) < CLICK_TOLERANCE
-		    && ABS(ev.button.y-m_orgy) < CLICK_TOLERANCE ){
-	  onClick( m_orgx-m_x, m_orgy-m_y );
-	}
-	m_buttonDown = false;
-      }
-      break;
-    case SDL_MOUSEMOTION:
-      if ( !m_dragging
-	   && m_buttonDown
-           && m_dragging_allowed
-	   && ( ABS(ev.button.x-m_orgx) >= CLICK_TOLERANCE
-		|| ABS(ev.button.y-m_orgy) >= CLICK_TOLERANCE ) ) {
-	m_dragging = true;
-      }
-      if ( m_dragging ) {
-	m_x += ev.button.x - m_prevx;
-	m_y += ev.button.y - m_prevy;
-	m_prevx = ev.button.x;
-	m_prevy = ev.button.y;
-	m_game.m_refresh = true;
-      }
-      break;
-    default:
-      break;
-    }
-    return false;    
-  }
-  
-  virtual bool onClick( int x, int y ) {
-    for ( int i=m_hotSpots.size()-1; i>=0; i-- ) {
-      if ( m_hotSpots[i].rect.contains( Vec2(x,y) )
-	   && onHotSpot( m_hotSpots[i].id ) ) {
-	return true;
-      }
-    }
-    return false; 
-  }
-
-  virtual bool onHotSpot( int id ) { return false; }
-
-  void addHotSpot( const Rect& r, int id )
-  {
-    HotSpot hs = { r, id };
-    m_hotSpots.append( hs );
-  }
-protected:
-  struct HotSpot { Rect rect; int id; };
-  GameParams& m_game;
-  int     m_x, m_y;
-  Canvas *m_canvas;
-private:
-  int     m_orgx, m_orgy;
-  int     m_prevx, m_prevy;
-  bool    m_dragging;
-  bool    m_dragging_allowed;
-  bool    m_buttonDown;
-  Array<HotSpot> m_hotSpots;
-};
-
-
-class IconOverlay: public Overlay
-{
-  std::string m_filename;
-public:
-  IconOverlay(GameParams& game, const char* file, int x=100,int y=20, bool dragging_allowed=true)
-    : Overlay(game,x,y,dragging_allowed),
-      m_filename( file )
-  {
-    m_canvas = new Image( m_filename.c_str() );
-  }
-  virtual void onShow()
-  {
-  }
-};
-
-
-class NextLevelOverlay : public IconOverlay
-{
-public:
-  NextLevelOverlay( GameParams& game )
-    : IconOverlay(game,"next.png",
-		  FULLSCREEN_RECT.centroid().x-200,
-		  FULLSCREEN_RECT.centroid().y-120,false),
-      m_levelIcon(-2),
-      m_icon(NULL)
-  {
-    addHotSpot( Rect(0,    0,100,180), 0 );
-    addHotSpot( Rect(300,  0,400,180), 1 );
-    addHotSpot( Rect(0,  180,200,240), 2 );
-    addHotSpot( Rect(200,180,400,240), 3 );
-  }
-  ~NextLevelOverlay()
-  {
-    delete m_icon;
-  }
-  virtual void onShow()
-  {
-    IconOverlay::onShow();
-    m_selectedLevel = m_game.m_level+1;
-  }
-  virtual void draw( Canvas& screen )
-  {
-    screen.fade();
-    IconOverlay::draw( screen );
-    if ( genIcon() ) {
-      screen.drawImage( m_icon, m_x+100, m_y+75 );
-    }
-  }
-  virtual bool onHotSpot( int id ) 
-  {
-    switch (id) {
-    case 0: m_selectedLevel--; break;
-    case 1: m_selectedLevel++; break;
-    case 2: m_game.gotoLevel( m_game.m_level,true ); break;
-    case 3: m_game.gotoLevel( m_selectedLevel ); break;
-    default: return false;
-    }
-    return true;
-  } 
-private:
-  bool genIcon()
-  {
-    if ( m_icon==NULL || m_levelIcon != m_selectedLevel ) {
-      delete m_icon;
-      m_icon = NULL;
-      if ( m_selectedLevel < m_game.m_levels.numLevels() ) {
-	Scene scene( true );
-	if ( scene.load( m_game.m_levels.levelFile(m_selectedLevel) ) ) {
-	  //printf("generating thumbnail %s\n",
-	  // m_game.m_levels.levelFile(m_selectedLevel).c_str());
-	  Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
-	  scene.draw( temp, FULLSCREEN_RECT );
-	  m_icon = temp.scale( ICON_SCALE_FACTOR );
-	  //printf("generating thumbnail %s done\n",
-	  // m_game.m_levels.levelFile(m_selectedLevel).c_str());
-	} else {
-	  //printf("failed to gen scene thumbnail %s\n",
-	  // m_game.m_levels.levelFile(m_selectedLevel).c_str());
-	}
-      } else {
-	m_icon = new Image("theend.png");
-	m_caption = "no more levels!";
-	m_selectedLevel = m_game.m_levels.numLevels();
-      }
-      m_levelIcon = m_selectedLevel;
-    }
-    return m_icon;
-  }
-  int     m_selectedLevel;
-  int     m_levelIcon;
-  Canvas* m_icon;
-  string  m_caption;
-};
-
-
-
-class EditOverlay : public IconOverlay
-{
-  int m_saving, m_sending;
-public:
-  EditOverlay( GameParams& game )
-    : IconOverlay(game,"edit.png"),
-      m_saving(0), m_sending(0)
-      
-  {
-    for ( int i=0; i<NUM_COLOURS; i++ ) {
-      m_canvas->drawRect( pos(i), m_canvas->makeColour(brush_colours[i]), true );
-    }
-  }
-  Rect pos( int i ) 
-  {
-    int c = i%3, r = i/3;
-    return Rect( c*28+13, r*28+33, c*28+33, r*28+53 );
-  }
-  int index( int x, int y ) 
-  {
-    int r = (y-33)/28;
-    int c = (x-13)/28;
-    if ( r<0 || c<0 || c>2 ) return -1; 
-    return r*3+c;
-  }
-  void outline( Canvas& screen, int i, int c ) 
-  {
-    Rect r = pos(i) + Vec2(m_x,m_y);
-    r.tl.x-=2; r.tl.y-=2;
-    r.br.x+=2; r.br.y+=2;
-    screen.drawRect( r, c, false );
-  }
-  virtual void draw( Canvas& screen )
-  {
-    IconOverlay::draw( screen );
-    outline( screen, m_game.m_colour, 0 );
-    if ( m_game.m_strokeFixed ) outline( screen, 12, 0 );
-    if ( m_game.m_strokeSleep ) outline( screen, 13, 0 );
-    if ( m_game.m_strokeDecor ) outline( screen, 14, 0 );
-    if ( m_sending ) outline( screen, 16, screen.makeColour((m_sending--)<<9) );
-    if ( m_saving )  outline( screen, 17, screen.makeColour((m_saving--)<<9) );
-  }
-  virtual bool onClick( int x, int y )
-  {
-    int i = index(x,y);
-    switch (i) {
-    case -1: return false;
-    case 12: m_game.m_strokeFixed = ! m_game.m_strokeFixed; break;
-    case 13: m_game.m_strokeSleep = ! m_game.m_strokeSleep; break;
-    case 14: m_game.m_strokeDecor = ! m_game.m_strokeDecor; break;
-    case 16: if ( m_game.send() ) m_sending=10; break;
-    case 17: if ( m_game.save() ) m_saving=10; break;
-    default: if (i<NUM_COLOURS) m_game.m_colour = i; break;
-    }
-    return true;
-  }
-};
 
 
 
@@ -1293,15 +978,15 @@ private:
 };
 
 
-class Game : public GameParams
+class Game : public GameControl
 {
   Scene   	    m_scene;
   Stroke  	   *m_createStroke;
   Stroke           *m_moveStroke;
   Array<Overlay*>   m_overlays;
   Window            m_window;
-  IconOverlay       m_pauseOverlay;
-  EditOverlay       m_editOverlay;
+  Overlay          *m_pauseOverlay;
+  Overlay          *m_editOverlay;
   //  DemoOverlay       m_demoOverlay;
   DemoRecorder      m_recorder;
   DemoPlayer        m_player;
@@ -1311,12 +996,23 @@ public:
   : m_createStroke(NULL),
     m_moveStroke(NULL),
     m_window(width,height,"Numpty Physics","NPhysics"),
-    m_pauseOverlay( *this, "pause.png",50,50 ),
-    m_editOverlay( *this ),
+    m_pauseOverlay( NULL ),
+    m_editOverlay( NULL ),
     m_os( Os::get() )
     //,m_demoOverlay( *this )
   {
     configureScreenTransform( m_window.width(), m_window.height() );
+  }
+
+
+  virtual bool renderScene( Canvas& c, int level ) 
+  {
+    Scene scene( true );
+    if ( scene.load( m_levels.levelFile(level) ) ) {
+      scene.draw( c, FULLSCREEN_RECT );
+      return true;
+    }
+    return false;
   }
 
   bool load( const char *file, bool replay=false )
@@ -1409,24 +1105,24 @@ public:
     printf("showMessage \"%s\"\n",msg.c_str());
   }
 
-  void showOverlay( Overlay& o )
+  void showOverlay( Overlay* o )
   {
     printf("show overlay\n");
-    m_overlays.append( &o );
-    o.onShow();
+    m_overlays.append( o );
+    o->onShow();
   }
 
-  void hideOverlay( Overlay& o )
+  void hideOverlay( Overlay* o )
   {
     printf("hide overlay\n");
-    o.onHide();
-    m_overlays.erase( m_overlays.indexOf(&o) );
+    o->onHide();
+    m_overlays.erase( m_overlays.indexOf(o) );
     m_refresh = true;
   }
   
-  void toggleOverlay( Overlay& o )
+  void toggleOverlay( Overlay* o )
   {
-    if ( m_overlays.indexOf( &o ) >= 0 ) {
+    if ( m_overlays.indexOf( o ) >= 0 ) {
       hideOverlay( o );
     } else {
       showOverlay( o );
@@ -1435,7 +1131,8 @@ public:
 
   bool isPaused()
   {
-    return m_overlays.indexOf( &m_pauseOverlay ) >= 0;
+    return m_pauseOverlay != NULL
+      && m_overlays.indexOf( m_pauseOverlay ) >= 0;
   }
 
   void edit( bool doEdit )
@@ -1443,6 +1140,9 @@ public:
     if ( m_edit != doEdit ) {
       m_edit = doEdit;
       if ( m_edit ) {
+	if ( !m_editOverlay ) {
+	  m_editOverlay = createEditOverlay(*this);
+	}
 	showOverlay( m_editOverlay );
 	m_scene.protect(0);
       } else {
@@ -1477,6 +1177,9 @@ public:
       case SDLK_SPACE:
       case SDLK_KP_ENTER:
       case SDLK_RETURN:
+	if ( !m_pauseOverlay ) {
+	  m_pauseOverlay = createIconOverlay( *this, "pause.png", 50, 50 );
+	}
 	toggleOverlay( m_pauseOverlay );
 	break;
       case SDLK_s:
@@ -1559,7 +1262,7 @@ public:
 	  switch ( m_colour ) {
 	  case 0: m_createStroke->setAttribute( Stroke::ATTRIB_TOKEN ); break;
 	  case 1: m_createStroke->setAttribute( Stroke::ATTRIB_GOAL ); break;
-	  default: m_createStroke->setColour( brush_colours[m_colour] ); break;
+	  default: m_createStroke->setColour( brushColours[m_colour] ); break;
 	  }
 	  if ( m_strokeFixed ) {
 	    m_createStroke->setAttribute( Stroke::ATTRIB_GROUND );
@@ -1608,7 +1311,8 @@ public:
 
   bool handleEditEvent( SDL_Event &ev )
   {
-    if ( !m_edit ) return false;
+    //allow move/delete in normal play!!
+    //if ( !m_edit ) return false;
 
     switch( ev.type ) {      
     case SDL_MOUSEBUTTONDOWN: 
@@ -1641,7 +1345,7 @@ public:
 
   void run()
   {
-    NextLevelOverlay  completedOverlay(*this);
+    Overlay *completedOverlay = createNextLevelOverlay(*this);
 
     m_scene.draw( m_window, FULLSCREEN_RECT );
     m_window.update( FULLSCREEN_RECT );
@@ -1712,25 +1416,35 @@ public:
       }
 
       Rect r = m_scene.dirtyArea();
-      if ( m_refresh || isComplete ) {
+      if ( m_refresh  ) {
 	r = FULLSCREEN_RECT;
+      } else {
+	for ( int i=0; i<m_overlays.size(); i++ ) {
+	  if ( m_overlays[i]->isDirty() ) {
+	    r.expand( m_overlays[i]->dirtyArea() );
+	  }
+	}
       }
 
       if ( !r.isEmpty() ) {
 	m_scene.draw( m_window, r );
+	if ( m_fade ) {
+	  m_window.fade( r );
+	}
       }
-      
       for ( int i=0; i<m_overlays.size(); i++ ) {
-	m_overlays[i]->draw( m_window );
-	r.expand( m_overlays[i]->dirtyArea() );
+	if ( m_overlays[i]->dirtyArea().intersects(r) ) {
+	  m_overlays[i]->draw( m_window );	  
+	}
       }
 
-      //temp
       if ( m_refresh ) {
 	m_window.update( FULLSCREEN_RECT );
 	m_refresh = false;
       } else {
 	r.br.x++; r.br.y++;
+	//uncomment this to show dirty areas
+	//m_window.drawRect( r, 0x00ff00, false );
 	m_window.update( r );
       } 
 
@@ -1814,7 +1528,7 @@ int npmain(int argc, char** argv)
 	Scene scene( true );
 	if ( scene.load( files[i] ) ) {
 	  printf("generating bmp %s\n", files[i]);
-	  Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
+	  Canvas temp( width, height );
 	  scene.draw( temp, FULLSCREEN_RECT );
 	  string bmp( files[i] );
 	  bmp += ".bmp";

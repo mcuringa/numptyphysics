@@ -35,7 +35,7 @@ public:
   void setBackground( Canvas* bg );
   void clear();
   void clear( const Rect& r );
-  void fade();
+  void fade( const Rect& r );
   Canvas* scale( int factor ) const;
   void scale( int w, int h );
   void drawImage( Canvas *canvas, int x, int y );

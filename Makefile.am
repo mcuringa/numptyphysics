@@ -8,6 +8,8 @@ numptyphysics_SOURCES = \
 	Canvas.cpp \
 	Levels.cpp \
 	Game.cpp \
+	Overlay.cpp \
+	Config.cpp \
 	Http.cpp \
 	happyhttp.cpp \
 	zoomer.cpp \

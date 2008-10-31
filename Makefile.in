@@ -69,9 +69,9 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_numptyphysics_OBJECTS = Path.$(OBJEXT) Canvas.$(OBJEXT) \
-	Levels.$(OBJEXT) Game.$(OBJEXT) Http.$(OBJEXT) \
-	happyhttp.$(OBJEXT) zoomer.$(OBJEXT) OsHildon.$(OBJEXT) \
-	OsFreeDesktop.$(OBJEXT)
+	Levels.$(OBJEXT) Game.$(OBJEXT) Overlay.$(OBJEXT) \
+	Config.$(OBJEXT) Http.$(OBJEXT) happyhttp.$(OBJEXT) \
+	zoomer.$(OBJEXT) OsHildon.$(OBJEXT) OsFreeDesktop.$(OBJEXT)
 numptyphysics_OBJECTS = $(am_numptyphysics_OBJECTS)
 numptyphysics_DEPENDENCIES = libbox2d.a
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -203,6 +203,8 @@ numptyphysics_SOURCES = \
 	Canvas.cpp \
 	Levels.cpp \
 	Game.cpp \
+	Overlay.cpp \
+	Config.cpp \
 	Http.cpp \
 	happyhttp.cpp \
 	zoomer.cpp \
@@ -322,11 +324,13 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Canvas.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Config.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Game.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Http.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Levels.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/OsFreeDesktop.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/OsHildon.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Overlay.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Path.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2BlockAllocator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2Body.Po@am__quote@
