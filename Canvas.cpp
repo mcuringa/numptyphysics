@@ -161,10 +161,10 @@ inline void renderLine( void *buf,
 
   lg_delta = x2 - x1;
   sh_delta = y2 - y1;
-  lg_step = SGN(lg_delta);
-  lg_delta = ABS(lg_delta);
-  sh_step = SGN(sh_delta);
-  sh_delta = ABS(sh_delta);
+  lg_step = Sgn(lg_delta);
+  lg_delta = Abs(lg_delta);
+  sh_step = Sgn(sh_delta);
+  sh_delta = Abs(sh_delta);
   if ( sh_step < 0 )  pixStride = -pixStride;
 
   // in theory should be able to do this with just a single step
@@ -189,7 +189,7 @@ inline void renderLine( void *buf,
   } else {
     cycle = sh_delta >> 1;
     alpha = ALPHA_MAX >> 1;
-    alpha_step = -lg_step * ABS(ALPHA_MAX * lg_delta/(sh_delta+1));
+    alpha_step = -lg_step * Abs(ALPHA_MAX * lg_delta/(sh_delta+1));
     alpha_reset = alpha_step < 0 ? ALPHA_MAX : 0;
     int count = sh_step>0 ? y2-y1 : y1-y2;
     while ( count-- ) {
@@ -452,10 +452,10 @@ void Canvas::drawLine( int x1, int y1, int x2, int y2, int color )
   int lg_delta, sh_delta, cycle, lg_step, sh_step;
   lg_delta = x2 - x1;
   sh_delta = y2 - y1;
-  lg_step = SGN(lg_delta);
-  lg_delta = ABS(lg_delta);
-  sh_step = SGN(sh_delta);
-  sh_delta = ABS(sh_delta);
+  lg_step = Sgn(lg_delta);
+  lg_delta = Abs(lg_delta);
+  sh_step = Sgn(sh_delta);
+  sh_delta = Abs(sh_delta);
   if (sh_delta < lg_delta) {
     cycle = lg_delta >> 1;
     while (x1 != x2) {
@@ -602,12 +602,12 @@ Window::Window( int w, int h, const char* title, const char* winclass )
 void Window::update( const Rect& r )
 {
   if ( r.tl.x < width() && r.tl.y < height() ) {
-    int x1 = MAX( 0, r.tl.x );
-    int y1 = MAX( 0, r.tl.y );
-    int x2 = MIN( width()-1, r.br.x );
-    int y2 = MIN( height()-1, r.br.y );
-    int w  = MAX( 0, x2-x1 );
-    int h  = MAX( 0, y2-y1 );
+    int x1 = Max( 0, r.tl.x );
+    int y1 = Max( 0, r.tl.y );
+    int x2 = Min( width()-1, r.br.x );
+    int y2 = Min( height()-1, r.br.y );
+    int w  = Max( 0, x2-x1 );
+    int h  = Max( 0, y2-y1 );
     if ( w > 0 && h > 0 ) {
       SDL_UpdateRect( SURFACE(this), x1, y1, w, h );
     }

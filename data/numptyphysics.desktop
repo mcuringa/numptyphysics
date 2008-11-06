@@ -14,6 +14,7 @@ X-HildonDesk-ShowInToolbar=true
 X-Osso-Type=application/x-executable
 X-Osso-Service=org.maemo.garage.numptyphysics
 MimeType=application/x-numptyphysics-level
+MimeType=application/x-numptyphysics-collection
 
 [X-Osso-URI-Actions]
 http=X-Osso-URI-Action-Open;

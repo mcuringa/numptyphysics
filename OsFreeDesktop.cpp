@@ -13,6 +13,8 @@
  * General Public License for more details.
  *
  */
+#if !defined(USE_HILDON) && !defined(WIN32)
+
 #include "Os.h"
 #include <stdlib.h>
 #include <string.h>
@@ -55,3 +57,4 @@ int main(int argc, char** argv)
   npmain(argc,argv);
 }
 
+#endif

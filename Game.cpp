@@ -14,17 +14,6 @@
  *
  */
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
-
-#include <cstdio>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <memory.h>
-#include <errno.h>
-#include <sys/stat.h>
-
 #include "Common.h"
 #include "Array.h"
 #include "Config.h"
@@ -35,6 +24,17 @@
 #include "Levels.h"
 #include "Http.h"
 #include "Os.h"
+
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+
+#include <cstdio>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <memory.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -856,7 +856,7 @@ public:
     int t, o, v1, v2, v3;
     char c;
     SDL_Event ev = {0};
-    ev.type = -1;
+    ev.type = 0xff;
     if ( sscanf(s,"E: %d %d %c%d",&t,&o,&c,&v1)==4 ) { //1 arg
       switch ( c ) {
       case 'K': ev.type = SDL_KEYDOWN; break;
@@ -878,7 +878,9 @@ public:
       ev.button.x = v2;
       ev.button.y = v3;
     }
-    append( t, o, ev );
+    if ( ev.type != 0xff ) {
+      append( t, o, ev );
+    }
   }
 };
 
@@ -961,7 +963,7 @@ public:
     if ( m_playing
 	 && m_index < m_log->size()
 	 && m_log->at(m_index).t <= m_lastTick
-	 && m_log->at(m_index).o <= SDL_GetTicks()-m_lastTickTime ) {
+	 /*&& m_log->at(m_index).o <= SDL_GetTicks()-m_lastTickTime*/ ) {
       ev = m_log->at(m_index).e;
       m_index++;
       return true;
@@ -1544,9 +1546,9 @@ int npmain(int argc, char** argv)
 	  game.levels().addPath( files[i] );
 	}
       } else {
-	if ( FILE *f = fopen("Game.cpp","rt") ) {
+	struct stat st;
+	if ( stat("Game.cpp",&st)==0 ) {
 	  game.levels().addPath( "data" );
-	  fclose(f);
 	} else {
 	  game.levels().addPath( DEFAULT_LEVEL_PATH );
 	}

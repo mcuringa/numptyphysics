@@ -43,34 +43,34 @@ struct Vec2 {
   int x,y;
 };
 
-template <typename T> inline T MIN( T a, T b )
+template <typename T> inline T Min( T a, T b )
 {
   return a < b ? a : b;
 }
 
-inline Vec2 MIN( const Vec2& a, const Vec2& b )
+inline Vec2 Min( const Vec2& a, const Vec2& b )
 {
   Vec2 r;
-  r.x = MIN(a.x,b.x);
-  r.y = MIN(a.y,b.y);
+  r.x = Min(a.x,b.x);
+  r.y = Min(a.y,b.y);
   return r;
 }
 
-template <typename T> inline T MAX( T a, T b )
+template <typename T> inline T Max( T a, T b )
 {
   return a >= b ? a : b;
 }
 
-inline Vec2 MAX( const Vec2& a, const Vec2& b )
+inline Vec2 Max( const Vec2& a, const Vec2& b )
 {
   Vec2 r;
-  r.x = MAX(a.x,b.x);
-  r.y = MAX(a.y,b.y);
+  r.x = Max(a.x,b.x);
+  r.y = Max(a.y,b.y);
   return r;
 }
 
-#define SGN(a) ((a)<0?-1:1)
-#define ABS(a) ((a)<0?-(a):(a))
+#define Sgn(a) ((a)<0?-1:1)
+#define Abs(a) ((a)<0?-(a):(a))
 
 
 
@@ -80,7 +80,7 @@ struct Rect {
   Rect( int x1, int y1, int x2, int y2 ) : tl(x1,y1), br(x2,y2) {}
   void clear() { tl.x=tl.y=br.x=br.y=0; }
   bool isEmpty() { return tl.x==0 && br.x==0; }
-  void expand( const Vec2& v ) { tl=MIN(tl,v); br=MAX(br,v); }
+  void expand( const Vec2& v ) { tl=Min(tl,v); br=Max(br,v); }
   void expand( const Rect& r ) { expand(r.tl); expand(r.br); }
   bool contains( const Vec2& p ) const {
     return p.x >= tl.x && p.x <= br.x && p.y >= tl.y && p.y <= br.y;

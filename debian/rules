@@ -1,23 +1,69 @@
 #!/usr/bin/make -f
-# Copyright (C) 1997-1999 Joey Hess <joeyh@debian.org>
-# Copyright (C) 2002 Didier Dhollande <dholland@free.fr>
-# Copyright (C) 2002-2005 Yann Dirson <dirson@debian.org>
-# Copyright (C) 2005 Romain Francoise <rfrancoise@debian.org>
+# Sample debian/rules that uses debhelper.
+# This file is public domain software, originally written by Joey Hess. 
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+CPPFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CPPFLAGS += -O0
+else
+	CPPFLAGS += -O3
+endif
+
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+	INSTALL_PROGRAM += -s
+endif
+
+ifneq (,$(findstring debug,$(DEB_BUILD_OPTIONS)))
+	CPPFLAGS += -g -O0 -DDEBUG
+else
+	CPPFLAGS += -DNDEBUG
+endif
+
+#maemo
+ifneq (,$(findstring arm-linux,$(DEB_BUILD_GNU_TYPE)))
+	CPPFLAGS += -fomit-frame-pointer
+	#internal compiler error under maemo scratchbox
+        #CPPFLAGS += -frename-registers
+	CPPFLAGS += -ffast-math
+	CPPFLAGS += -mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp 
+endif
+
+
+
+config.status: configure
+	dh_testdir
+	# Add here commands to configure the package.
+	CPPFLAGS="$(CPPFLAGS)" ./configure --prefix=/usr
+
+configure:
+	./autogen.sh
 
 build: build-stamp
-build-stamp:
+build-stamp: config.status
 	dh_testdir
 
+	# Add here commands to compile the package.
 	$(MAKE)
 
 	touch build-stamp
 
-clean:
+clean: config.status
 	dh_testdir
 	dh_testroot
-	rm -f build-stamp configure-stamp build-stamp-nox configure-stamp-nox
+	rm -f build-stamp
 
-	-$(MAKE) distclean
+	# Add here commands to clean up after the build process.
+	$(MAKE) clean
+	$(MAKE) distclean
 
 	dh_clean
 
@@ -27,22 +73,42 @@ install: build
 	dh_clean -k
 	dh_installdirs
 
-	sh $(CURDIR)/debian/install.sh "$(CURDIR)"
+	# Add here commands to install the package into debian/<packagename>
+	$(MAKE) DESTDIR=`pwd`/debian/`dh_listpackages` install
 
+# Build architecture-independent files here.
 binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-	#dh_installdocs -A
-	dh_buildinfo
-	#dh_installexamples -A config.eg plugin-example
-	dh_installmenu
-	dh_installinfo -A
-	#dh_installchangelogs -A Changelog
-	dh_link -A
-	dh_strip -A
-	dh_compress -A
+#	dh_installchangelogs
+#	dh_installdocs
+#	dh_installexamples
+#	dh_install
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installcatalogs
+#	dh_installpam
+	dh_installmime
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+#	dh_installwm
+#	dh_installudev
+#	dh_undocumented
+#	dh_installman
+	dh_link
+	dh_strip
+	dh_compress
 	dh_fixperms
+#	dh_perl
+#	dh_python
+#	dh_makeshlibs
 	dh_installdeb
 	dh_shlibdeps
 	dh_gencontrol
@@ -50,4 +116,4 @@ binary-arch: build install
 	dh_builddeb
 
 binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install configure
+.PHONY: build clean binary-indep binary-arch binary install

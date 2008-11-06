@@ -4,4 +4,8 @@
          <comment>NumptyPhysics level</comment>
          <glob pattern="*.nph"/>
   </mime-type>
+  <mime-type type="application/x-numptyphysics-collection">
+         <comment>NumptyPhysics collection</comment>
+         <glob pattern="*.npz"/>
+  </mime-type>
 </mime-info>

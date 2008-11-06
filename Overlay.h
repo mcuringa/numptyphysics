@@ -18,9 +18,9 @@
 #define OVERLAY_H
 
 #include "Common.h"
+#include <SDL/SDL.h>
 
 class Canvas;
-union SDL_Event;
 class GameControl;
 
 class Overlay

@@ -1,7 +1,15 @@
 bin_PROGRAMS = numptyphysics
 noinst_LIBRARIES = libbox2d.a
 INCLUDES = -IBox2D/Include
+
 numptyphysicsdir = $(datadir)/numptyphysics
+
+desktopentry_DATA = data/numptyphysics.desktop
+serviceentry_DATA = data/numptyphysics.service
+icon_26x26_DATA = data/icon26/numptyphysics.png 
+#icon_40x40_DATA = data/icon40/numptyphysics.png
+icon_64x64_DATA = data/icon64/numptyphysics.png
+icon_scalable_DATA = data/icon64/numptyphysics.png
 
 numptyphysics_SOURCES = \
 	Path.cpp \
@@ -14,10 +22,33 @@ numptyphysics_SOURCES = \
 	happyhttp.cpp \
 	zoomer.cpp \
 	OsHildon.cpp \
-	OsFreeDesktop.cpp
+	OsFreeDesktop.cpp \
+	OsWin32.cpp
 
-numptyphysics_CFLAGS = @SDL_CFLAGS@ @HILDON_CFLAGS@
-numptyphysics_LDADD = libbox2d.a @SDL_LIBS@ @HILDON_LIBS@
+numptyphysics_CPPFLAGS = -IXX $(SDL_CFLAGS) $(HILDON_CFLAGS)
+numptyphysics_LDADD = libbox2d.a $(SDL_LIBS) $(HILDON_LIBS)
+
+numptyphysics_DATA = \
+	data/L00_title.nph \
+	data/L01_tutorial.nph \
+	data/L05_plane_sailing.nph \
+	data/L10_the_leap.nph \
+	data/L15_trampoline.nph \
+	data/L30_see_saw.nph \
+	data/L35_pendulum.nph \
+	data/L35_pusher.nph \
+	data/L38_box.nph \
+	data/L40_tree_of_life.nph \
+	data/L50_nautilus.nph \
+	data/edit.png \
+	data/next.png \
+	data/next_win32.png \
+	data/paper.jpg \
+	data/pause.png \
+	data/play.png \
+	data/record.png \
+	data/theend.png
+
 
 
 libbox2d_a_SOURCES = \

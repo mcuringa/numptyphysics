@@ -83,8 +83,8 @@ public:
       if ( ev.button.button == SDL_BUTTON_LEFT ) {
 	if ( m_dragging ) {
 	  m_dragging = false;
-	} else if ( ABS(ev.button.x-m_orgx) < CLICK_TOLERANCE
-		    && ABS(ev.button.y-m_orgy) < CLICK_TOLERANCE ){
+	} else if ( Abs(ev.button.x-m_orgx) < CLICK_TOLERANCE
+		    && Abs(ev.button.y-m_orgy) < CLICK_TOLERANCE ){
 	  onClick( m_orgx-m_x, m_orgy-m_y );
 	}
 	m_buttonDown = false;
@@ -94,8 +94,8 @@ public:
       if ( !m_dragging
 	   && m_buttonDown
            && m_dragging_allowed
-	   && ( ABS(ev.button.x-m_orgx) >= CLICK_TOLERANCE
-		|| ABS(ev.button.y-m_orgy) >= CLICK_TOLERANCE ) ) {
+	   && ( Abs(ev.button.x-m_orgx) >= CLICK_TOLERANCE
+		|| Abs(ev.button.y-m_orgy) >= CLICK_TOLERANCE ) ) {
 	m_dragging = true;
       }
       if ( m_dragging ) {

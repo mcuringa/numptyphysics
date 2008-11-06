@@ -15,6 +15,7 @@
 @SET_MAKE@
 
 
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
@@ -65,15 +66,25 @@ am_libbox2d_a_OBJECTS = b2Distance.$(OBJEXT) b2TimeOfImpact.$(OBJEXT) \
 	b2StackAllocator.$(OBJEXT) b2Settings.$(OBJEXT) \
 	b2Math.$(OBJEXT)
 libbox2d_a_OBJECTS = $(am_libbox2d_a_OBJECTS)
-am__installdirs = "$(DESTDIR)$(bindir)"
+am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(desktopentrydir)" \
+	"$(DESTDIR)$(icon_26x26dir)" "$(DESTDIR)$(icon_64x64dir)" \
+	"$(DESTDIR)$(icon_scalabledir)" \
+	"$(DESTDIR)$(numptyphysicsdir)" "$(DESTDIR)$(serviceentrydir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_numptyphysics_OBJECTS = Path.$(OBJEXT) Canvas.$(OBJEXT) \
-	Levels.$(OBJEXT) Game.$(OBJEXT) Overlay.$(OBJEXT) \
-	Config.$(OBJEXT) Http.$(OBJEXT) happyhttp.$(OBJEXT) \
-	zoomer.$(OBJEXT) OsHildon.$(OBJEXT) OsFreeDesktop.$(OBJEXT)
+am_numptyphysics_OBJECTS = numptyphysics-Path.$(OBJEXT) \
+	numptyphysics-Canvas.$(OBJEXT) numptyphysics-Levels.$(OBJEXT) \
+	numptyphysics-Game.$(OBJEXT) numptyphysics-Overlay.$(OBJEXT) \
+	numptyphysics-Config.$(OBJEXT) numptyphysics-Http.$(OBJEXT) \
+	numptyphysics-happyhttp.$(OBJEXT) \
+	numptyphysics-zoomer.$(OBJEXT) \
+	numptyphysics-OsHildon.$(OBJEXT) \
+	numptyphysics-OsFreeDesktop.$(OBJEXT) \
+	numptyphysics-OsWin32.$(OBJEXT)
 numptyphysics_OBJECTS = $(am_numptyphysics_OBJECTS)
-numptyphysics_DEPENDENCIES = libbox2d.a
+am__DEPENDENCIES_1 =
+numptyphysics_DEPENDENCIES = libbox2d.a $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -84,6 +95,21 @@ CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
 SOURCES = $(libbox2d_a_SOURCES) $(numptyphysics_SOURCES)
 DIST_SOURCES = $(libbox2d_a_SOURCES) $(numptyphysics_SOURCES)
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
+desktopentryDATA_INSTALL = $(INSTALL_DATA)
+icon_26x26DATA_INSTALL = $(INSTALL_DATA)
+icon_64x64DATA_INSTALL = $(INSTALL_DATA)
+icon_scalableDATA_INSTALL = $(INSTALL_DATA)
+numptyphysicsDATA_INSTALL = $(INSTALL_DATA)
+serviceentryDATA_INSTALL = $(INSTALL_DATA)
+DATA = $(desktopentry_DATA) $(icon_26x26_DATA) $(icon_64x64_DATA) \
+	$(icon_scalable_DATA) $(numptyphysics_DATA) \
+	$(serviceentry_DATA)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -112,8 +138,6 @@ CXX = @CXX@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
-DBUS_CFLAGS = @DBUS_CFLAGS@
-DBUS_LIBS = @DBUS_LIBS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
@@ -121,8 +145,6 @@ ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-GLIB_CFLAGS = @GLIB_CFLAGS@
-GLIB_LIBS = @GLIB_LIBS@
 GREP = @GREP@
 HILDON_CFLAGS = @HILDON_CFLAGS@
 HILDON_LIBS = @HILDON_LIBS@
@@ -169,11 +191,18 @@ build_alias = @build_alias@
 builddir = @builddir@
 datadir = @datadir@
 datarootdir = @datarootdir@
+desktopentrydir = @desktopentrydir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 host_alias = @host_alias@
 htmldir = @htmldir@
+icon_26x26dir = @icon_26x26dir@
+icon_34x34dir = @icon_34x34dir@
+icon_40x40dir = @icon_40x40dir@
+icon_50x50dir = @icon_50x50dir@
+icon_64x64dir = @icon_64x64dir@
+icon_scalabledir = @icon_scalabledir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
@@ -189,6 +218,7 @@ prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
 sbindir = @sbindir@
+serviceentrydir = @serviceentrydir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
 sysconfdir = @sysconfdir@
@@ -198,6 +228,12 @@ top_srcdir = @top_srcdir@
 noinst_LIBRARIES = libbox2d.a
 INCLUDES = -IBox2D/Include
 numptyphysicsdir = $(datadir)/numptyphysics
+desktopentry_DATA = data/numptyphysics.desktop
+serviceentry_DATA = data/numptyphysics.service
+icon_26x26_DATA = data/icon26/numptyphysics.png 
+#icon_40x40_DATA = data/icon40/numptyphysics.png
+icon_64x64_DATA = data/icon64/numptyphysics.png
+icon_scalable_DATA = data/icon64/numptyphysics.png
 numptyphysics_SOURCES = \
 	Path.cpp \
 	Canvas.cpp \
@@ -209,10 +245,32 @@ numptyphysics_SOURCES = \
 	happyhttp.cpp \
 	zoomer.cpp \
 	OsHildon.cpp \
-	OsFreeDesktop.cpp
+	OsFreeDesktop.cpp \
+	OsWin32.cpp
 
-numptyphysics_CFLAGS = @SDL_CFLAGS@ @HILDON_CFLAGS@
-numptyphysics_LDADD = libbox2d.a @SDL_LIBS@ @HILDON_LIBS@
+numptyphysics_CPPFLAGS = -IXX $(SDL_CFLAGS) $(HILDON_CFLAGS)
+numptyphysics_LDADD = libbox2d.a $(SDL_LIBS) $(HILDON_LIBS)
+numptyphysics_DATA = \
+	data/L00_title.nph \
+	data/L01_tutorial.nph \
+	data/L05_plane_sailing.nph \
+	data/L10_the_leap.nph \
+	data/L15_trampoline.nph \
+	data/L30_see_saw.nph \
+	data/L35_pendulum.nph \
+	data/L35_pusher.nph \
+	data/L38_box.nph \
+	data/L40_tree_of_life.nph \
+	data/L50_nautilus.nph \
+	data/edit.png \
+	data/next.png \
+	data/next_win32.png \
+	data/paper.jpg \
+	data/pause.png \
+	data/play.png \
+	data/record.png \
+	data/theend.png
+
 libbox2d_a_SOURCES = \
 	Box2D/Source/Collision/b2Distance.cpp \
 	Box2D/Source/Collision/b2TimeOfImpact.cpp \
@@ -323,15 +381,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Canvas.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Config.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Game.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Http.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Levels.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/OsFreeDesktop.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/OsHildon.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Overlay.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Path.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2BlockAllocator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2Body.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2BroadPhase.Po@am__quote@
@@ -363,8 +412,18 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2TimeOfImpact.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2World.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2WorldCallbacks.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/happyhttp.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/zoomer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Canvas.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Config.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Game.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Http.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Levels.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-OsFreeDesktop.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-OsHildon.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-OsWin32.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Overlay.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Path.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-happyhttp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-zoomer.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -814,6 +873,276 @@ b2Math.obj: Box2D/Source/Common/b2Math.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o b2Math.obj `if test -f 'Box2D/Source/Common/b2Math.cpp'; then $(CYGPATH_W) 'Box2D/Source/Common/b2Math.cpp'; else $(CYGPATH_W) '$(srcdir)/Box2D/Source/Common/b2Math.cpp'; fi`
 
+numptyphysics-Path.o: Path.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Path.o -MD -MP -MF $(DEPDIR)/numptyphysics-Path.Tpo -c -o numptyphysics-Path.o `test -f 'Path.cpp' || echo '$(srcdir)/'`Path.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Path.Tpo $(DEPDIR)/numptyphysics-Path.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Path.cpp' object='numptyphysics-Path.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Path.o `test -f 'Path.cpp' || echo '$(srcdir)/'`Path.cpp
+
+numptyphysics-Path.obj: Path.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Path.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Path.Tpo -c -o numptyphysics-Path.obj `if test -f 'Path.cpp'; then $(CYGPATH_W) 'Path.cpp'; else $(CYGPATH_W) '$(srcdir)/Path.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Path.Tpo $(DEPDIR)/numptyphysics-Path.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Path.cpp' object='numptyphysics-Path.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Path.obj `if test -f 'Path.cpp'; then $(CYGPATH_W) 'Path.cpp'; else $(CYGPATH_W) '$(srcdir)/Path.cpp'; fi`
+
+numptyphysics-Canvas.o: Canvas.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Canvas.o -MD -MP -MF $(DEPDIR)/numptyphysics-Canvas.Tpo -c -o numptyphysics-Canvas.o `test -f 'Canvas.cpp' || echo '$(srcdir)/'`Canvas.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Canvas.Tpo $(DEPDIR)/numptyphysics-Canvas.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Canvas.cpp' object='numptyphysics-Canvas.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Canvas.o `test -f 'Canvas.cpp' || echo '$(srcdir)/'`Canvas.cpp
+
+numptyphysics-Canvas.obj: Canvas.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Canvas.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Canvas.Tpo -c -o numptyphysics-Canvas.obj `if test -f 'Canvas.cpp'; then $(CYGPATH_W) 'Canvas.cpp'; else $(CYGPATH_W) '$(srcdir)/Canvas.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Canvas.Tpo $(DEPDIR)/numptyphysics-Canvas.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Canvas.cpp' object='numptyphysics-Canvas.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Canvas.obj `if test -f 'Canvas.cpp'; then $(CYGPATH_W) 'Canvas.cpp'; else $(CYGPATH_W) '$(srcdir)/Canvas.cpp'; fi`
+
+numptyphysics-Levels.o: Levels.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Levels.o -MD -MP -MF $(DEPDIR)/numptyphysics-Levels.Tpo -c -o numptyphysics-Levels.o `test -f 'Levels.cpp' || echo '$(srcdir)/'`Levels.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Levels.Tpo $(DEPDIR)/numptyphysics-Levels.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Levels.cpp' object='numptyphysics-Levels.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Levels.o `test -f 'Levels.cpp' || echo '$(srcdir)/'`Levels.cpp
+
+numptyphysics-Levels.obj: Levels.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Levels.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Levels.Tpo -c -o numptyphysics-Levels.obj `if test -f 'Levels.cpp'; then $(CYGPATH_W) 'Levels.cpp'; else $(CYGPATH_W) '$(srcdir)/Levels.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Levels.Tpo $(DEPDIR)/numptyphysics-Levels.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Levels.cpp' object='numptyphysics-Levels.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Levels.obj `if test -f 'Levels.cpp'; then $(CYGPATH_W) 'Levels.cpp'; else $(CYGPATH_W) '$(srcdir)/Levels.cpp'; fi`
+
+numptyphysics-Game.o: Game.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Game.o -MD -MP -MF $(DEPDIR)/numptyphysics-Game.Tpo -c -o numptyphysics-Game.o `test -f 'Game.cpp' || echo '$(srcdir)/'`Game.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Game.Tpo $(DEPDIR)/numptyphysics-Game.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Game.cpp' object='numptyphysics-Game.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Game.o `test -f 'Game.cpp' || echo '$(srcdir)/'`Game.cpp
+
+numptyphysics-Game.obj: Game.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Game.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Game.Tpo -c -o numptyphysics-Game.obj `if test -f 'Game.cpp'; then $(CYGPATH_W) 'Game.cpp'; else $(CYGPATH_W) '$(srcdir)/Game.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Game.Tpo $(DEPDIR)/numptyphysics-Game.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Game.cpp' object='numptyphysics-Game.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Game.obj `if test -f 'Game.cpp'; then $(CYGPATH_W) 'Game.cpp'; else $(CYGPATH_W) '$(srcdir)/Game.cpp'; fi`
+
+numptyphysics-Overlay.o: Overlay.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Overlay.o -MD -MP -MF $(DEPDIR)/numptyphysics-Overlay.Tpo -c -o numptyphysics-Overlay.o `test -f 'Overlay.cpp' || echo '$(srcdir)/'`Overlay.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Overlay.Tpo $(DEPDIR)/numptyphysics-Overlay.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Overlay.cpp' object='numptyphysics-Overlay.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Overlay.o `test -f 'Overlay.cpp' || echo '$(srcdir)/'`Overlay.cpp
+
+numptyphysics-Overlay.obj: Overlay.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Overlay.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Overlay.Tpo -c -o numptyphysics-Overlay.obj `if test -f 'Overlay.cpp'; then $(CYGPATH_W) 'Overlay.cpp'; else $(CYGPATH_W) '$(srcdir)/Overlay.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Overlay.Tpo $(DEPDIR)/numptyphysics-Overlay.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Overlay.cpp' object='numptyphysics-Overlay.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Overlay.obj `if test -f 'Overlay.cpp'; then $(CYGPATH_W) 'Overlay.cpp'; else $(CYGPATH_W) '$(srcdir)/Overlay.cpp'; fi`
+
+numptyphysics-Config.o: Config.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Config.o -MD -MP -MF $(DEPDIR)/numptyphysics-Config.Tpo -c -o numptyphysics-Config.o `test -f 'Config.cpp' || echo '$(srcdir)/'`Config.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Config.Tpo $(DEPDIR)/numptyphysics-Config.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Config.cpp' object='numptyphysics-Config.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Config.o `test -f 'Config.cpp' || echo '$(srcdir)/'`Config.cpp
+
+numptyphysics-Config.obj: Config.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Config.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Config.Tpo -c -o numptyphysics-Config.obj `if test -f 'Config.cpp'; then $(CYGPATH_W) 'Config.cpp'; else $(CYGPATH_W) '$(srcdir)/Config.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Config.Tpo $(DEPDIR)/numptyphysics-Config.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Config.cpp' object='numptyphysics-Config.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Config.obj `if test -f 'Config.cpp'; then $(CYGPATH_W) 'Config.cpp'; else $(CYGPATH_W) '$(srcdir)/Config.cpp'; fi`
+
+numptyphysics-Http.o: Http.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Http.o -MD -MP -MF $(DEPDIR)/numptyphysics-Http.Tpo -c -o numptyphysics-Http.o `test -f 'Http.cpp' || echo '$(srcdir)/'`Http.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Http.Tpo $(DEPDIR)/numptyphysics-Http.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Http.cpp' object='numptyphysics-Http.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Http.o `test -f 'Http.cpp' || echo '$(srcdir)/'`Http.cpp
+
+numptyphysics-Http.obj: Http.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Http.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Http.Tpo -c -o numptyphysics-Http.obj `if test -f 'Http.cpp'; then $(CYGPATH_W) 'Http.cpp'; else $(CYGPATH_W) '$(srcdir)/Http.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Http.Tpo $(DEPDIR)/numptyphysics-Http.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Http.cpp' object='numptyphysics-Http.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Http.obj `if test -f 'Http.cpp'; then $(CYGPATH_W) 'Http.cpp'; else $(CYGPATH_W) '$(srcdir)/Http.cpp'; fi`
+
+numptyphysics-happyhttp.o: happyhttp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-happyhttp.o -MD -MP -MF $(DEPDIR)/numptyphysics-happyhttp.Tpo -c -o numptyphysics-happyhttp.o `test -f 'happyhttp.cpp' || echo '$(srcdir)/'`happyhttp.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-happyhttp.Tpo $(DEPDIR)/numptyphysics-happyhttp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='happyhttp.cpp' object='numptyphysics-happyhttp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-happyhttp.o `test -f 'happyhttp.cpp' || echo '$(srcdir)/'`happyhttp.cpp
+
+numptyphysics-happyhttp.obj: happyhttp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-happyhttp.obj -MD -MP -MF $(DEPDIR)/numptyphysics-happyhttp.Tpo -c -o numptyphysics-happyhttp.obj `if test -f 'happyhttp.cpp'; then $(CYGPATH_W) 'happyhttp.cpp'; else $(CYGPATH_W) '$(srcdir)/happyhttp.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-happyhttp.Tpo $(DEPDIR)/numptyphysics-happyhttp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='happyhttp.cpp' object='numptyphysics-happyhttp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-happyhttp.obj `if test -f 'happyhttp.cpp'; then $(CYGPATH_W) 'happyhttp.cpp'; else $(CYGPATH_W) '$(srcdir)/happyhttp.cpp'; fi`
+
+numptyphysics-zoomer.o: zoomer.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-zoomer.o -MD -MP -MF $(DEPDIR)/numptyphysics-zoomer.Tpo -c -o numptyphysics-zoomer.o `test -f 'zoomer.cpp' || echo '$(srcdir)/'`zoomer.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-zoomer.Tpo $(DEPDIR)/numptyphysics-zoomer.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='zoomer.cpp' object='numptyphysics-zoomer.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-zoomer.o `test -f 'zoomer.cpp' || echo '$(srcdir)/'`zoomer.cpp
+
+numptyphysics-zoomer.obj: zoomer.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-zoomer.obj -MD -MP -MF $(DEPDIR)/numptyphysics-zoomer.Tpo -c -o numptyphysics-zoomer.obj `if test -f 'zoomer.cpp'; then $(CYGPATH_W) 'zoomer.cpp'; else $(CYGPATH_W) '$(srcdir)/zoomer.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-zoomer.Tpo $(DEPDIR)/numptyphysics-zoomer.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='zoomer.cpp' object='numptyphysics-zoomer.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-zoomer.obj `if test -f 'zoomer.cpp'; then $(CYGPATH_W) 'zoomer.cpp'; else $(CYGPATH_W) '$(srcdir)/zoomer.cpp'; fi`
+
+numptyphysics-OsHildon.o: OsHildon.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-OsHildon.o -MD -MP -MF $(DEPDIR)/numptyphysics-OsHildon.Tpo -c -o numptyphysics-OsHildon.o `test -f 'OsHildon.cpp' || echo '$(srcdir)/'`OsHildon.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-OsHildon.Tpo $(DEPDIR)/numptyphysics-OsHildon.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='OsHildon.cpp' object='numptyphysics-OsHildon.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-OsHildon.o `test -f 'OsHildon.cpp' || echo '$(srcdir)/'`OsHildon.cpp
+
+numptyphysics-OsHildon.obj: OsHildon.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-OsHildon.obj -MD -MP -MF $(DEPDIR)/numptyphysics-OsHildon.Tpo -c -o numptyphysics-OsHildon.obj `if test -f 'OsHildon.cpp'; then $(CYGPATH_W) 'OsHildon.cpp'; else $(CYGPATH_W) '$(srcdir)/OsHildon.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-OsHildon.Tpo $(DEPDIR)/numptyphysics-OsHildon.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='OsHildon.cpp' object='numptyphysics-OsHildon.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-OsHildon.obj `if test -f 'OsHildon.cpp'; then $(CYGPATH_W) 'OsHildon.cpp'; else $(CYGPATH_W) '$(srcdir)/OsHildon.cpp'; fi`
+
+numptyphysics-OsFreeDesktop.o: OsFreeDesktop.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-OsFreeDesktop.o -MD -MP -MF $(DEPDIR)/numptyphysics-OsFreeDesktop.Tpo -c -o numptyphysics-OsFreeDesktop.o `test -f 'OsFreeDesktop.cpp' || echo '$(srcdir)/'`OsFreeDesktop.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-OsFreeDesktop.Tpo $(DEPDIR)/numptyphysics-OsFreeDesktop.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='OsFreeDesktop.cpp' object='numptyphysics-OsFreeDesktop.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-OsFreeDesktop.o `test -f 'OsFreeDesktop.cpp' || echo '$(srcdir)/'`OsFreeDesktop.cpp
+
+numptyphysics-OsFreeDesktop.obj: OsFreeDesktop.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-OsFreeDesktop.obj -MD -MP -MF $(DEPDIR)/numptyphysics-OsFreeDesktop.Tpo -c -o numptyphysics-OsFreeDesktop.obj `if test -f 'OsFreeDesktop.cpp'; then $(CYGPATH_W) 'OsFreeDesktop.cpp'; else $(CYGPATH_W) '$(srcdir)/OsFreeDesktop.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-OsFreeDesktop.Tpo $(DEPDIR)/numptyphysics-OsFreeDesktop.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='OsFreeDesktop.cpp' object='numptyphysics-OsFreeDesktop.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-OsFreeDesktop.obj `if test -f 'OsFreeDesktop.cpp'; then $(CYGPATH_W) 'OsFreeDesktop.cpp'; else $(CYGPATH_W) '$(srcdir)/OsFreeDesktop.cpp'; fi`
+
+numptyphysics-OsWin32.o: OsWin32.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-OsWin32.o -MD -MP -MF $(DEPDIR)/numptyphysics-OsWin32.Tpo -c -o numptyphysics-OsWin32.o `test -f 'OsWin32.cpp' || echo '$(srcdir)/'`OsWin32.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-OsWin32.Tpo $(DEPDIR)/numptyphysics-OsWin32.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='OsWin32.cpp' object='numptyphysics-OsWin32.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-OsWin32.o `test -f 'OsWin32.cpp' || echo '$(srcdir)/'`OsWin32.cpp
+
+numptyphysics-OsWin32.obj: OsWin32.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-OsWin32.obj -MD -MP -MF $(DEPDIR)/numptyphysics-OsWin32.Tpo -c -o numptyphysics-OsWin32.obj `if test -f 'OsWin32.cpp'; then $(CYGPATH_W) 'OsWin32.cpp'; else $(CYGPATH_W) '$(srcdir)/OsWin32.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-OsWin32.Tpo $(DEPDIR)/numptyphysics-OsWin32.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='OsWin32.cpp' object='numptyphysics-OsWin32.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-OsWin32.obj `if test -f 'OsWin32.cpp'; then $(CYGPATH_W) 'OsWin32.cpp'; else $(CYGPATH_W) '$(srcdir)/OsWin32.cpp'; fi`
+install-desktopentryDATA: $(desktopentry_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(desktopentrydir)" || $(MKDIR_P) "$(DESTDIR)$(desktopentrydir)"
+	@list='$(desktopentry_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(desktopentryDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(desktopentrydir)/$$f'"; \
+	  $(desktopentryDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(desktopentrydir)/$$f"; \
+	done
+
+uninstall-desktopentryDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(desktopentry_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(desktopentrydir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(desktopentrydir)/$$f"; \
+	done
+install-icon_26x26DATA: $(icon_26x26_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(icon_26x26dir)" || $(MKDIR_P) "$(DESTDIR)$(icon_26x26dir)"
+	@list='$(icon_26x26_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(icon_26x26DATA_INSTALL) '$$d$$p' '$(DESTDIR)$(icon_26x26dir)/$$f'"; \
+	  $(icon_26x26DATA_INSTALL) "$$d$$p" "$(DESTDIR)$(icon_26x26dir)/$$f"; \
+	done
+
+uninstall-icon_26x26DATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(icon_26x26_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(icon_26x26dir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(icon_26x26dir)/$$f"; \
+	done
+install-icon_64x64DATA: $(icon_64x64_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(icon_64x64dir)" || $(MKDIR_P) "$(DESTDIR)$(icon_64x64dir)"
+	@list='$(icon_64x64_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(icon_64x64DATA_INSTALL) '$$d$$p' '$(DESTDIR)$(icon_64x64dir)/$$f'"; \
+	  $(icon_64x64DATA_INSTALL) "$$d$$p" "$(DESTDIR)$(icon_64x64dir)/$$f"; \
+	done
+
+uninstall-icon_64x64DATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(icon_64x64_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(icon_64x64dir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(icon_64x64dir)/$$f"; \
+	done
+install-icon_scalableDATA: $(icon_scalable_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(icon_scalabledir)" || $(MKDIR_P) "$(DESTDIR)$(icon_scalabledir)"
+	@list='$(icon_scalable_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(icon_scalableDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(icon_scalabledir)/$$f'"; \
+	  $(icon_scalableDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(icon_scalabledir)/$$f"; \
+	done
+
+uninstall-icon_scalableDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(icon_scalable_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(icon_scalabledir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(icon_scalabledir)/$$f"; \
+	done
+install-numptyphysicsDATA: $(numptyphysics_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(numptyphysicsdir)" || $(MKDIR_P) "$(DESTDIR)$(numptyphysicsdir)"
+	@list='$(numptyphysics_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(numptyphysicsDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(numptyphysicsdir)/$$f'"; \
+	  $(numptyphysicsDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(numptyphysicsdir)/$$f"; \
+	done
+
+uninstall-numptyphysicsDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(numptyphysics_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(numptyphysicsdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(numptyphysicsdir)/$$f"; \
+	done
+install-serviceentryDATA: $(serviceentry_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(serviceentrydir)" || $(MKDIR_P) "$(DESTDIR)$(serviceentrydir)"
+	@list='$(serviceentry_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(serviceentryDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(serviceentrydir)/$$f'"; \
+	  $(serviceentryDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(serviceentrydir)/$$f"; \
+	done
+
+uninstall-serviceentryDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(serviceentry_DATA)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(serviceentrydir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(serviceentrydir)/$$f"; \
+	done
+
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
@@ -994,9 +1323,9 @@ distcleancheck: distclean
 	       exit 1; } >&2
 check-am: all-am
 check: check-am
-all-am: Makefile $(LIBRARIES) $(PROGRAMS)
+all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(desktopentrydir)" "$(DESTDIR)$(icon_26x26dir)" "$(DESTDIR)$(icon_64x64dir)" "$(DESTDIR)$(icon_scalabledir)" "$(DESTDIR)$(numptyphysicsdir)" "$(DESTDIR)$(serviceentrydir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -1045,7 +1374,9 @@ info: info-am
 
 info-am:
 
-install-data-am:
+install-data-am: install-desktopentryDATA install-icon_26x26DATA \
+	install-icon_64x64DATA install-icon_scalableDATA \
+	install-numptyphysicsDATA install-serviceentryDATA
 
 install-dvi: install-dvi-am
 
@@ -1082,7 +1413,10 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS
+uninstall-am: uninstall-binPROGRAMS uninstall-desktopentryDATA \
+	uninstall-icon_26x26DATA uninstall-icon_64x64DATA \
+	uninstall-icon_scalableDATA uninstall-numptyphysicsDATA \
+	uninstall-serviceentryDATA
 
 .MAKE: install-am install-strip
 
@@ -1093,14 +1427,20 @@ uninstall-am: uninstall-binPROGRAMS
 	distclean-generic distclean-tags distcleancheck distdir \
 	distuninstallcheck dvi dvi-am html html-am info info-am \
 	install install-am install-binPROGRAMS install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
+	install-data-am install-desktopentryDATA install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-icon_26x26DATA install-icon_64x64DATA \
+	install-icon_scalableDATA install-info install-info-am \
+	install-man install-numptyphysicsDATA install-pdf \
+	install-pdf-am install-ps install-ps-am \
+	install-serviceentryDATA install-strip installcheck \
 	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
-	uninstall-am uninstall-binPROGRAMS
+	uninstall-am uninstall-binPROGRAMS uninstall-desktopentryDATA \
+	uninstall-icon_26x26DATA uninstall-icon_64x64DATA \
+	uninstall-icon_scalableDATA uninstall-numptyphysicsDATA \
+	uninstall-serviceentryDATA
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
