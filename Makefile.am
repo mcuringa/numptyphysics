@@ -15,6 +15,7 @@ numptyphysics_SOURCES = \
 	Path.cpp \
 	Canvas.cpp \
 	Levels.cpp \
+	ZipFile.cpp \
 	Game.cpp \
 	Overlay.cpp \
 	Config.cpp \

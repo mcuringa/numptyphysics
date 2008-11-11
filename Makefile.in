@@ -74,9 +74,9 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_numptyphysics_OBJECTS = numptyphysics-Path.$(OBJEXT) \
 	numptyphysics-Canvas.$(OBJEXT) numptyphysics-Levels.$(OBJEXT) \
-	numptyphysics-Game.$(OBJEXT) numptyphysics-Overlay.$(OBJEXT) \
-	numptyphysics-Config.$(OBJEXT) numptyphysics-Http.$(OBJEXT) \
-	numptyphysics-happyhttp.$(OBJEXT) \
+	numptyphysics-ZipFile.$(OBJEXT) numptyphysics-Game.$(OBJEXT) \
+	numptyphysics-Overlay.$(OBJEXT) numptyphysics-Config.$(OBJEXT) \
+	numptyphysics-Http.$(OBJEXT) numptyphysics-happyhttp.$(OBJEXT) \
 	numptyphysics-zoomer.$(OBJEXT) \
 	numptyphysics-OsHildon.$(OBJEXT) \
 	numptyphysics-OsFreeDesktop.$(OBJEXT) \
@@ -238,6 +238,7 @@ numptyphysics_SOURCES = \
 	Path.cpp \
 	Canvas.cpp \
 	Levels.cpp \
+	ZipFile.cpp \
 	Game.cpp \
 	Overlay.cpp \
 	Config.cpp \
@@ -422,6 +423,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-OsWin32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Overlay.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Path.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-ZipFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-happyhttp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-zoomer.Po@am__quote@
 
@@ -914,6 +916,20 @@ numptyphysics-Levels.obj: Levels.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Levels.cpp' object='numptyphysics-Levels.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Levels.obj `if test -f 'Levels.cpp'; then $(CYGPATH_W) 'Levels.cpp'; else $(CYGPATH_W) '$(srcdir)/Levels.cpp'; fi`
+
+numptyphysics-ZipFile.o: ZipFile.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-ZipFile.o -MD -MP -MF $(DEPDIR)/numptyphysics-ZipFile.Tpo -c -o numptyphysics-ZipFile.o `test -f 'ZipFile.cpp' || echo '$(srcdir)/'`ZipFile.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-ZipFile.Tpo $(DEPDIR)/numptyphysics-ZipFile.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ZipFile.cpp' object='numptyphysics-ZipFile.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-ZipFile.o `test -f 'ZipFile.cpp' || echo '$(srcdir)/'`ZipFile.cpp
+
+numptyphysics-ZipFile.obj: ZipFile.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-ZipFile.obj -MD -MP -MF $(DEPDIR)/numptyphysics-ZipFile.Tpo -c -o numptyphysics-ZipFile.obj `if test -f 'ZipFile.cpp'; then $(CYGPATH_W) 'ZipFile.cpp'; else $(CYGPATH_W) '$(srcdir)/ZipFile.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-ZipFile.Tpo $(DEPDIR)/numptyphysics-ZipFile.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ZipFile.cpp' object='numptyphysics-ZipFile.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-ZipFile.obj `if test -f 'ZipFile.cpp'; then $(CYGPATH_W) 'ZipFile.cpp'; else $(CYGPATH_W) '$(srcdir)/ZipFile.cpp'; fi`
 
 numptyphysics-Game.o: Game.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Game.o -MD -MP -MF $(DEPDIR)/numptyphysics-Game.Tpo -c -o numptyphysics-Game.o `test -f 'Game.cpp' || echo '$(srcdir)/'`Game.cpp

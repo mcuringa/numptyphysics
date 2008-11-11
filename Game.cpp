@@ -38,7 +38,7 @@
 
 using namespace std;
 
-
+unsigned char levelbuf[64*1024];
 
 class Transform
 {
@@ -733,7 +733,22 @@ public:
     }
   }
 
+
+
+  bool load( unsigned char *buf, int bufsize )
+  {
+    string s( (const char*)buf, bufsize );
+    stringstream in( s, ios::in );
+    return load( in );
+  }
+
   bool load( const string& file )
+  {
+    ifstream in( file.c_str(), ios::in );
+    return load( in ); 
+  }
+
+  bool load( istream& in )
   {
     clear();
     if ( g_bgImage==NULL ) {
@@ -742,12 +757,10 @@ public:
     }
     m_bgImage = g_bgImage;
     string line;
-    ifstream i( file.c_str(), ios::in );
-    while ( i.is_open() && !i.eof() ) {
-      getline( i, line );
+    while ( !in.eof() ) {
+      getline( in, line );
       parseLine( line );
     }
-    i.close();
     protect();
     return true;
   }
@@ -1010,46 +1023,38 @@ public:
   virtual bool renderScene( Canvas& c, int level ) 
   {
     Scene scene( true );
-    if ( scene.load( m_levels.levelFile(level) ) ) {
+    int size = m_levels.load( level, levelbuf, sizeof(levelbuf) );
+    if ( size && scene.load( levelbuf, size ) ) {
       scene.draw( c, FULLSCREEN_RECT );
       return true;
     }
     return false;
   }
 
-  bool load( const char *file, bool replay=false )
+  void gotoLevel( int level, bool replay=false )
   {
-    if ( file && m_scene.load( file ) ) {
-      m_scene.activateAll();
-      m_window.setSubName( file );
-      m_refresh = true;
-      if ( m_edit ) {
-	m_scene.protect(0);
+    printf("gotoLevel %d\n",level);
+    if ( level >= 0 && level < m_levels.numLevels() ) {
+      int size = m_levels.load( level, levelbuf, sizeof(levelbuf) );
+      if ( size && m_scene.load( levelbuf, size ) ) {
+	m_scene.activateAll();
+	//m_window.setSubName( file );
+	m_refresh = true;
+	if ( m_edit ) {
+	  m_scene.protect(0);
+	}
+	m_recorder.stop();
+	m_player.stop();
+	if ( replay ) {
+	  m_player.start( &m_recorder.getLog() );
+	} else {
+	  m_recorder.start();
+	}
+	m_level = level;
       }
-      m_recorder.stop();
-      m_player.stop();
-      if ( replay ) {
-	// for ( int i=0; i<m_recorder.getLog().size(); i++ ) {
-// 	  printf("DEMO: %s\n",m_recorder.getLog().asString(i).c_str());
-// 	}
-	m_player.start( &m_recorder.getLog() );
-      } else {
-	m_recorder.start();
-      }
-      return true;
     }
-    return false;
   }
 
-  void gotoLevel( int l, bool replay=false )
-  {
-    printf("gotoLevel %d\n",l);
-    if ( l >= 0 && l < m_levels.numLevels() ) {
-      printf("loading from %s\n",m_levels.levelFile(l).c_str());
-      load( m_levels.levelFile(l).c_str(), replay );
-      m_level = l;
-    }
-  }
 
   bool save( const char *file=NULL )
   {	  
@@ -1504,6 +1509,7 @@ void init( bool useDummyVideo=false )
 int npmain(int argc, char** argv)
 {
   try {
+    bool rotate = false;
     bool thumbnailMode = false;
     int width=SCREEN_WIDTH, height=SCREEN_HEIGHT;
     Array<const char*> files;
@@ -1511,6 +1517,8 @@ int npmain(int argc, char** argv)
     for ( int i=1; i<argc; i++ ) {
       if ( strcmp(argv[i],"-bmp")==0 ) {
 	thumbnailMode = true;
+      } else if ( strcmp(argv[i],"-rotate")==0 ) {
+       rotate = true;
       } else if ( strcmp(argv[i],"-geometry")==0 && i<argc-1) {
 	int ww, hh;
 	if ( sscanf(argv[i+1],"%dx%d",&ww,&hh) ==2 ) {

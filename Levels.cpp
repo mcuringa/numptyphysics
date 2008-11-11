@@ -19,11 +19,11 @@
 #include <dirent.h>
 
 #include "Levels.h"
-#include "zipfile.h"
+#include "ZipFile.h"
 
 using namespace std;
 
-static int rankFromPath( const string& p )
+static int rankFromPath( const string& p, int defaultrank=9999 )
 {
   const char *c = p.data();
   size_t i = p.rfind('/');
@@ -38,7 +38,7 @@ static int rankFromPath( const string& p )
       return rank;
     }
   }
-  return 9999;
+  return defaultrank;
 }
 
 Levels::Levels( int numFiles, const char** names )
@@ -51,21 +51,22 @@ Levels::Levels( int numFiles, const char** names )
 bool Levels::addPath( const char* path )
 {
   int len = strlen( path );
-  if ( strcasecmp( path+len-4, ".nph" )==0 ) {
+  if ( strcasecmp( path+len-4, ".npz" )==0 ) {
+    scanCollection( string(path), rankFromPath(path) );
+  } else if ( strcasecmp( path+len-4, ".nph" )==0 ) {
     addLevel( path, rankFromPath(path) );
   } else {
     DIR *dir = opendir( path );
     if ( dir ) {
       struct dirent* entry;
       while ( (entry = readdir( dir )) != NULL ) {
-	string full( path );
-	full += "/";
-	full += entry->d_name;
-	int n = strlen( entry->d_name );
-	if ( strcasecmp( entry->d_name+n-4, ".zip" )==0 ) {
-	  scanCollection( full, rankFromPath(full) );
-	} else if ( strcasecmp( entry->d_name+n-4, ".nph" )==0 ) {
-	  addLevel( full, rankFromPath(full) );
+	if ( entry->d_name[0] != '.' ) {
+	  string full( path );
+	  full += "/";
+	  full += entry->d_name;
+	  int n = strlen( entry->d_name );
+	  //DANGER - recursion may not halt for linked dirs 
+	  addPath( full.c_str() );
 	}
       }
       closedir( dir );
@@ -76,42 +77,33 @@ bool Levels::addPath( const char* path )
   return true;
 }
 
-bool Levels::addLevel( const string& file, int rank )
+bool Levels::addLevel( const string& file, int rank, int index )
 {
-  //printf("found level %s\n",file.c_str());
-  LevelDesc *e = new LevelDesc( file, rank );
+  LevelDesc *e = new LevelDesc( file, rank, index );
   for ( int i=0; i<m_levels.size(); i++ ) {
-    if ( m_levels[i]->file == file ) {
-      //printf("addLevel %s already present!\n",file.c_str());
+    if ( m_levels[i]->file == file
+	 && m_levels[i]->index == index ) {
+      printf("addLevel %s already present!\n",file.c_str());
       return false;
     } else if ( m_levels[i]->rank > rank ) {
-      //printf("addLevel %s at %d\n",file.c_str(),i);
+      printf("addLevel %s at %d\n",file.c_str(),i);
       m_levels.insert(i,e);
       return true;
     }
   }
+  printf("top level %s\n",file.c_str());
   m_levels.append( e );
   return true;
 }
 
 
-bool Levels::scanCollection( string& file, int rank )
+bool Levels::scanCollection( const std::string& file, int rank )
 {
-  printf("found collection %s\n",file.c_str());
-#if 1
-  
-#else
-  HZIP hz = OpenZip( (void*)file.c_str(), 0, ZIP_FILENAME );
-  if ( hz ) {
-    int index = 0;
-    ZIPENTRY entry;
-    while ( GetZipItem( hz, index, &entry )==ZR_OK ) {
-      addLevel( file, rank, index );
-      index++;
-    }
-    CloseZip( hz );
+  ZipFile zf(file);
+  printf("found collection %s with %d levels\n",file.c_str(),zf.numEntries());
+  for ( int i=0; i<zf.numEntries(); i++ ) {
+    addLevel( file, rankFromPath(zf.entryName(i),rank), i );
   }
-#endif
   return false;
 }
 
@@ -120,6 +112,33 @@ int Levels::numLevels()
   return m_levels.size();
 }
 
+
+int Levels::load( int i, unsigned char* buf, int bufLen )
+{
+  int l=0;
+  if ( i < m_levels.size() ) {
+    if ( m_levels[i]->index >= 0 ) {
+      ZipFile zf( m_levels[i]->file.c_str() );
+      if ( m_levels[i]->index < zf.numEntries() ) {
+	unsigned char* d = zf.extract( m_levels[i]->index, &l);
+	if ( d && l <= bufLen ) {
+	  memcpy( buf, d, l );
+	}
+      }
+    } else {
+      FILE *f = fopen( m_levels[i]->file.c_str(), "rt" );
+      if ( f ) {
+	l = fread( buf, 1, bufLen, f );
+	fclose(f);
+      }
+    }
+    return l;
+  }
+  throw "invalid level index";
+  
+}
+
+#if 0
 const std::string& Levels::levelFile( int i )
 {
   if ( i < m_levels.size() ) {
@@ -127,23 +146,8 @@ const std::string& Levels::levelFile( int i )
   }
   throw "invalid level index";
 }
+#endif
 
-
-int Levels::levelSize( int l )
-{
-  if ( m_levels[l]->index >= 0 ) {
-  } else {
-  }
-  return 0;
-}
-
-bool Levels::load( int l, void* buf, int buflen )
-{
-  if ( m_levels[l]->index >= 0 ) {
-  } else {
-  }
-  return true;
-}
 
 int Levels::findLevel( const char *file )
 {
@@ -154,3 +158,5 @@ int Levels::findLevel( const char *file )
   }
   return -1;
 }
+
+
