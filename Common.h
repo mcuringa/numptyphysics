@@ -82,6 +82,7 @@ struct Rect {
   bool isEmpty() { return tl.x==0 && br.x==0; }
   void expand( const Vec2& v ) { tl=Min(tl,v); br=Max(br,v); }
   void expand( const Rect& r ) { expand(r.tl); expand(r.br); }
+  void clipTo( const Rect& r ) { tl=Max(tl,r.tl); br=Min(br,r.br); }
   bool contains( const Vec2& p ) const {
     return p.x >= tl.x && p.x <= br.x && p.y >= tl.y && p.y <= br.y;
   }

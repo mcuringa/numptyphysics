@@ -300,9 +300,11 @@ void Canvas::clear()
   }
 }
 
-void Canvas::fade( const Rect& r ) 
+void Canvas::fade( const Rect& rr ) 
 {
   Uint32 bpp;
+  Rect r = rr;
+  r.clipTo( m_clip );
   bpp = SURFACE(this)->format->BytesPerPixel;
   char* row = (char*)SURFACE(this)->pixels;
   int pixStride = width();
