@@ -29,6 +29,7 @@ class Levels
   bool addLevel( const std::string& file, int rank=-1, int index=-1 );
   int  numLevels();
   int load( int i, unsigned char* buf, int bufLen );
+  std::string levelName( int i );
   int findLevel( const char *file );
  private:
   bool scanCollection( const std::string& file, int rank );

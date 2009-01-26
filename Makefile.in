@@ -73,10 +73,11 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(desktopentrydir)" \
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_numptyphysics_OBJECTS = numptyphysics-Path.$(OBJEXT) \
-	numptyphysics-Canvas.$(OBJEXT) numptyphysics-Levels.$(OBJEXT) \
-	numptyphysics-ZipFile.$(OBJEXT) numptyphysics-Game.$(OBJEXT) \
-	numptyphysics-Overlay.$(OBJEXT) numptyphysics-Config.$(OBJEXT) \
-	numptyphysics-Http.$(OBJEXT) numptyphysics-happyhttp.$(OBJEXT) \
+	numptyphysics-Canvas.$(OBJEXT) numptyphysics-Font.$(OBJEXT) \
+	numptyphysics-Levels.$(OBJEXT) numptyphysics-ZipFile.$(OBJEXT) \
+	numptyphysics-Game.$(OBJEXT) numptyphysics-Overlay.$(OBJEXT) \
+	numptyphysics-Config.$(OBJEXT) numptyphysics-Http.$(OBJEXT) \
+	numptyphysics-happyhttp.$(OBJEXT) \
 	numptyphysics-zoomer.$(OBJEXT) \
 	numptyphysics-OsHildon.$(OBJEXT) \
 	numptyphysics-OsFreeDesktop.$(OBJEXT) \
@@ -237,6 +238,7 @@ icon_scalable_DATA = data/icon64/numptyphysics.png
 numptyphysics_SOURCES = \
 	Path.cpp \
 	Canvas.cpp \
+	Font.cpp \
 	Levels.cpp \
 	ZipFile.cpp \
 	Game.cpp \
@@ -415,6 +417,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2WorldCallbacks.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Canvas.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Config.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Font.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Game.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Http.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Levels.Po@am__quote@
@@ -902,6 +905,20 @@ numptyphysics-Canvas.obj: Canvas.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Canvas.cpp' object='numptyphysics-Canvas.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Canvas.obj `if test -f 'Canvas.cpp'; then $(CYGPATH_W) 'Canvas.cpp'; else $(CYGPATH_W) '$(srcdir)/Canvas.cpp'; fi`
+
+numptyphysics-Font.o: Font.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Font.o -MD -MP -MF $(DEPDIR)/numptyphysics-Font.Tpo -c -o numptyphysics-Font.o `test -f 'Font.cpp' || echo '$(srcdir)/'`Font.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Font.Tpo $(DEPDIR)/numptyphysics-Font.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Font.cpp' object='numptyphysics-Font.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Font.o `test -f 'Font.cpp' || echo '$(srcdir)/'`Font.cpp
+
+numptyphysics-Font.obj: Font.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Font.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Font.Tpo -c -o numptyphysics-Font.obj `if test -f 'Font.cpp'; then $(CYGPATH_W) 'Font.cpp'; else $(CYGPATH_W) '$(srcdir)/Font.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Font.Tpo $(DEPDIR)/numptyphysics-Font.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Font.cpp' object='numptyphysics-Font.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Font.obj `if test -f 'Font.cpp'; then $(CYGPATH_W) 'Font.cpp'; else $(CYGPATH_W) '$(srcdir)/Font.cpp'; fi`
 
 numptyphysics-Levels.o: Levels.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Levels.o -MD -MP -MF $(DEPDIR)/numptyphysics-Levels.Tpo -c -o numptyphysics-Levels.o `test -f 'Levels.cpp' || echo '$(srcdir)/'`Levels.cpp

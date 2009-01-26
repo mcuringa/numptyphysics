@@ -56,6 +56,16 @@ Path::Path() : Array<Vec2>() {}
 
 Path::Path( int n, Vec2* p ) : Array<Vec2>(n, p) {}
 
+Path::Path( const char *s )
+{
+  float32 x,y;      
+  while ( sscanf( s, "%f,%f", &x, &y )==2) {
+    append( Vec2((int)x,(int)y) );
+    while ( *s && *s!=' ' && *s!='\t' ) s++;
+    while ( *s==' ' || *s=='\t' ) s++;
+  }
+}
+
 void Path::makeRelative() 
 {
   for (int i=size()-1; i>=0; i--) 

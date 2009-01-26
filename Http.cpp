@@ -38,11 +38,16 @@ static void http_begin_cb( const Response* r, void* userdata )
   }
 }
 
-static void http_data_cb( const Response* r, void* userdata,
+static void http_get_cb( const Response* r, void* userdata,
 		   const unsigned char* data, int numbytes )
 {
   fwrite( data, 1, numbytes, ((Http*)userdata)->m_file );
   ((Http*)userdata)->m_size += numbytes;
+}
+
+static void http_post_cb( const Response* r, void* userdata,
+			  const unsigned char* data, int numbytes )
+{
 }
 
 static void http_complete_cb( const Response* r, void* userdata )
@@ -91,7 +96,7 @@ bool Http::get( const char* uri,
        && path[0] && host[0] ) {
     try {
       Connection con( host, port );
-      con.setcallbacks( http_begin_cb, http_data_cb, http_complete_cb, this );
+      con.setcallbacks( http_begin_cb, http_get_cb, http_complete_cb, this );
       con.request("GET",path,NULL,NULL,0);
       while ( con.outstanding() ) {
 	fprintf(stderr,"http_get pump\n");
@@ -112,18 +117,20 @@ bool Http::post( const char* uri, const char*putname, const char* putfile )
 {
   char host[256];
   char path[256];
+  unsigned char data[64*1024];
   int port;
   
   m_file = fopen( putfile, "rt" );
-  m_size = -1;
-
+  m_size = fread(data,1,sizeof(data),m_file);
+  fclose ( m_file );
+ 
   if ( parseUri( uri, &host[0], &port, &path[0] ) ) {
     try {
       Connection con( host, port );
-      con.setcallbacks( http_begin_cb, http_data_cb, http_complete_cb, this );
-      con.request("PUT",path,NULL,NULL,0);
+      con.setcallbacks( http_begin_cb, http_post_cb, http_complete_cb, this );
+      con.request("POST",path,NULL,data,m_size);
       while ( con.outstanding() ) {
-	fprintf(stderr,"http_get pump\n");
+	fprintf(stderr,"http::post pump\n");
 	con.pump();
       }
     } catch ( Wobbly w ) {

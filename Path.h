@@ -37,6 +37,7 @@ class Path : public Array<Vec2>
 public:
   Path();
   Path( int n, Vec2* p );
+  Path( const char *ptlist );
 
   void makeRelative();
   Path& translate(const Vec2& xlate);

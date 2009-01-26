@@ -24,6 +24,7 @@
 #include <SDL/SDL_image.h>
 
 #define Window X11Window //oops
+#define Font X11Font //oops
 #include <SDL/SDL_syswm.h>
 #ifndef WIN32
 #include <X11/X.h>

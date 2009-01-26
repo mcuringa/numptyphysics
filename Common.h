@@ -36,6 +36,7 @@ struct Vec2 {
   Vec2 operator-() { return Vec2(-x,-y); }
   void operator*=( int o ) { x*=o; y*=o; }
   bool operator==( const Vec2& o ) const { return x==o.x && y==y; }
+  bool operator!=( const Vec2& o ) const { return !(*this==o); }
   operator b2Vec2() const { return b2Vec2((float32)x,(float32)y); } 
   Vec2 operator+( const Vec2& b ) const { return Vec2(x+b.x,y+b.y); }
   Vec2 operator-( const Vec2& b ) const { return Vec2(x-b.x,y-b.y); }
@@ -78,6 +79,8 @@ struct Rect {
   Rect() {}
   Rect( const Vec2& atl, const Vec2& abr ) : tl(atl), br(abr) {} 
   Rect( int x1, int y1, int x2, int y2 ) : tl(x1,y1), br(x2,y2) {}
+  int width() const { return br.x-tl.x+1;  }
+  int height() const { return br.y-tl.y+1;  }
   void clear() { tl.x=tl.y=br.x=br.y=0; }
   bool isEmpty() { return tl.x==0 && br.x==0; }
   void expand( const Vec2& v ) { tl=Min(tl,v); br=Max(br,v); }

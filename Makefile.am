@@ -14,6 +14,7 @@ icon_scalable_DATA = data/icon64/numptyphysics.png
 numptyphysics_SOURCES = \
 	Path.cpp \
 	Canvas.cpp \
+	Font.cpp \
 	Levels.cpp \
 	ZipFile.cpp \
 	Game.cpp \

@@ -206,12 +206,7 @@ public:
       m_colour = brushColours[col];
     }
     if ( *s++ == ':' ) {
-      float32 x,y;      
-      while ( sscanf( s, "%f,%f", &x, &y )==2) {
-	m_rawPath.append( Vec2((int)x,(int)y) );
-	while ( *s && *s!=' ' && *s!='\t' ) s++;
-	while ( *s==' ' || *s=='\t' ) s++;
-      }
+      m_rawPath = Path(s);
     }
     if ( m_rawPath.size() < 2 ) {
       throw "invalid stroke def";
@@ -610,7 +605,6 @@ public:
     for ( int i=0; i < m_strokes.size(); i++ ) {
       if ( m_strokes[i]->hasAttribute( Stroke::ATTRIB_TOKEN )
 	   && !BOUNDS_RECT.intersects( m_strokes[i]->worldBbox() ) ) {
-	printf("RESPAWN token %d\n",i);
 	reset( m_strokes[i] );
 	activate( m_strokes[i] );	  
       }
@@ -631,7 +625,6 @@ public:
       if ( s1->hasAttribute(Stroke::ATTRIB_TOKEN) 
 	   && s2->hasAttribute(Stroke::ATTRIB_GOAL) ) {
 	s2->setAttribute(Stroke::ATTRIB_DELETED);
-	printf("SUCCESS!! level complete\n");
       }
     }
   }
@@ -833,7 +826,7 @@ public:
     if ( i < size() ) {
       DemoEntry& e = at(i);
       stringstream s;
-      s << "E: " << e.t << " " << e.o << " ";
+      s << "E:" << e.t << " ";
       switch( e.e.type ) {
       case SDL_KEYDOWN:
 	s << "K" << e.e.key.keysym.sym;
@@ -842,16 +835,18 @@ public:
 	s << "k" << e.e.key.keysym.sym;
 	break;
       case SDL_MOUSEBUTTONDOWN:
-	s << "B" << e.e.button.button;
+	s << "B" << '0'+e.e.button.button;
 	s << "," << e.e.button.x << "," << e.e.button.y;
 	break;
       case SDL_MOUSEBUTTONUP:
-	s << "b" << e.e.button.button;
+	s << "b" << '0'+e.e.button.button;
 	s << "," << e.e.button.x << "," << e.e.button.y;
 	break;
       case SDL_MOUSEMOTION:
 	s << "M" << e.e.button.x << "," << e.e.button.y;
 	break;
+      default:
+	return std::string();
       }
       return s.str();
     }
@@ -870,19 +865,19 @@ public:
     char c;
     SDL_Event ev = {0};
     ev.type = 0xff;
-    if ( sscanf(s,"E: %d %d %c%d",&t,&o,&c,&v1)==4 ) { //1 arg
+    if ( sscanf(s,"E:%d %c%d",&t,&c,&v1)==3 ) { //1 arg
       switch ( c ) {
       case 'K': ev.type = SDL_KEYDOWN; break;
       case 'k': ev.type = SDL_KEYUP; break;
       }
       ev.key.keysym.sym = (SDLKey)v1;
-    } else if ( sscanf(s,"E: %d %d %c%d,%d",&t,&o,&c,&v1,&v2)==5 ) { //2 args
+    } else if ( sscanf(s,"E:%d %c%d,%d",&t,&c,&v1,&v2)==4 ) { //2 args
       switch ( c ) {
       case 'M': ev.type = SDL_MOUSEMOTION; break;
       }
       ev.button.x = v1;
       ev.button.y = v2;
-    } else if ( sscanf(s,"E: %d %d %c%d,%d,%d",&t,&o,&c,&v1,&v2,&v3)==6 ) { //3 args
+    } else if ( sscanf(s,"E:%d %c%d,%d,%d",&t,&c,&v1,&v2,&v3)==5 ) { //3 args
       switch ( c ) {
       case 'B': ev.type = SDL_MOUSEBUTTONDOWN; break;
       case 'b': ev.type = SDL_MOUSEBUTTONUP; break;
@@ -908,11 +903,18 @@ public:
     m_log.capacity(512);
     m_lastTick = 0;
     m_lastTickTime = SDL_GetTicks();
+    m_pressed = 0;
   }
 
   void stop()  
   { 
-    printf("stop recording: %d events\n",m_log.size());
+    printf("stop recording: %d events:\n", m_log.size());
+    for ( int i=0; i<m_log.size(); i++ ) {
+      std::string e = m_log.asString(i);
+      if ( e.length() > 0 ) {
+	printf("  %s\n",e.c_str());
+      }
+    }
     m_running = false; 
   }
 
@@ -927,6 +929,18 @@ public:
   void record( SDL_Event& ev )
   {
     if ( m_running ) {
+      switch( ev.type ) {      
+      case SDL_MOUSEBUTTONDOWN: 
+	m_pressed |= 1<<ev.button.button;
+	break;
+      case SDL_MOUSEBUTTONUP: 
+	m_pressed &= ~(1<<ev.button.button);
+	break;
+      case SDL_MOUSEMOTION:
+	if ( m_pressed == 0 ) {
+	  return;
+	}
+      }
       m_log.append( m_lastTick, SDL_GetTicks()-m_lastTickTime, ev );
     }
   }
@@ -938,6 +952,7 @@ private:
   DemoLog       m_log;
   int 		m_lastTick;
   int 		m_lastTickTime;
+  int           m_pressed;
 };
 
 
@@ -975,8 +990,7 @@ public:
   {
     if ( m_playing
 	 && m_index < m_log->size()
-	 && m_log->at(m_index).t <= m_lastTick
-	 /*&& m_log->at(m_index).o <= SDL_GetTicks()-m_lastTickTime*/ ) {
+	 && m_log->at(m_index).t <= m_lastTick ) {
       ev = m_log->at(m_index).e;
       m_index++;
       return true;
@@ -1033,7 +1047,6 @@ public:
 
   void gotoLevel( int level, bool replay=false )
   {
-    printf("gotoLevel %d\n",level);
     if ( level >= 0 && level < m_levels.numLevels() ) {
       int size = m_levels.load( level, levelbuf, sizeof(levelbuf) );
       if ( size && m_scene.load( levelbuf, size ) ) {
@@ -1083,6 +1096,7 @@ public:
       if ( h.post( Config::planetRoot().c_str(), "upload", SEND_TEMP_FILE ) ) {
 	std::string id = h.getHeader("NP-Upload-Id");
 	if ( id.length() > 0 ) {
+	  printf("uploaded as id %s\n",id.c_str());
 	  if ( !m_os->openBrowser((Config::planetRoot()+"?level="+id).c_str()) ) {
 	    showMessage("Unable to launch browser");
 	  }
@@ -1114,14 +1128,12 @@ public:
 
   void showOverlay( Overlay* o )
   {
-    printf("show overlay\n");
     m_overlays.append( o );
     o->onShow();
   }
 
   void hideOverlay( Overlay* o )
   {
-    printf("hide overlay\n");
     o->onHide();
     m_overlays.erase( m_overlays.indexOf(o) );
     m_refresh = true;
@@ -1190,8 +1202,10 @@ public:
 	toggleOverlay( m_pauseOverlay );
 	break;
       case SDLK_s:
-      case SDLK_F4: 
 	save();
+	break;
+      case SDLK_F4: 
+	showOverlay( createMenuOverlay( *this ) );
 	break;
       case SDLK_e:
       case SDLK_F6:
@@ -1459,13 +1473,14 @@ public:
       if ( m_os ) {
 	m_os->poll();      
 	for ( char *f = m_os->getLaunchFile(); f; f=m_os->getLaunchFile() ) {
-	  if ( f ) {
-	    m_levels.addPath( f );
-	    int l = m_levels.findLevel( f );
-	    if ( l >= 0 ) {
-	      gotoLevel( l );
-	      m_window.raise();
-	    }
+	  if ( strstr(f,".npz") ) {
+	    //m_levels.empty();
+	  }
+	  m_levels.addPath( f );
+	  int l = m_levels.findLevel( f );
+	  if ( l >= 0 ) {
+	    gotoLevel( l );
+	    m_window.raise();
 	  }
 	}    
       }  

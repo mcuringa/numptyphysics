@@ -15,6 +15,7 @@
  */
 
 #include "Config.h"
+#include "Font.h"
 
 
 Rect FULLSCREEN_RECT( 0, 0, WORLD_WIDTH-1, WORLD_HEIGHT-1 );
@@ -40,3 +41,24 @@ const int brushColours[] = {
 };
 
 const int NUM_BRUSHES = (sizeof(brushColours)/sizeof(brushColours[0]));
+
+std::string Config::findFile( const std::string& name )
+{
+  std::string p( "data/" );
+  FILE *fd = fopen( (p+name).c_str(), "rb"  );
+  if ( !fd ) {
+    p = std::string( DEFAULT_RESOURCE_PATH "/" );
+    fd = fopen( (p+name).c_str(), "rb" );
+  }
+  if ( fd ) {
+    fclose(fd);
+    return p+name;
+  }
+  return name;
+}
+
+Font* Config::font()
+{
+  static Font f("font.npf");
+  return &f;
+}

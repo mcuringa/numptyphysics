@@ -156,6 +156,11 @@ static gint dbus_handler(const gchar *interface,
 	} else if ( ( strncmp(val.value.s,"http://",7)==0 
 		      || strncmp(val.value.s,"nptp://",7)==0 ) ) {
 	  Http h;
+	  std::string filename(val.value.s+7);
+	  if ( filename.rfind('/') != std::npos ) {
+	    filename = filename.substr( filename.rfind('/')+1 );
+	  }
+	  std::string filepath = Config::userDataDir() + pathSep;
 	  if ( h.get( val.value.s+7, HTTP_TEMP_FILE ) ) {
 	    f = HTTP_TEMP_FILE;
 	  }

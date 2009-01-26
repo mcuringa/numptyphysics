@@ -20,13 +20,14 @@
 
 #include "Levels.h"
 #include "ZipFile.h"
+#include "Os.h"
 
 using namespace std;
 
 static int rankFromPath( const string& p, int defaultrank=9999 )
 {
   const char *c = p.data();
-  size_t i = p.rfind('/');
+  size_t i = p.rfind(Os::pathSep);
   if ( i != string::npos ) {
     c += i+1;
     if ( *c++=='L' ){
@@ -64,7 +65,6 @@ bool Levels::addPath( const char* path )
 	  string full( path );
 	  full += "/";
 	  full += entry->d_name;
-	  int n = strlen( entry->d_name );
 	  //DANGER - recursion may not halt for linked dirs 
 	  addPath( full.c_str() );
 	}
@@ -136,6 +136,22 @@ int Levels::load( int i, unsigned char* buf, int bufLen )
   }
   throw "invalid level index";
   
+}
+
+std::string Levels::levelName( int i )
+{
+  std::string s = "end";
+  if ( i < m_levels.size() ) {
+    if ( m_levels[i]->index >= 0 ) {
+      ZipFile zf( m_levels[i]->file.c_str() );
+      s = zf.entryName( m_levels[i]->index );
+    } else {
+      s = m_levels[i]->file;
+    }
+  }
+  size_t j = s.rfind(Os::pathSep);
+  size_t k = s.rfind('.');
+  return s.substr(j+1,k-j-1);
 }
 
 #if 0

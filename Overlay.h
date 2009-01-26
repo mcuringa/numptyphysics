@@ -45,4 +45,6 @@ extern Overlay* createEditOverlay( GameControl& game );
 
 extern Overlay* createNextLevelOverlay( GameControl& game );
 
+extern Overlay* createMenuOverlay( GameControl& game );
+
 #endif //OVERLAY_H

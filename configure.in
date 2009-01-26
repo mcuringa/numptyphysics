@@ -31,7 +31,8 @@ AC_CHECK_LIB(SDL_image, IMG_LoadPNG_RW, , AC_MSG_ERROR([
 AC_ARG_ENABLE(hildon, [  --disable-hildon             build without maemo/hildon support], enable_hildon=$enableval, enable_hildon=yes)
 
 if test "x${enable_hildon}" = "xyes" ; then
-   PKG_CHECK_MODULES(HILDON, [hildon-1 hildon-fm-2 libossoemailinterface], 
+#   PKG_CHECK_MODULES(HILDON, [hildon-1 hildon-fm-2 libossoemailinterface], 
+   PKG_CHECK_MODULES(HILDON, [hildon-1 dbus-1 libosso], 
    			     [enable_hildon=yes], [enable_hildon=no])
 fi
 if test "x${enable_hildon}" = "xyes" ; then

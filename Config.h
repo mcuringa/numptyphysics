@@ -37,7 +37,7 @@
 #  define CLICK_TOLERANCE   16 //PIXELs 
 #else
 #  define ITERATION_RATE    60 //fps
-#  define RENDER_RATE       20 //fps
+#  define RENDER_RATE       60 //fps
 #  define SOLVER_ITERATIONS 10
 #  define JOINT_TOLERANCE   4.0f //PIXELs
 #  define SELECT_TOLERANCE  5.0f //PIXELS_PER_METREf)
@@ -86,6 +86,8 @@ extern const int NUM_BRUSHES;
 #define YELLOW_BRUSH    1
 #define DEFAULT_BRUSH   2
 
+class Font;
+
 class Config
 {
  public:
@@ -96,9 +98,11 @@ class Config
   }
   static const std::string& planetRoot()
   {
-    static const std::string d("http://xxx/planet.cgi");
+    static const std::string d("http://xyz/planet.cgi");
     return d;
   }
+  static std::string findFile( const std::string& name );
+  static Font* font();
 };
 
 #endif //CONFIG_H

@@ -18,6 +18,8 @@
 #include "Canvas.h"
 #include "Game.h"
 #include "Config.h"
+#include "Path.h"
+#include "Font.h"
 
 #include <SDL/SDL.h>
 #include <string>
@@ -125,9 +127,13 @@ protected:
 
   virtual bool onClick( int x, int y ) {
     for ( int i=m_hotSpots.size()-1; i>=0; i-- ) {
-      if ( m_hotSpots[i].rect.contains( Vec2(x,y) )
-	   && onHotSpot( m_hotSpots[i].id ) ) {
-	return true;
+      if ( m_hotSpots[i].rect.contains( Vec2(x,y) ) ) {
+	if ( m_hotSpots[i].c ) {
+	  m_hotSpots[i].c(m_hotSpots[i].o,m_hotSpots[i].f);
+	  return true;
+	} else if ( onHotSpot( m_hotSpots[i].id ) ) {
+	  return true;
+	}
       }
     }
     return false; 
@@ -137,11 +143,30 @@ protected:
 
   void addHotSpot( const Rect& r, int id )
   {
-    HotSpot hs = { r, id };
+    HotSpot hs = { r, id, NULL, NULL, NULL };
     m_hotSpots.append( hs );
   }
 
-  struct HotSpot { Rect rect; int id; };
+  template<class C>
+  void addHotSpot( const Rect& r, void (C::*func)() )
+  {
+    struct Caller {
+      static void call( void* o, void (Overlay::*f)() ) {
+	return (((C*)o)->*(void (C::*)())f)();
+      }
+    };
+    HotSpot hs = { r, -1, this, (void (Overlay::*)())func, Caller::call };
+    m_hotSpots.append( hs );
+  }
+
+  struct HotSpot 
+  { 
+    Rect rect;
+    int id;
+    void *o;
+    void (Overlay::*f)(); 
+    void (*c)(void*,void (Overlay::*)()); 
+  };
   GameControl& m_game;
   int     m_x, m_y;
   Canvas *m_canvas;
@@ -169,6 +194,80 @@ public:
 };
 
 
+class UiOverlay : public OverlayBase
+{
+public:
+  UiOverlay(GameControl& game, const Rect& pos)
+    : OverlayBase( game, pos.tl.x, pos.tl.y, true )
+    , m_bgColour(0xf0f0a0)
+    , m_fgColour(0)
+    , m_motion(0)
+  {
+    m_canvas = new Canvas( pos.width(), pos.height() );
+    m_canvas->setBackground( m_bgColour );
+    m_canvas->clear();
+  }
+
+  void moveTo( const Vec2& dest )
+  {
+    if ( dest != Vec2(m_x,m_y) ) {
+      m_motion = 10;
+      m_dest = dest;
+    }
+  }
+
+  void onTick( int tick )
+  {
+    if ( m_motion > 0 ) {
+      Vec2 pos(m_x,m_y);
+      pos *= m_motion-1;
+      pos += m_dest;
+      pos = pos /m_motion;
+      m_x = pos.x;
+      m_y = pos.y;
+      m_motion--;
+      m_game.m_refresh = 1;
+    }
+  }
+
+  template<class C>
+  void addButton( const char* icon, const Rect& r, void (C::*func)() )
+  {
+    if ( Config::findFile(icon) != icon ) {
+      Image *i = new Image(icon);
+      m_canvas->drawImage( i, r.tl.x, r.tl.y );
+      delete i;
+    } else {
+      Path p(icon);
+      p.translate( r.tl - p.bbox().tl );
+      m_canvas->drawPath( p, m_fgColour, false );
+    }
+    addHotSpot( r, func );
+  }
+private:
+  int  m_bgColour;
+  int  m_fgColour;
+  int  m_motion;
+  Vec2 m_dest;
+};
+
+
+class MenuOverlay : public UiOverlay
+{
+public:
+  MenuOverlay(GameControl& game)
+    : UiOverlay(game,Rect(100,100,400,200))
+  {
+    addButton( "48,18 47,25 48,25 47,27 48,27 47,29 48,29 47,31 48,33 47,34 48,35 47,40 48,45 49,43 48,43 49,41 48,39 49,38 48,37 47,36 50,34 49,31 44,31 42,30 40,30 36,32 37,33 36,38 35,45 34,47 35,53 34,54 36,56 37,58 38,59 41,59 42,61 43,62 45,62 47,63 49,63 51,64 59,64 61,62 63,62 64,60 66,60 68,58 69,54 70,52 69,52 68,46 67,46 66,42 63,36 62,36 61,34 60,33 59,33 58,32 54,32 53,31 50,31 54,31 53,33", Rect(10,10,90,90), &MenuOverlay::doPause );
+  }
+  void doPause() {
+    m_game.gotoLevel( m_game.m_level + 1 );
+  }
+  
+  void onShow() { moveTo(Vec2(200,200)); }
+  
+};
+
 class NextLevelOverlay : public IconOverlay
 {
 public:
@@ -179,14 +278,21 @@ public:
       m_levelIcon(-2),
       m_icon(NULL)
   {
-    addHotSpot( Rect(0,    0,100,180), 0 );
-    addHotSpot( Rect(300,  0,400,180), 1 );
-    addHotSpot( Rect(0,  180,200,240), 2 );
-    addHotSpot( Rect(200,180,400,240), 3 );
+    m_font = Config::font();
+    m_font->draw( m_canvas, Vec2(130,20), "BRAVO!", 0 );
+    m_font = Config::font()->rescale(0.5);
+    m_font->draw( m_canvas, Vec2(30,220), "Action Replay", 0 );
+    m_font->draw( m_canvas, Vec2(300,220), "Continue", 0 );
+
+    addHotSpot( Rect(0,    0,100,180), &NextLevelOverlay::doPrevLevel );
+    addHotSpot( Rect(300,  0,400,180), &NextLevelOverlay::doNextLevel );
+    addHotSpot( Rect(0,  180,200,240), &NextLevelOverlay::doActionReplay );
+    addHotSpot( Rect(200,180,400,240), &NextLevelOverlay::doContinue );
   }
   ~NextLevelOverlay()
   {
     delete m_icon;
+    delete m_font;
   }
   virtual void onShow()
   {
@@ -204,24 +310,34 @@ public:
   virtual void draw( Canvas& screen )
   {
     IconOverlay::draw( screen );
-    if ( genIcon() ) {
+    if ( genIcon() ) {      
+      m_font->draw( &screen, Vec2(m_x+100,m_y+50), 
+		    m_game.levels().levelName(m_selectedLevel), 0 );
       screen.drawImage( m_icon, m_x+100, m_y+75 );
     } else {
       dirty();
     }
   }
-  virtual bool onHotSpot( int id ) 
+  void doPrevLevel()
   {
-    switch (id) {
-    case 0: if (m_selectedLevel>0) m_selectedLevel--; break;
-    case 1: m_selectedLevel++; break;
-    case 2: m_game.gotoLevel( m_game.m_level,true ); break;
-    case 3: m_game.gotoLevel( m_selectedLevel ); break;
-    default: return false;
+    if (m_selectedLevel>0) {
+      m_selectedLevel--; 
+      dirty();
     }
+  }
+  void doNextLevel()
+  {
+    m_selectedLevel++;
     dirty();
-    return true;
-  } 
+  }
+  void doActionReplay()
+  {
+    m_game.gotoLevel( m_game.m_level,true );
+  }
+  void doContinue()
+  {
+    m_game.gotoLevel( m_selectedLevel );
+  }
 private:
   bool genIcon()
   {
@@ -245,6 +361,7 @@ private:
   int          m_selectedLevel;
   int          m_levelIcon;
   Canvas*      m_icon;
+  Font*        m_font;
   std::string  m_caption;
 };
 
@@ -321,12 +438,19 @@ Overlay* createIconOverlay( GameControl& game, const char* file,
   return new IconOverlay( game, file, x, y, dragging_allowed );
 }
 
-extern Overlay* createEditOverlay( GameControl& game )
+Overlay* createEditOverlay( GameControl& game )
 {
   return new EditOverlay( game );
 }
 
-extern Overlay* createNextLevelOverlay( GameControl& game )
+Overlay* createNextLevelOverlay( GameControl& game )
 {
   return new NextLevelOverlay( game );
 }
+
+Overlay* createMenuOverlay( GameControl& game )
+{
+  return new MenuOverlay( game );
+}
+
+
