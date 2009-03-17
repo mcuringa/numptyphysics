@@ -31,26 +31,16 @@ numptyphysics_CPPFLAGS = -IXX $(SDL_CFLAGS) $(HILDON_CFLAGS)
 numptyphysics_LDADD = libbox2d.a $(SDL_LIBS) $(HILDON_LIBS)
 
 numptyphysics_DATA = \
-	data/L00_title.nph \
-	data/L01_tutorial.nph \
-	data/L05_plane_sailing.nph \
-	data/L10_the_leap.nph \
-	data/L15_trampoline.nph \
-	data/L30_see_saw.nph \
-	data/L35_pendulum.nph \
-	data/L35_pusher.nph \
-	data/L38_box.nph \
-	data/L40_tree_of_life.nph \
-	data/L50_nautilus.nph \
+	data/C01_Tutorial.npz \
+	data/C10_Standard.npz \
 	data/edit.png \
 	data/next.png \
-	data/next_win32.png \
 	data/paper.jpg \
 	data/pause.png \
 	data/play.png \
 	data/record.png \
-	data/theend.png
-
+	data/theend.png \
+	data/femkeklaver.ttf
 
 
 libbox2d_a_SOURCES = \

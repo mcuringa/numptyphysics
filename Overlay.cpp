@@ -85,6 +85,7 @@ public:
       if ( ev.button.button == SDL_BUTTON_LEFT ) {
 	if ( m_dragging ) {
 	  m_dragging = false;
+	  onDragStop( ev.button.x-m_x, ev.button.y-m_y );
 	} else if ( Abs(ev.button.x-m_orgx) < CLICK_TOLERANCE
 		    && Abs(ev.button.y-m_orgy) < CLICK_TOLERANCE ){
 	  onClick( m_orgx-m_x, m_orgy-m_y );
@@ -99,15 +100,16 @@ public:
 	   && ( Abs(ev.button.x-m_orgx) >= CLICK_TOLERANCE
 		|| Abs(ev.button.y-m_orgy) >= CLICK_TOLERANCE ) ) {
 	m_dragging = true;
-      }
-      if ( m_dragging ) {
-	m_x += ev.button.x - m_prevx;
-	m_y += ev.button.y - m_prevy;
+	onDragStart( ev.button.x-m_x, ev.button.y-m_y );
+      } else if ( m_dragging ) {
+	onDrag( ev.button.x - m_prevx, ev.button.y - m_prevy );
 	m_prevx = ev.button.x;
 	m_prevy = ev.button.y;
-	m_game.m_refresh = true;
       }
       break;
+    case SDL_KEYDOWN:
+      return onKey( ev.key.keysym.sym );
+
     default:
       break;
     }
@@ -123,6 +125,26 @@ protected:
   void dirty( const Rect& r )
   {
     m_isDirty = true;
+  }
+
+  virtual bool onKey( int k )
+  {
+    return false;
+  }
+  virtual bool onDragStart( int x, int y ) 
+  {
+    return false;
+  }
+  virtual bool onDragStop( int x, int y ) 
+  {
+    return false;
+  }
+  virtual bool onDrag( int dx, int dy ) 
+  {
+    m_x += dx;
+    m_y += dy;
+    m_game.m_refresh = true;
+    return false;
   }
 
   virtual bool onClick( int x, int y ) {
@@ -205,7 +227,10 @@ public:
   {
     m_canvas = new Canvas( pos.width(), pos.height() );
     m_canvas->setBackground( m_bgColour );
-    m_canvas->clear();
+    m_canvas->drawRect( 0, 0, pos.width(), pos.height(), 
+			m_canvas->makeColour(0xffffff) );
+    m_canvas->drawRect( 3, 3, pos.width()-6, pos.height()-6, 
+			m_canvas->makeColour(m_bgColour) );
   }
 
   void moveTo( const Vec2& dest )
@@ -239,16 +264,190 @@ public:
       delete i;
     } else {
       Path p(icon);
-      p.translate( r.tl - p.bbox().tl );
-      m_canvas->drawPath( p, m_fgColour, false );
+      if ( p.size() > 1 ) {
+	p.translate( r.tl - p.bbox().tl );
+	m_canvas->drawPath( p, m_fgColour, false );
+      } else {
+	Font::headingFont()->drawCenter( m_canvas, r.centroid(),
+					 icon, m_fgColour );	
+      }
     }
     addHotSpot( r, func );
   }
-private:
   int  m_bgColour;
   int  m_fgColour;
+private:
   int  m_motion;
   Vec2 m_dest;
+};
+
+
+class ListOverlay : public UiOverlay
+{
+public:
+  ListOverlay( GameControl& game,
+	       ListProvider* provider,
+	       int x, int y,
+	       int w, int h )
+    : UiOverlay(game,Rect(x,y,x+w,y+h)),
+      m_provider( provider ),
+      m_first( 0 ),
+      m_current( 0 ),
+      m_vgap( 2 ),
+      m_hgap( 2 ),
+      m_offset(0,0),
+      m_velocity(0,0),
+      m_listarea( m_hgap, m_vgap, w-m_hgap, h-m_vgap )
+  {
+    Canvas *first = m_provider->provideItem( m_first, NULL );
+    m_itemh = first->height();
+    m_numvis = m_listarea.height() / (m_itemh + m_vgap) + 2;
+
+    if ( m_numvis <= m_provider->countItems() ) {
+      m_allowscroll = false;
+    } else {
+      m_allowscroll = true;
+      m_listarea.tl.y += 20;
+      m_listarea.br.y -= 20;
+      m_numvis = m_listarea.height() / (m_itemh + m_vgap);
+      addButton( "Back", Rect(0,0,w,20), &ListOverlay::doBack );
+      addButton( "Forward", Rect(0,y-20,w,20), &ListOverlay::doForward );      
+    }
+
+    m_items = (Canvas**)calloc( sizeof(Canvas*),  m_numvis);
+    m_items[0] = first;
+
+    for ( int i=1; i<m_numvis; i++ ) {
+      m_items[i] = m_provider->provideItem( i, NULL );
+    }
+    renderItems();
+  }
+
+  ~ListOverlay()
+  {
+    for ( int i=0; i<m_numvis; i++ ) {
+      if ( m_items[0] ) {
+	m_provider->releaseItem( m_items[0] );
+      }
+    }
+  }
+
+  void renderItems()
+  {
+    m_canvas->clear( m_listarea );
+    for ( int i=0; i < m_numvis; i++ ) {
+      int q = m_first + i;
+      if ( q < m_provider->countItems() ) {
+	m_canvas->drawImage( m_items[q%m_numvis], 
+			    m_listarea.tl.x + m_offset.x,
+			    m_listarea.tl.y + m_offset.y + (m_itemh+m_vgap)*i );
+      }
+      if ( q == m_current ) {
+	m_canvas->drawRect( m_listarea.tl.x-1 + m_offset.x,
+			    m_listarea.tl.y + (m_itemh+m_vgap)*i - 1 + m_offset.y,
+			    m_items[q%m_numvis]->width()+2,
+			    m_items[q%m_numvis]->height()+2,
+			    m_fgColour,
+			    false );
+      }
+    }
+    dirty();
+  }
+
+  void onTick( int tick )
+  {
+    UiOverlay::onTick( tick );
+    if ( m_velocity.y ) {
+      m_offset += m_velocity;
+      while ( m_offset.y < -m_itemh-m_vgap ) {
+	m_offset.y += m_itemh+m_vgap;
+	doForward();
+      }
+      while ( m_offset.y >= m_itemh+m_vgap ) {
+	m_offset.y -= m_itemh+m_vgap;
+	doBack();
+      }
+      if ( m_velocity.y > 0 ) m_velocity.y--;
+      if ( m_velocity.y < 0 ) m_velocity.y++;
+      m_offset.x = 0;
+      renderItems();
+    }
+  }
+
+  virtual bool onClick( int x, int y ) 
+  {
+    int i = m_first + (y - m_vgap) / (m_itemh + m_vgap);
+    if ( i >= 0 && i < m_provider->countItems() ) {
+      m_current = i;
+      m_provider->onSelection( m_current,
+			       x - m_listarea.tl.x,
+			       y - m_listarea.tl.y - (m_itemh+m_vgap)*i );
+      renderItems();
+    }
+  }
+
+  virtual bool onKey( int k )
+  {
+    switch (k) {
+    case SDLK_UP:
+      if ( m_current > 0 ) {
+	m_current--;
+	if ( m_current < m_first ) {
+	  doBack();
+	}
+	renderItems();
+      }
+      return true;
+    case SDLK_DOWN:
+      if ( m_current < m_provider->countItems()-1 ) {
+	m_current++;
+	if ( m_current >= m_first+m_numvis-1 ) {
+	  doForward();
+	}
+	renderItems();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  bool onDrag( int dx, int dy )
+  {
+    m_velocity.x = dx;
+    m_velocity.y = dy;
+  }
+
+  void doBack()
+  {
+    if ( m_first > 0 ) {
+      m_first--;      
+      m_items[m_first%m_numvis] = m_provider->provideItem( m_first,
+							   m_items[m_first%m_numvis] );
+    }
+  }
+
+  void doForward()
+  {
+    int last = m_first + m_numvis - 1;
+    if ( last < m_provider->countItems() ) {
+      m_first++;
+      last = m_first + m_numvis - 1;
+      m_items[last%m_numvis] = m_provider->provideItem( last, m_items[last%m_numvis] );
+    }
+  }
+
+private:
+  ListProvider *m_provider;
+  int          m_first;
+  int          m_current;
+  int          m_numvis;
+  int          m_itemh;
+  int          m_hgap, m_vgap;
+  bool         m_allowscroll;
+  Rect         m_listarea;
+  Vec2         m_offset;
+  Vec2         m_velocity;
+  Canvas**     m_items;
 };
 
 
@@ -268,51 +467,52 @@ public:
   
 };
 
-class NextLevelOverlay : public IconOverlay
+class NextLevelOverlay : public UiOverlay
 {
 public:
   NextLevelOverlay( GameControl& game )
-    : IconOverlay(game,"next.png",
-		  FULLSCREEN_RECT.centroid().x-200,
-		  FULLSCREEN_RECT.centroid().y-120),
+    : UiOverlay(game,Rect(FULLSCREEN_RECT.centroid().x-200,
+			  FULLSCREEN_RECT.centroid().y-120,
+			  FULLSCREEN_RECT.centroid().x+200,
+			  FULLSCREEN_RECT.centroid().y+120 ) ),
       m_levelIcon(-2),
       m_icon(NULL)
   {
-    m_font = Config::font();
-    m_font->draw( m_canvas, Vec2(130,20), "BRAVO!", 0 );
-    m_font = Config::font()->rescale(0.5);
-    m_font->draw( m_canvas, Vec2(30,220), "Action Replay", 0 );
-    m_font->draw( m_canvas, Vec2(300,220), "Continue", 0 );
+    Font::titleFont()->drawCenter( m_canvas, Vec2(200,32), "BRAVO!", 0 );
 
     addHotSpot( Rect(0,    0,100,180), &NextLevelOverlay::doPrevLevel );
     addHotSpot( Rect(300,  0,400,180), &NextLevelOverlay::doNextLevel );
-    addHotSpot( Rect(0,  180,200,240), &NextLevelOverlay::doActionReplay );
-    addHotSpot( Rect(200,180,400,240), &NextLevelOverlay::doContinue );
+
+    addButton( "<<", Rect(3,120,40,160),
+	       &NextLevelOverlay::doPrevLevel );
+    addButton( "Action Replay", Rect(0,180,200,240),
+	       &NextLevelOverlay::doActionReplay );
+    addButton( "Continue", Rect(200,180,400,240),
+	       &NextLevelOverlay::doContinue );
   }
   ~NextLevelOverlay()
   {
     delete m_icon;
-    delete m_font;
   }
   virtual void onShow()
   {
-    IconOverlay::onShow();
+    UiOverlay::onShow();
     m_game.m_refresh = true; //for fullscreen fade
     m_game.m_fade = true;
     m_selectedLevel = m_game.m_level+1;
   }
   virtual void onHide()
   {
-    IconOverlay::onHide();
+    UiOverlay::onHide();
     m_game.m_refresh = true; //for fullscreen fade
     m_game.m_fade = false;
   }
   virtual void draw( Canvas& screen )
   {
-    IconOverlay::draw( screen );
+    UiOverlay::draw( screen );
     if ( genIcon() ) {      
-      m_font->draw( &screen, Vec2(m_x+100,m_y+50), 
-		    m_game.levels().levelName(m_selectedLevel), 0 );
+      Font::blurbFont()->drawCenter( &screen, Vec2(m_x+200,m_y+70), 
+				       m_game.levels().levelName(m_selectedLevel), 0 );
       screen.drawImage( m_icon, m_x+100, m_y+75 );
     } else {
       dirty();
@@ -361,7 +561,6 @@ private:
   int          m_selectedLevel;
   int          m_levelIcon;
   Canvas*      m_icon;
-  Font*        m_font;
   std::string  m_caption;
 };
 
@@ -446,6 +645,14 @@ Overlay* createEditOverlay( GameControl& game )
 Overlay* createNextLevelOverlay( GameControl& game )
 {
   return new NextLevelOverlay( game );
+}
+
+Overlay* createListOverlay( GameControl& game,
+			    ListProvider* provider,
+			    int x, int y,
+			    int w, int h )
+{
+  return new ListOverlay( game, provider, x, y, w, h );
 }
 
 Overlay* createMenuOverlay( GameControl& game )

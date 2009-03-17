@@ -16,68 +16,90 @@
 #include "Font.h"
 #include "Canvas.h"
 #include "Config.h"
+#include <SDL/SDL_ttf.h>
 
-Font::Font( const std::string& file )
+#define FONT(fONTpTR) ((TTF_Font*)((fONTpTR)->m_state))
+
+struct FontCanvas : public Canvas
 {
+  FontCanvas( SDL_Surface* s )
+    : Canvas( s )
+  {}
+};
+
+
+Font::Font( const std::string& file, int ptsize )
+{
+  TTF_Init();
   std::string fname = Config::findFile(file);
-  FILE* f = fopen(fname.c_str(),"rt");
-  if ( f ) {
-    int c = 'A';
-    char buf[1024];
-    while ( fgets(buf,1024,f) ) {
-      char *s = buf;
-      while ( *s && *s != ':' ) s++;
-      m_glyphs[c] = Path(++s);
-      m_glyphs[c].translate( -m_glyphs[c].bbox().tl );
-      c++;
-    }
-    fclose(f);
-  }
+  m_state = TTF_OpenFont( fname.c_str(), ptsize );
 }
 
 
-Vec2 Font::metrics( const std::string& text )
+Vec2 Font::metrics( const std::string& text ) const
 {
-  Vec2 m(0,0);
-  for ( int i=0; i<text.length();i++ ) {
-    if ( m_glyphs[text[i]].size() > 1 ) {
-      Rect r = m_glyphs[text[i]].bbox();
-      m.x += r.width()+1;
-      m.y += r.height();
-    }
-  }
+  Vec2 m;
+  TTF_SizeText( FONT(this), text.c_str(), &m.x, &m.y );
   return m;
 }
 
-void Font::draw( Canvas* canvas, Vec2 pt, const std::string& text, int colour )
+
+void Font::drawLeft( Canvas* canvas, Vec2 pt,
+		     const std::string& text, int colour ) const
 {
-  for ( int i=0; i<text.length();i++ ) {
-    char c = text[i];
-    switch ( c ) {
-    case 'a'...'z':
-      c += 'A' - 'a';
-      break;
-    case '_': 
-      c = ' ';
-      break;
-    }
-    if ( c >= 0 && c < 128 && m_glyphs[c].size() > 1 ) {
-      Rect r = m_glyphs[c].bbox();
-      Path p = m_glyphs[c];
-      p.translate( pt );
-      canvas->drawPath( p, colour, false );
-      pt.x += r.width()+1;
-    } else if ( c==' ' ) {
-      pt.x += m_glyphs['E'].bbox().width();
-    }
-  }
+  SDL_Surface *surf;  
+  SDL_Color bg = { 0xff,0xff,0xff };
+  FontCanvas temp( TTF_RenderText_Blended( FONT(this),
+					   text.c_str(),
+					   SDL_Color() ) );
+  canvas->drawImage( &temp, pt.x, pt.y );
 }
 
-Font* Font::rescale( double factor )
+void Font::drawCenter( Canvas* canvas, Vec2 pt,
+		       const std::string& text, int colour ) const
 {
-  Font *f = new Font(*this);
-  for ( int i=0; i<128; i++ ) {
-    f->m_glyphs[i].scale( factor );
+  drawLeft( canvas, pt - metrics(text)/2, text, colour );
+}
+
+void Font::drawWrap( Canvas* canvas, Rect area,
+		     const std::string& text, int colour ) const
+{
+  Vec2 pos = area.tl;
+  size_t i = 0, e=0;
+  while ( i < text.length() ) {
+    e = text.find_first_of(" \n\r\t",i);
+    if ( i == e ) {
+      i++;
+    } else {
+      std::string word = text.substr(i,i+e);
+      Vec2 wm = metrics( word );
+      if ( pos.x + wm.x > area.br.x ) {
+	pos.x = area.tl.x;	
+	pos.y += wm.y;	
+      }
+      drawLeft( canvas, pos, word, colour );
+      i = e + 1;
+    }
   }
+  drawLeft( canvas, pos, text.substr(i), colour );
+}
+
+
+const Font* Font::titleFont()
+{
+  static Font* f = new Font("femkeklaver.ttf",36);
   return f;
 }
+
+const Font* Font::headingFont()
+{
+  static Font* f = new Font("femkeklaver.ttf",24);
+  return f;
+}
+
+const Font* Font::blurbFont()
+{
+  static Font* f = new Font("femkeklaver.ttf",16);
+  return f;
+}
+

@@ -36,6 +36,15 @@ public:
   virtual bool handleEvent( SDL_Event& ev ) =0;
 };
 
+class ListProvider
+{
+public:
+  virtual int     countItems() =0;
+  virtual Canvas* provideItem( int i, Canvas* old ) =0;
+  virtual void    releaseItem( Canvas* old ) =0;
+  virtual void    onSelection( int i ) {};
+  virtual void    onSelection( int i, int ix, int iy ) { onSelection(i); };
+};
 
 extern Overlay* createIconOverlay( GameControl& game, const char* file,
 				   int x=100,int y=20,
@@ -44,6 +53,11 @@ extern Overlay* createIconOverlay( GameControl& game, const char* file,
 extern Overlay* createEditOverlay( GameControl& game );
 
 extern Overlay* createNextLevelOverlay( GameControl& game );
+
+extern Overlay* createListOverlay( GameControl& game,
+				   ListProvider* provider,
+				   int x=100, int y=20,
+				   int w=200, int h=200 );
 
 extern Overlay* createMenuOverlay( GameControl& game );
 

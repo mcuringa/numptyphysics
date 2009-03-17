@@ -26,12 +26,13 @@
 #include <ossoemailinterface.h>
 
 #include <hildon/hildon-program.h>
-#include <hildon/hildon-file-chooser-dialog.h>
+//#include <hildon/hildon-file-chooser-dialog.h>
 #include <gtk/gtk.h>
 
 #include "Os.h"
-#include "Config.h"
 #include "Http.h"
+#define Font __FONT_REDEF
+#include "Config.h"
 
 #define NP_NAME       "NumptyPhysics"
 #define NP_SERVICE    "org.maemo.garage.numptyphysics"
@@ -117,6 +118,7 @@ class OsHildon : public Os
 
   virtual char* saveDialog( const char* path )
   {
+#if 0
     static char buf[256];
     GtkWidget *dialog = hildon_file_chooser_dialog_new(NULL,GTK_FILE_CHOOSER_ACTION_SAVE);
     gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), path);
@@ -128,6 +130,9 @@ class OsHildon : public Os
       g_free(name);
     }    
     return buf;    
+#else
+    return NULL;
+#endif
   }
 
 };
@@ -157,10 +162,10 @@ static gint dbus_handler(const gchar *interface,
 		      || strncmp(val.value.s,"nptp://",7)==0 ) ) {
 	  Http h;
 	  std::string filename(val.value.s+7);
-	  if ( filename.rfind('/') != std::npos ) {
+	  if ( filename.rfind('/') >= 0 ) {
 	    filename = filename.substr( filename.rfind('/')+1 );
 	  }
-	  std::string filepath = Config::userDataDir() + pathSep;
+	  std::string filepath = Config::userDataDir() + Os::pathSep;
 	  if ( h.get( val.value.s+7, HTTP_TEMP_FILE ) ) {
 	    f = HTTP_TEMP_FILE;
 	  }

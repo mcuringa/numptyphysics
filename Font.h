@@ -27,12 +27,21 @@ class Canvas;
 class Font
 {
  public:
-  Font( const std::string& file );
-  Vec2 metrics( const std::string& text );
-  void draw( Canvas* canvas, Vec2 pt, const std::string& text, int colour );
-  Font* rescale( double scale );
+  Font( const std::string& file, int ptsize=10 );
+  Vec2 metrics( const std::string& text ) const;
+  void drawLeft( Canvas* canvas, Vec2 pt,
+		 const std::string& text, int colour ) const;
+  void drawCenter( Canvas* canvas, Vec2 pt,
+		   const std::string& text, int colour ) const;
+  void drawWrap( Canvas* canvas, Rect area,
+		 const std::string& text, int colour ) const;
+
+  static const Font* titleFont();
+  static const Font* headingFont();
+  static const Font* blurbFont();
  private:
-  Path m_glyphs[128];
+  typedef void* State;
+  State m_state;
 };
 
 

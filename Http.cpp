@@ -31,7 +31,7 @@ static void http_begin_cb( const Response* r, void* userdata )
     ((Http*)userdata)->m_size = 0;
     break;
   default:
-    fprintf(stderr,"http status=%d %s\n",r->getstatus(),r->getreason());
+    //fprintf(stderr,"http status=%d %s\n",r->getstatus(),r->getreason());
     ((Http*)userdata)->m_err = r->getreason();
     ((Http*)userdata)->m_size = -1;
     break;
@@ -48,12 +48,17 @@ static void http_get_cb( const Response* r, void* userdata,
 static void http_post_cb( const Response* r, void* userdata,
 			  const unsigned char* data, int numbytes )
 {
+  //printf("received %d bytes [%s]\n",numbytes,data);
 }
 
 static void http_complete_cb( const Response* r, void* userdata )
 {
-  ((Http*)userdata)->m_err = r->getreason();
-  ((Http*)userdata)->m_npid = r->getheader("NP-Upload-Id");
+  if ( r->getreason() ) {
+    ((Http*)userdata)->m_err = r->getreason();
+  }
+  if ( r->getheader("NP-Upload-Id") ) {
+    ((Http*)userdata)->m_npid = r->getheader("NP-Upload-Id");
+  }
 }
 
 
@@ -78,7 +83,8 @@ static bool parseUri( const char * uri,
     *outPort=atoi(e+1);
   }
   strcpy( outPath, strchr(uri,'/') );
-  fprintf(stderr,"Http::get host=%s port=%d file=%s\n",outHost,*outPort,outPath);
+  //fprintf(stderr,"Http::get host=%s port=%d file=%s\n",
+  //        outHost,*outPort,outPath);
   return true;
 }
 
@@ -99,7 +105,7 @@ bool Http::get( const char* uri,
       con.setcallbacks( http_begin_cb, http_get_cb, http_complete_cb, this );
       con.request("GET",path,NULL,NULL,0);
       while ( con.outstanding() ) {
-	fprintf(stderr,"http_get pump\n");
+	//fprintf(stderr,"http_get pump\n");
 	con.pump();
       }
     } catch ( Wobbly w ) {
@@ -113,24 +119,55 @@ bool Http::get( const char* uri,
 }
 
 
-bool Http::post( const char* uri, const char*putname, const char* putfile )
+bool Http::post( const char* uri, const char*putname, const char* putfile,
+		 const char* otherargs )
 {
   char host[256];
   char path[256];
-  unsigned char data[64*1024];
+  char data[64*1024];
   int port;
+
+  if ( otherargs ) {
+    sprintf(data,"%s&%s=",otherargs,putname);
+  } else {
+    sprintf(data,"%s=",putname);
+  }
+  char *buf = &data[strlen(data)];
   
   m_file = fopen( putfile, "rt" );
-  m_size = fread(data,1,sizeof(data),m_file);
+  while ( !feof(m_file) ) {
+    unsigned char c = fgetc( m_file );
+    switch ( c ) {
+    case 'a'...'z':
+    case 'A'...'Z':
+    case '0'...'9':
+      *buf++ = c;
+      break;
+    default:
+      *buf++ = '%';
+      *buf++ = c>>8;
+      *buf++ = c&0xf;
+      break;
+    }
+    //m_size = fread(data,1,sizeof(data),m_file);
+  }
   fclose ( m_file );
- 
+  m_size = buf - &data[0];
+
+  const char* headers[] = {
+    "Connection", "close",
+    "Content-type", "application/x-www-form-urlencoded",
+    "Accept", "text/plain",
+    0
+  };
+  
   if ( parseUri( uri, &host[0], &port, &path[0] ) ) {
     try {
       Connection con( host, port );
       con.setcallbacks( http_begin_cb, http_post_cb, http_complete_cb, this );
-      con.request("POST",path,NULL,data,m_size);
+      con.request("POST",path,headers,(unsigned char*)data,m_size);
       while ( con.outstanding() ) {
-	fprintf(stderr,"http::post pump\n");
+	//fprintf(stderr,"http::post pump\n");
 	con.pump();
       }
     } catch ( Wobbly w ) {

@@ -22,6 +22,7 @@ class Path;
 
 class Canvas
 {
+  typedef void* State;
 public:
   Canvas( int w, int h );
   virtual ~Canvas();
@@ -47,7 +48,6 @@ public:
   void drawRect( const Rect& r, int c, bool fill=true );
   int writeBMP( const char* filename ) const;
 protected:
-  typedef void* State;
   Canvas( State state=NULL );
   State   m_state;
   int     m_bgColour;

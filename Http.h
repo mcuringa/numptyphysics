@@ -23,7 +23,8 @@ class Http
 public:
   // start
   bool get( const char* uri, const char* file );
-  bool post( const char* uri, const char*putname, const char* putfile );
+  bool post( const char* uri, const char*putname, const char* putfile,
+	     const char* otherargs=NULL );
 
   // response
   std::string errorMessage();

@@ -21,6 +21,7 @@
 #include "Overlay.h"
 #include "Path.h"
 #include "Canvas.h"
+#include "Font.h"
 #include "Levels.h"
 #include "Http.h"
 #include "Os.h"
@@ -435,7 +436,7 @@ private:
 
   void process()
   {
-    float32 thresh = 0.1*SIMPLIFY_THRESHOLDf;
+    float32 thresh = SIMPLIFY_THRESHOLDf;
     m_rawPath.simplify( thresh );
     m_shapePath = m_rawPath;
 
@@ -524,7 +525,7 @@ public:
       worldAABB.lowerBound.Set(-100.0f, -100.0f);
       worldAABB.upperBound.Set(100.0f, 100.0f);
       
-      b2Vec2 gravity(0.0f, 10.0f);
+      b2Vec2 gravity(0.0f, 10.0f*PIXELS_PER_METREf);
       bool doSleep = true;
       m_world = new b2World(worldAABB, gravity, doSleep);
       m_world->SetContactListener( this );
@@ -726,7 +727,17 @@ public:
     }
   }
 
-
+  void setGravity( const char* s )
+  {
+    float32 x,y;      
+    if ( sscanf( s, "%f,%f", &x, &y )==2) {
+      if ( m_world ) {
+	m_world->SetGravity( b2Vec2(x,y)*PIXELS_PER_METREf );
+      }
+    } else {
+      fprintf(stderr,"invalid gravity vector\n");
+    }
+  }
 
   bool load( unsigned char *buf, int bufsize )
   {
@@ -760,11 +771,16 @@ public:
 
   bool parseLine( const string& line )
   {
-    switch( line[0] ) {
-    case 'T': m_title = line.substr(line.find(':')+1);  return true;
-    case 'B': m_bg = line.substr(line.find(':')+1);     return true;
-    case 'A': m_author = line.substr(line.find(':')+1); return true;
-    case 'S': m_strokes.append( new Stroke(line) );     return true;
+    try {
+      switch( line[0] ) {
+      case 'T': m_title = line.substr(line.find(':')+1);  return true;
+      case 'B': m_bg = line.substr(line.find(':')+1);     return true;
+      case 'A': m_author = line.substr(line.find(':')+1); return true;
+      case 'S': m_strokes.append( new Stroke(line) );     return true;
+      case 'G': setGravity(line.substr(line.find(':')+1); return true;
+      }
+    } catch ( const char* e ) {
+      printf("Stroke error: %s\n",e);
     }
     return false;
   }
@@ -1007,6 +1023,38 @@ private:
 };
 
 
+class CollectionSelector : public ListProvider
+{
+  Overlay* m_list;
+public:
+  CollectionSelector( GameControl& game )
+  {
+    m_list = createListOverlay( game, this );
+  }
+  Overlay* overlay() { return m_list; }
+
+  virtual int     countItems() {
+    return 58;
+  }
+  virtual Canvas* provideItem( int i, Canvas* old ) {
+    delete old;
+    char buf[18];
+    sprintf(buf,"%d. Item",i);
+    Canvas* c = new Canvas( 100, 32 );
+    c->setBackground(0xffffff);
+    c->clear();
+    Font::headingFont()->drawLeft( c, Vec2(3,3), buf, i<<3 );
+    return c;
+  }
+  virtual void    releaseItem( Canvas* old ) {
+    delete old;
+  }
+  virtual void    onSelection( int i, int ix, int iy ) { 
+    printf("Selected: %d (%d,%d)\n",i,ix,iy);
+  }
+};
+
+
 class Game : public GameControl
 {
   Scene   	    m_scene;
@@ -1019,6 +1067,7 @@ class Game : public GameControl
   //  DemoOverlay       m_demoOverlay;
   DemoRecorder      m_recorder;
   DemoPlayer        m_player;
+  CollectionSelector m_cselector;
   Os               *m_os;
 public:
   Game( int width, int height ) 
@@ -1027,6 +1076,7 @@ public:
     m_window(width,height,"Numpty Physics","NPhysics"),
     m_pauseOverlay( NULL ),
     m_editOverlay( NULL ),
+    m_cselector( *this ),
     m_os( Os::get() )
     //,m_demoOverlay( *this )
   {
@@ -1093,7 +1143,8 @@ public:
   {
     if ( save( SEND_TEMP_FILE ) ) {
       Http h;
-      if ( h.post( Config::planetRoot().c_str(), "upload", SEND_TEMP_FILE ) ) {
+      if ( h.post( Config::planetRoot().c_str(),
+		   "upload", SEND_TEMP_FILE, "type=level" ) ) {
 	std::string id = h.getHeader("NP-Upload-Id");
 	if ( id.length() > 0 ) {
 	  printf("uploaded as id %s\n",id.c_str());
@@ -1206,6 +1257,9 @@ public:
 	break;
       case SDLK_F4: 
 	showOverlay( createMenuOverlay( *this ) );
+	break;
+      case SDLK_c:
+	toggleOverlay( m_cselector.overlay() );
 	break;
       case SDLK_e:
       case SDLK_F6:
