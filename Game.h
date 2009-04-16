@@ -19,6 +19,7 @@
 
 #include "Levels.h"
 
+class Widget;
 class Canvas;
 
 struct GameControl
@@ -31,7 +32,6 @@ struct GameControl
 		 m_strokeFixed( false ),
 		 m_strokeSleep( false ),
 		 m_strokeDecor( false ),
-		 m_levels(),
                  m_level(0)
   {}
   virtual ~GameControl() {}
@@ -39,7 +39,7 @@ struct GameControl
   virtual bool send() { return false; }
   virtual bool load( const char* file ) { return false; }
   virtual void gotoLevel( int l, bool replay=false ) {}
-  Levels& levels() { return m_levels; }
+  Levels& levels() { return *m_levels; }
   virtual bool  renderScene( Canvas& c, int level ) =0; 
   bool  m_quit;
   bool  m_edit;
@@ -49,9 +49,13 @@ struct GameControl
   bool  m_strokeFixed;
   bool  m_strokeSleep;
   bool  m_strokeDecor;
-  Levels m_levels;
+  Levels*m_levels;
   int    m_level;
 };
+
+
+Widget * createGameLayer( Levels* levels, int width, int height );
+
 
 
 #endif //GAME_H

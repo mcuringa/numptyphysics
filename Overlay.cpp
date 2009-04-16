@@ -20,6 +20,7 @@
 #include "Config.h"
 #include "Path.h"
 #include "Font.h"
+#include "Worker.h"
 
 #include <SDL/SDL.h>
 #include <string>
@@ -50,14 +51,18 @@ public:
 
   Rect dirtyArea() 
   {
-    return Rect(m_x,m_y,m_x+m_canvas->width()-1,m_y+m_canvas->height()-1);
+    if ( m_isDirty ) {
+      return Rect(m_x,m_y,m_x+m_canvas->width()-1,m_y+m_canvas->height()-1);
+    } else {
+      return Rect(0,0,0,0);
+    }
   }
  
   virtual void onShow() { dirty(); }
   virtual void onHide() {}
   virtual void onTick( int tick ) {}
 
-  virtual void draw( Canvas& screen )
+  virtual void draw( Canvas& screen, const Rect& area )
   {
     if ( m_canvas ) {
       screen.drawImage( m_canvas, m_x, m_y );
@@ -507,9 +512,9 @@ public:
     m_game.m_refresh = true; //for fullscreen fade
     m_game.m_fade = false;
   }
-  virtual void draw( Canvas& screen )
+  virtual void draw( Canvas& screen, const Rect& area )
   {
-    UiOverlay::draw( screen );
+    UiOverlay::draw( screen, area );
     if ( genIcon() ) {      
       Font::blurbFont()->drawCenter( &screen, Vec2(m_x+200,m_y+70), 
 				       m_game.levels().levelName(m_selectedLevel), 0 );
@@ -542,9 +547,12 @@ private:
   bool genIcon()
   {
     if ( m_icon==NULL || m_levelIcon != m_selectedLevel ) {
+
+      //Worker w( NULL, 1, 100, 200 );
+
       delete m_icon;
       m_icon = NULL;
-      if ( m_selectedLevel < m_game.m_levels.numLevels() ) {
+      if ( m_selectedLevel < m_game.levels().numLevels() ) {
 	Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
 	if ( m_game.renderScene( temp, m_selectedLevel) ) {
 	  m_icon = temp.scale( ICON_SCALE_FACTOR );
@@ -552,7 +560,7 @@ private:
       } else {
 	m_icon = new Image("theend.png");
 	m_caption = "no more levels!";
-	m_selectedLevel = m_game.m_levels.numLevels();
+	m_selectedLevel = m_game.levels().numLevels();
       }
       m_levelIcon = m_selectedLevel;
     }
@@ -601,9 +609,9 @@ public:
     r.br.x+=2; r.br.y+=2;
     screen.drawRect( r, c, false );
   }
-  virtual void draw( Canvas& screen )
+  virtual void draw( Canvas& screen, const Rect& area )
   {
-    IconOverlay::draw( screen );
+    IconOverlay::draw( screen, area );
     outline( screen, m_game.m_colour, 0 );
     if ( m_game.m_strokeFixed ) outline( screen, 12, 0 );
     if ( m_game.m_strokeSleep ) outline( screen, 13, 0 );

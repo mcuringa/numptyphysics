@@ -75,7 +75,8 @@ PROGRAMS = $(bin_PROGRAMS)
 am_numptyphysics_OBJECTS = numptyphysics-Path.$(OBJEXT) \
 	numptyphysics-Canvas.$(OBJEXT) numptyphysics-Font.$(OBJEXT) \
 	numptyphysics-Levels.$(OBJEXT) numptyphysics-ZipFile.$(OBJEXT) \
-	numptyphysics-Game.$(OBJEXT) numptyphysics-Overlay.$(OBJEXT) \
+	numptyphysics-Scene.$(OBJEXT) numptyphysics-Game.$(OBJEXT) \
+	numptyphysics-App.$(OBJEXT) numptyphysics-Overlay.$(OBJEXT) \
 	numptyphysics-Config.$(OBJEXT) numptyphysics-Http.$(OBJEXT) \
 	numptyphysics-happyhttp.$(OBJEXT) \
 	numptyphysics-zoomer.$(OBJEXT) \
@@ -241,7 +242,9 @@ numptyphysics_SOURCES = \
 	Font.cpp \
 	Levels.cpp \
 	ZipFile.cpp \
+	Scene.cpp \
 	Game.cpp \
+	App.cpp \
 	Overlay.cpp \
 	Config.cpp \
 	Http.cpp \
@@ -406,6 +409,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2TimeOfImpact.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2World.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/b2WorldCallbacks.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-App.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Canvas.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Config.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Font.Po@am__quote@
@@ -417,6 +421,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-OsWin32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Overlay.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Path.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Scene.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-ZipFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-happyhttp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-zoomer.Po@am__quote@
@@ -939,6 +944,20 @@ numptyphysics-ZipFile.obj: ZipFile.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-ZipFile.obj `if test -f 'ZipFile.cpp'; then $(CYGPATH_W) 'ZipFile.cpp'; else $(CYGPATH_W) '$(srcdir)/ZipFile.cpp'; fi`
 
+numptyphysics-Scene.o: Scene.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Scene.o -MD -MP -MF $(DEPDIR)/numptyphysics-Scene.Tpo -c -o numptyphysics-Scene.o `test -f 'Scene.cpp' || echo '$(srcdir)/'`Scene.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Scene.Tpo $(DEPDIR)/numptyphysics-Scene.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Scene.cpp' object='numptyphysics-Scene.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Scene.o `test -f 'Scene.cpp' || echo '$(srcdir)/'`Scene.cpp
+
+numptyphysics-Scene.obj: Scene.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Scene.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Scene.Tpo -c -o numptyphysics-Scene.obj `if test -f 'Scene.cpp'; then $(CYGPATH_W) 'Scene.cpp'; else $(CYGPATH_W) '$(srcdir)/Scene.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Scene.Tpo $(DEPDIR)/numptyphysics-Scene.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Scene.cpp' object='numptyphysics-Scene.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Scene.obj `if test -f 'Scene.cpp'; then $(CYGPATH_W) 'Scene.cpp'; else $(CYGPATH_W) '$(srcdir)/Scene.cpp'; fi`
+
 numptyphysics-Game.o: Game.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Game.o -MD -MP -MF $(DEPDIR)/numptyphysics-Game.Tpo -c -o numptyphysics-Game.o `test -f 'Game.cpp' || echo '$(srcdir)/'`Game.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Game.Tpo $(DEPDIR)/numptyphysics-Game.Po
@@ -952,6 +971,20 @@ numptyphysics-Game.obj: Game.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Game.cpp' object='numptyphysics-Game.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Game.obj `if test -f 'Game.cpp'; then $(CYGPATH_W) 'Game.cpp'; else $(CYGPATH_W) '$(srcdir)/Game.cpp'; fi`
+
+numptyphysics-App.o: App.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-App.o -MD -MP -MF $(DEPDIR)/numptyphysics-App.Tpo -c -o numptyphysics-App.o `test -f 'App.cpp' || echo '$(srcdir)/'`App.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-App.Tpo $(DEPDIR)/numptyphysics-App.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='App.cpp' object='numptyphysics-App.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-App.o `test -f 'App.cpp' || echo '$(srcdir)/'`App.cpp
+
+numptyphysics-App.obj: App.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-App.obj -MD -MP -MF $(DEPDIR)/numptyphysics-App.Tpo -c -o numptyphysics-App.obj `if test -f 'App.cpp'; then $(CYGPATH_W) 'App.cpp'; else $(CYGPATH_W) '$(srcdir)/App.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-App.Tpo $(DEPDIR)/numptyphysics-App.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='App.cpp' object='numptyphysics-App.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-App.obj `if test -f 'App.cpp'; then $(CYGPATH_W) 'App.cpp'; else $(CYGPATH_W) '$(srcdir)/App.cpp'; fi`
 
 numptyphysics-Overlay.o: Overlay.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Overlay.o -MD -MP -MF $(DEPDIR)/numptyphysics-Overlay.Tpo -c -o numptyphysics-Overlay.o `test -f 'Overlay.cpp' || echo '$(srcdir)/'`Overlay.cpp

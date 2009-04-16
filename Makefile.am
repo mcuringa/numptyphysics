@@ -17,7 +17,9 @@ numptyphysics_SOURCES = \
 	Font.cpp \
 	Levels.cpp \
 	ZipFile.cpp \
+	Scene.cpp \
 	Game.cpp \
+	App.cpp \
 	Overlay.cpp \
 	Config.cpp \
 	Http.cpp \

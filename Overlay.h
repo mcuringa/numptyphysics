@@ -18,22 +18,15 @@
 #define OVERLAY_H
 
 #include "Common.h"
-#include <SDL/SDL.h>
+#include "Ui.h"
 
 class Canvas;
 class GameControl;
 
-class Overlay
+
+class Overlay : public Layer
 {
 public:
-  virtual ~Overlay() {} 
-  virtual bool isDirty() =0;
-  virtual Rect dirtyArea() =0;
-  virtual void onShow() {}
-  virtual void onHide() {}
-  virtual void onTick( int tick ) {}
-  virtual void draw( Canvas& screen ) =0;
-  virtual bool handleEvent( SDL_Event& ev ) =0;
 };
 
 class ListProvider
