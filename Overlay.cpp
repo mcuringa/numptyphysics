@@ -20,7 +20,7 @@
 #include "Config.h"
 #include "Path.h"
 #include "Font.h"
-#include "Worker.h"
+//#include "Worker.h"
 
 #include <SDL/SDL.h>
 #include <string>
