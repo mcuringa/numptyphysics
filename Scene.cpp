@@ -721,7 +721,7 @@ bool Scene::load( std::istream& in )
 {
   clear();
   if ( g_bgImage==NULL ) {
-    g_bgImage = new Image("paper.jpg");
+    g_bgImage = new Image("paper.png");
     g_bgImage->scale( SCREEN_WIDTH, SCREEN_HEIGHT );
   }
   m_bgImage = g_bgImage;
