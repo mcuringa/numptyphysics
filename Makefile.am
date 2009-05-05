@@ -37,7 +37,7 @@ numptyphysics_DATA = \
 	data/C10_Standard.npz \
 	data/edit.png \
 	data/next.png \
-	data/paper.jpg \
+	data/paper.png \
 	data/pause.png \
 	data/play.png \
 	data/record.png \
