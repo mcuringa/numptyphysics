@@ -58,7 +58,7 @@ protected:
 class Window : public Canvas
 {
  public:
-  Window( int w, int h, const char* title=NULL, const char* winclass=NULL );
+  Window( int w, int h, const char* title=NULL, const char* winclass=NULL, bool fullscreen=false );
   void update( const Rect& r );
   void raise();
   void setSubName( const char *sub );

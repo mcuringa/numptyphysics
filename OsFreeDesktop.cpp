@@ -20,6 +20,14 @@
 #include <string.h>
 #include <stdio.h>
 
+/**
+ * Include SDL, so that under Mac OS X it can rename my main()
+ * function to SDL_main (else NP *will* crash on OS X).
+ *
+ * http://www.libsdl.org/faq.php?action=listentries&category=7#55
+ **/
+#include "SDL/SDL.h"
+
 class OsFreeDesktop : public Os
 {
  public:

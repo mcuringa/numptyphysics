@@ -562,7 +562,7 @@ void Canvas::drawRect( const Rect& r, int c, bool fill )
 
 
 
-Window::Window( int w, int h, const char* title, const char* winclass )
+Window::Window( int w, int h, const char* title, const char* winclass, bool fullscreen )
 {
   if ( winclass ) {
     char s[80];
@@ -577,7 +577,7 @@ Window::Window( int w, int h, const char* title, const char* winclass )
   SDL_WM_ToggleFullScreen( SURFACE(this) );
   SDL_ShowCursor( SDL_DISABLE );
 #else
-  m_state = SDL_SetVideoMode( w, h, 0, SDL_SWSURFACE);
+  m_state = SDL_SetVideoMode( w, h, 32, SDL_SWSURFACE | ((fullscreen==true)?(SDL_FULLSCREEN):(0)));
 #endif
   if ( SURFACE(this) == NULL ) {
     throw "Unable to set video mode";
@@ -623,7 +623,9 @@ void Window::raise()
   SDL_VERSION( &sys.version );
   SDL_GetWMInfo( &sys );
 
-#ifndef WIN32
+#if !defined(WIN32) && !(defined(__APPLE__) && defined(__MACH__))
+  /* No X11 stuff on Windows and Mac OS X */
+
   // take focus...
   XEvent ev = { 0 };
   ev.xclient.type         = ClientMessage;
