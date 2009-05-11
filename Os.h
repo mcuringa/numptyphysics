@@ -18,6 +18,8 @@
 
 #include <stdlib.h>
 
+class Accelerometer;
+
 class Os
 {
  public:  
@@ -25,6 +27,7 @@ class Os
   virtual char* getLaunchFile() { return NULL; }
   virtual bool  openBrowser( const char* url ) = 0;
   virtual char* saveDialog( const char* path ) { return NULL; }
+  virtual Accelerometer*  getAccelerometer() { return NULL; }
 
   static Os* get();
   static const char pathSep;
