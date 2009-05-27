@@ -697,11 +697,12 @@ Image::Image( const char* file, bool alpha )
 
 int Canvas::writeBMP( const char* filename ) const
 {
+#pragma pack(push,1)
   typedef struct {
-    unsigned short int type;                 /* Magic identifier            */
-    unsigned int size;                       /* File size in bytes          */
+    unsigned short int type;         /* Magic identifier */
+    unsigned int size;               /* File size in bytes */
     unsigned short int reserved1, reserved2;
-    unsigned int offset;                     /* Offset to image data, bytes */
+    unsigned int offset;             /* Offset to image data, bytes */
   } BMPHEADER;
   
   typedef struct {
@@ -715,12 +716,15 @@ int Canvas::writeBMP( const char* filename ) const
     unsigned int ncolours;           /* Number of colours         */
     unsigned int importantcolours;   /* Important colours         */
   } BMPINFOHEADER;
+  int check_BMPHEADER[(sizeof(BMPHEADER)==14)-1];
+  int check_BMPINFOHEADER[(sizeof(BMPINFOHEADER)==40)-1];
+#pragma pack(pop)
     
   int w = width();
   int h = height();
-  BMPHEADER     head = { 'B'|('M'<<8), 14+40+w*h*3, 0, 0, 0 };
+  BMPHEADER     head = { 'B'|('M'<<8), 14+40+w*h*3, 0, 0, 14+40 };
   BMPINFOHEADER info = { 40, w, h, 1, 24, 0, w*h*3, 100, 100, 0, 0 };
-  
+
   FILE *f = fopen( filename, "wb" );
   if ( f ) {
     Uint32 bpp;

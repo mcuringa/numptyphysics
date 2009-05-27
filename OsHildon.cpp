@@ -23,7 +23,6 @@
 #include <glibconfig.h>
 #include <glib/gmacros.h>
 #include <libosso.h>
-#include <ossoemailinterface.h>
 
 #include <hildon/hildon-program.h>
 //#include <hildon/hildon-file-chooser-dialog.h>

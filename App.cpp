@@ -22,6 +22,7 @@
 #include "Levels.h"
 #include "Canvas.h"
 #include "Ui.h"
+#include "Font.h"
 
 #include <cstdio>
 #include <string>
@@ -35,7 +36,11 @@ class App : private WidgetParent
   int   m_height;
   bool  m_rotate;
   bool  m_thumbnailMode;
+  bool  m_videoMode;
   bool  m_quit;
+  bool  m_drawFps;
+  bool  m_drawDirty;
+  int   m_renderRate;
   Array<const char*> m_files;
   Array<Widget *>    m_layers;
   Window            *m_window;
@@ -45,12 +50,19 @@ public:
       m_height(SCREEN_HEIGHT),
       m_rotate(false),
       m_thumbnailMode(false),
+      m_videoMode(false),
       m_quit(false),
+      m_drawFps(false),
+      m_drawDirty(false),
       m_window(NULL)
   {
     for ( int i=1; i<argc; i++ ) {
       if ( strcmp(argv[i],"-bmp")==0 ) {
 	m_thumbnailMode = true;
+      } else if ( strcmp(argv[i],"-video")==0 ) {
+	m_videoMode = true;
+      } else if ( strcmp(argv[i],"-fps")==0 ) {
+	m_drawFps = true;
       } else if ( strcmp(argv[i],"-rotate")==0 ) {
 	m_rotate = true;
       } else if ( strcmp(argv[i],"-geometry")==0 && i<argc-1) {
@@ -78,6 +90,10 @@ public:
       for ( int i=0; i<m_files.size(); i++ ) {
 	renderThumbnail( m_files[i], m_width, m_height );
       }
+    } else if ( m_videoMode ) {
+      for ( int i=0; i<m_files.size(); i++ ) {
+	renderVideo( m_files[i], m_width, m_height );
+      }
     } else {      
       m_window = new Window(m_width,m_height,"Numpty Physics","NPhysics"),
       runGame( m_files, m_width, m_height );
@@ -88,7 +104,7 @@ private:
 
   void init()
   {
-    if ( m_thumbnailMode ) {
+    if ( m_thumbnailMode || m_videoMode ) {
       putenv((char*)"SDL_VIDEODRIVER=dummy");
     } else {
       putenv((char*)"SDL_VIDEO_X11_WMCLASS=NPhysics");
@@ -119,6 +135,31 @@ private:
     }
   }
 
+
+  void renderVideo( const char* file, int width, int height )
+  {
+    configureScreenTransform( width, height );
+
+    Levels* levels = new Levels();
+    levels->addPath( file );
+    add( createGameLayer( levels, width, height ) );
+
+    Rect area(0,0,width,height);
+    Canvas canvas(width,height);
+    int iterateCounter = 0;
+
+    for ( int f=0; f<VIDEO_FPS*VIDEO_MAX_LEN; f++ ) {
+      while ( iterateCounter < ITERATION_RATE ) {
+	m_layers[0]->onTick( f*1000/VIDEO_FPS );
+	iterateCounter += VIDEO_FPS;
+      }
+      iterateCounter -= ITERATION_RATE;
+      m_layers[0]->draw( canvas, area );
+      char bfile[128];
+      sprintf(bfile,"%s.%04d.bmp",file,f);
+      canvas.writeBMP( bfile );
+    }
+  }
 
   void add( Widget* w )
   {
@@ -171,10 +212,23 @@ private:
 	}
       }
     }
+
     for ( int i=0; i<m_layers.size(); i++ ) {
       m_layers[i]->draw( *m_window, area );
     }
-    m_window->drawRect( area, 0x00ff00, false );
+ 
+    if ( m_drawDirty ) {
+      m_window->drawRect( area, 0x00ff00, false );
+    }
+
+    if ( m_drawFps ) {
+      m_window->drawRect( Rect(0,0,50,50), 0xbfbf8f, true );
+      char buf[32];
+      sprintf(buf,"%d",m_renderRate);
+      Font::headingFont()->drawLeft( m_window, Vec2(20,20), buf, 0 );
+      area.expand( Rect(0,0,50,50) );
+    }
+
     m_window->update( area );
   }
 
@@ -186,8 +240,15 @@ private:
       m_quit = true;
       return true;
     case SDL_KEYDOWN:
-      if ( ev.key.keysym.sym == SDLK_q ) {
+      switch ( ev.key.keysym.sym ) {
+      case SDLK_q:
 	m_quit = true;
+	return true;
+      case SDLK_1:
+	m_drawFps = !m_drawFps;
+	return true;
+      case SDLK_2:
+	m_drawDirty = !m_drawDirty;
 	return true;
       }
     }
@@ -216,7 +277,7 @@ private:
   {
     renderLayers();
 
-    int renderRate = (MIN_RENDER_RATE+MAX_RENDER_RATE)/2;
+    m_renderRate = (MIN_RENDER_RATE+MAX_RENDER_RATE)/2;
     int iterationRate = ITERATION_RATE;
     int iterateCounter = 0;
     int lastTick = SDL_GetTicks();
@@ -225,31 +286,30 @@ private:
     while ( !m_quit ) {
 
       //assumes RENDER_RATE <= ITERATION_RATE
-      //TODO dynamic tick scaling for improved sleep
       while ( iterateCounter < iterationRate ) {
 	dispatchEvents( lastTick );
 	if ( m_quit ) return;
-	iterateCounter += renderRate;
+	iterateCounter += m_renderRate;
       }
       iterateCounter -= iterationRate;
 
       renderLayers();
 
-      int sleepMs = lastTick + 1000/renderRate -  SDL_GetTicks();
+      int sleepMs = lastTick + 1000/m_renderRate -  SDL_GetTicks();
 
-      if ( sleepMs > 1 && renderRate < MAX_RENDER_RATE ) {
-	renderRate++;
-	printf("increasing render rate to %dfps\n",renderRate);
-	sleepMs = lastTick + 1000/renderRate -  SDL_GetTicks();
+      if ( sleepMs > 1 && m_renderRate < MAX_RENDER_RATE ) {
+	m_renderRate++;
+	//printf("increasing render rate to %dfps\n",m_renderRate);
+	sleepMs = lastTick + 1000/m_renderRate -  SDL_GetTicks();
       }
 
       if ( sleepMs > 0 ) {
 	SDL_Delay( sleepMs );
       } else {
-	printf("overrun %dms\n",-sleepMs);
-	if ( renderRate > MIN_RENDER_RATE ) {
-	  renderRate--;
-	  printf("decreasing render rate to %dfps\n",renderRate);
+	//printf("overrun %dms\n",-sleepMs);
+	if ( m_renderRate > MIN_RENDER_RATE ) {
+	  m_renderRate--;
+	  //printf("decreasing render rate to %dfps\n",m_renderRate);
 	} else if ( iterationRate > 30 ) {
 	  //slow down simulation time to maintain fps??
 	}

@@ -54,7 +54,8 @@ bool Levels::addPath( const char* path )
   int len = strlen( path );
   if ( strcasecmp( path+len-4, ".npz" )==0 ) {
     scanCollection( string(path), rankFromPath(path) );
-  } else if ( strcasecmp( path+len-4, ".nph" )==0 ) {
+  } else if ( strcasecmp( path+len-4, ".nph" )==0 
+	      || strcasecmp( path+len-4, ".npd" )==0) {
     addLevel( path, rankFromPath(path) );
   } else {
     DIR *dir = opendir( path );

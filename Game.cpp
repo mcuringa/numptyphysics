@@ -26,6 +26,7 @@
 #include "Http.h"
 #include "Os.h"
 #include "Scene.h"
+#include "Script.h"
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
@@ -45,199 +46,6 @@ unsigned char levelbuf[64*1024];
 
 
 
-
-struct DemoEntry {
-  DemoEntry( int _t, int _o, SDL_Event& _e ) : t(_t), o(_o), e(_e) {}
-  int t,o;
-  SDL_Event e;
-};
-
-class DemoLog : public Array<DemoEntry>
-{
-public:
-  std::string asString( int i )
-  {
-    if ( i < size() ) {
-      DemoEntry& e = at(i);
-      stringstream s;
-      s << "E:" << e.t << " ";
-      switch( e.e.type ) {
-      case SDL_KEYDOWN:
-	s << "K" << e.e.key.keysym.sym;
-	break;
-      case SDL_KEYUP:
-	s << "k" << e.e.key.keysym.sym;
-	break;
-      case SDL_MOUSEBUTTONDOWN:
-	s << "B" << '0'+e.e.button.button;
-	s << "," << e.e.button.x << "," << e.e.button.y;
-	break;
-      case SDL_MOUSEBUTTONUP:
-	s << "b" << '0'+e.e.button.button;
-	s << "," << e.e.button.x << "," << e.e.button.y;
-	break;
-      case SDL_MOUSEMOTION:
-	s << "M" << e.e.button.x << "," << e.e.button.y;
-	break;
-      default:
-	return std::string();
-      }
-      return s.str();
-    }
-    return std::string();
-  }
-
-  void append( int tick, int offset, SDL_Event& ev ) 
-  {
-    Array<DemoEntry>::append( DemoEntry( tick, offset, ev ) );
-  }
-
-  void appendFromString( const std::string& str ) 
-  {
-    const char *s = str.c_str();
-    int t, o, v1, v2, v3;
-    char c;
-    SDL_Event ev = {0};
-    ev.type = 0xff;
-    if ( sscanf(s,"E:%d %c%d",&t,&c,&v1)==3 ) { //1 arg
-      switch ( c ) {
-      case 'K': ev.type = SDL_KEYDOWN; break;
-      case 'k': ev.type = SDL_KEYUP; break;
-      }
-      ev.key.keysym.sym = (SDLKey)v1;
-    } else if ( sscanf(s,"E:%d %c%d,%d",&t,&c,&v1,&v2)==4 ) { //2 args
-      switch ( c ) {
-      case 'M': ev.type = SDL_MOUSEMOTION; break;
-      }
-      ev.button.x = v1;
-      ev.button.y = v2;
-    } else if ( sscanf(s,"E:%d %c%d,%d,%d",&t,&c,&v1,&v2,&v3)==5 ) { //3 args
-      switch ( c ) {
-      case 'B': ev.type = SDL_MOUSEBUTTONDOWN; break;
-      case 'b': ev.type = SDL_MOUSEBUTTONUP; break;
-      }
-      ev.button.button = v1;
-      ev.button.x = v2;
-      ev.button.y = v3;
-    }
-    if ( ev.type != 0xff ) {
-      append( t, o, ev );
-    }
-  }
-};
-
-class DemoRecorder
-{
-public:
-
-  void start() 
-  {
-    m_running = true;
-    m_log.empty();
-    m_log.capacity(512);
-    m_lastTick = 0;
-    m_lastTickTime = SDL_GetTicks();
-    m_pressed = 0;
-  }
-
-  void stop()  
-  { 
-    printf("stop recording: %d events:\n", m_log.size());
-    for ( int i=0; i<m_log.size(); i++ ) {
-      std::string e = m_log.asString(i);
-      if ( e.length() > 0 ) {
-	printf("  %s\n",e.c_str());
-      }
-    }
-    m_running = false; 
-  }
-
-  void tick() 
-  {
-    if ( m_running ) {
-      m_lastTick++;
-      m_lastTickTime = SDL_GetTicks();
-    }
-  }
-
-  void record( SDL_Event& ev )
-  {
-    if ( m_running ) {
-      switch( ev.type ) {      
-      case SDL_MOUSEBUTTONDOWN: 
-	m_pressed |= 1<<ev.button.button;
-	break;
-      case SDL_MOUSEBUTTONUP: 
-	m_pressed &= ~(1<<ev.button.button);
-	break;
-      case SDL_MOUSEMOTION:
-	if ( m_pressed == 0 ) {
-	  return;
-	}
-      }
-      m_log.append( m_lastTick, SDL_GetTicks()-m_lastTickTime, ev );
-    }
-  }
-  
-  DemoLog& getLog() { return m_log; }
-
-private:
-  bool          m_running;
-  DemoLog       m_log;
-  int 		m_lastTick;
-  int 		m_lastTickTime;
-  int           m_pressed;
-};
-
-
-class DemoPlayer
-{
-public:
-
-  void start( const DemoLog* log ) 
-  {
-    m_playing = true;
-    m_log = log;
-    m_index = 0;
-    m_lastTick = 0;
-    printf("start playback: %d events\n",m_log->size());
-  }
-
-  bool isRunning() { return m_playing; }
-
-  void stop()  
-  { 
-    m_playing = false; 
-    m_log = NULL;
-  }
-
-  void tick() 
-  {
-    if ( m_playing ) {
-      m_lastTick++;
-    }
-  }
-
-  bool fetchEvent( SDL_Event& ev )
-  {
-    if ( m_playing ) {
-      if ( m_index < m_log->size()
-	   && m_log->at(m_index).t <= m_lastTick ) {
-	printf("demo event at t=%d\n",m_lastTick);
-	ev = m_log->at(m_index).e;
-	m_index++;
-	return true;
-      }
-    }
-    return false;
-  }
-  
-private:
-  bool           m_playing;
-  const DemoLog* m_log;
-  int            m_index;
-  int  		 m_lastTick;
-};
 
 
 class CollectionSelector : public ListProvider
@@ -297,9 +105,6 @@ class Game : public GameControl, public Widget
   Overlay          *m_pauseOverlay;
   Overlay          *m_editOverlay;
   Overlay          *m_completedOverlay;
-  //  DemoOverlay       m_demoOverlay;
-  DemoRecorder      m_recorder;
-  DemoPlayer        m_player;
   CollectionSelector m_cselector;
   Os               *m_os;
   GameStats         m_stats;
@@ -338,25 +143,29 @@ public:
 
   void gotoLevel( int level, bool replay=false )
   {
-    if ( level >= 0 && level < m_levels->numLevels() ) {
+    bool ok = false;
+
+    if ( replay ) {
+      // reset scene, delete user strokes, but retain log
+      m_scene.reset( NULL, true );
+      m_scene.start( true );
+      ok = true;
+    } else if ( level >= 0 && level < m_levels->numLevels() ) {
       int size = m_levels->load( level, levelbuf, sizeof(levelbuf) );
       if ( size && m_scene.load( levelbuf, size ) ) {
-	m_scene.activateAll();
-	//m_window.setSubName( file );
-	m_refresh = true;
-	if ( m_edit ) {
-	  m_scene.protect(0);
-	}
-	m_recorder.stop();
-	m_player.stop();
-	if ( replay ) {
-	  m_player.start( &m_recorder.getLog() );
-	} else {
-	  m_recorder.start();
-	}
-	m_level = level;
-	m_stats.reset();
+	m_scene.start( m_scene.getLog()->size() > 0 );
+	ok = true;
       }
+    }
+
+    if (ok) {
+      //m_window.setSubName( file );
+      if ( m_edit ) {
+	m_scene.protect(0);
+      }
+      m_refresh = true;
+      m_level = level;
+      m_stats.reset();
     }
   }
 
@@ -380,6 +189,7 @@ public:
     }
     return false;
   }
+
 
   bool send()
   {
@@ -504,6 +314,7 @@ public:
 	break;
       case SDLK_d:
 	//toggleOverlay( m_demoOverlay );
+	m_scene.save("test.npd",true);
 	break;
       case SDLK_r:
       case SDLK_UP:
@@ -586,7 +397,7 @@ public:
     case SDL_MOUSEBUTTONUP:
       if ( ev.button.button == SDL_BUTTON_LEFT
 	   && m_createStroke ) {
-	if ( m_scene.activate( m_createStroke ) ) {
+	if ( m_scene.activateStroke( m_createStroke ) ) {
 	  m_stats.strokeCount++;
 	  if ( isPaused() ) {
 	    m_stats.pausedStrokes++; 
@@ -682,20 +493,7 @@ public:
 
   virtual void onTick( int tick ) 
   {
-    if ( !isPaused() ) {
-      m_scene.step();
-      m_recorder.tick();
-      m_player.tick();
-    }
-
-    SDL_Event ev;
-    while ( m_player.fetchEvent(ev) ) {
-      // todo only dispatch play events?
-      handleModEvent(ev)
-	|| handleGameEvent(ev)
-	|| handleEditEvent(ev)
-	|| handlePlayEvent(ev);
-    }
+    m_scene.step( isPaused() );
 
     if ( m_isCompleted && m_edit ) {
       hideOverlay( m_completedOverlay );
@@ -705,8 +503,10 @@ public:
       m_isCompleted = m_scene.isCompleted();
       if ( m_isCompleted ) {
 	m_stats.endTime = SDL_GetTicks();
-	m_player.stop();
-	m_recorder.stop();
+	fprintf(stderr,"STATS:\ttime=%dms\n\t"
+		"strokes=%d (%d paused, %d undone)\n",
+		m_stats.endTime-m_stats.startTime, m_stats.strokeCount,
+		m_stats.pausedStrokes, m_stats.undoCount);
 	showOverlay( m_completedOverlay );
       } else {
 	hideOverlay( m_completedOverlay );
@@ -739,17 +539,10 @@ public:
 
   virtual bool handleEvent( SDL_Event& ev )
   {
-    if ( m_player.isRunning() 
-	 && ( ev.type==SDL_MOUSEMOTION || 
-	      ev.type==SDL_MOUSEBUTTONDOWN || 
-	      ev.type==SDL_MOUSEBUTTONUP ) ) {
-      return false;
-    } else if (handleModEvent(ev)
-	       || handleGameEvent(ev)
-	       || handleEditEvent(ev)
-	       || handlePlayEvent(ev)) {
-      //\TODO only record edit,play events etc
-      m_recorder.record( ev );
+    if (handleModEvent(ev)
+	|| handleGameEvent(ev)
+	|| handleEditEvent(ev)
+	|| handlePlayEvent(ev)) {
       return true;
     }
     return false;

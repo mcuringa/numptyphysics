@@ -17,6 +17,7 @@
 #include "Array.h"
 #include "Path.h"
 #include "Canvas.h"
+#include "Script.h"
 
 #include <string>
 #include <fstream>
@@ -49,9 +50,7 @@ public:
   bool deleteStroke( Stroke *s );
   void extendStroke( Stroke* s, const Vec2& pt );
   void moveStroke( Stroke* s, const Vec2& origin );
-
-  bool activate( Stroke *s );
-  void activateAll();
+  bool activateStroke( Stroke *s );
 
   int numStrokes() {
     return m_strokes.size();
@@ -61,11 +60,11 @@ public:
     return m_strokes;
   }
 
-  void step();
+  void step( bool isPaused=false );
   bool isCompleted();
   Rect dirtyArea();
   void draw( Canvas& canvas, const Rect& area );
-  void reset( Stroke* s=NULL );
+  void reset( Stroke* s=NULL,  bool purgeUnprotected=false );
   Stroke* strokeAtPoint( const Vec2 pt, float32 max );
   void clear();
   void setGravity( const std::string& s );
@@ -73,11 +72,14 @@ public:
   bool load( unsigned char *buf, int bufsize );
   bool load( const std::string& file );
   bool load( std::istream& in );
+  void start( bool replay=false );
   void protect( int n=-1 );
-  bool save( const std::string& file );
-
+  bool save( const std::string& file, bool saveLog=false );
+  ScriptLog* getLog() { return &m_log; }
 
 private:
+  bool activate( Stroke *s );
+  void activateAll();
   void createJoints( Stroke *s );
   bool parseLine( const std::string& line );
 
@@ -88,6 +90,9 @@ private:
   b2World        *m_world;
   Array<Stroke*>  m_strokes;
   std::string     m_title, m_author, m_bg;
+  ScriptLog       m_log;
+  ScriptRecorder  m_recorder;
+  ScriptPlayer    m_player;
   Image          *m_bgImage;
   static Image   *g_bgImage;
   int             m_protect;

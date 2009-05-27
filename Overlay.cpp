@@ -226,7 +226,7 @@ class UiOverlay : public OverlayBase
 public:
   UiOverlay(GameControl& game, const Rect& pos)
     : OverlayBase( game, pos.tl.x, pos.tl.y, true )
-    , m_bgColour(0xf0f0a0)
+    , m_bgColour(0xdfdfaf)
     , m_fgColour(0)
     , m_motion(0)
   {
@@ -483,13 +483,15 @@ public:
       m_levelIcon(-2),
       m_icon(NULL)
   {
-    Font::titleFont()->drawCenter( m_canvas, Vec2(200,32), "BRAVO!", 0 );
+    Font::titleFont()->drawCenter( m_canvas, Vec2(200,26), "BRAVO!", 0 );
 
     addHotSpot( Rect(0,    0,100,180), &NextLevelOverlay::doPrevLevel );
     addHotSpot( Rect(300,  0,400,180), &NextLevelOverlay::doNextLevel );
 
     addButton( "<<", Rect(3,120,40,160),
 	       &NextLevelOverlay::doPrevLevel );
+    addButton( ">>", Rect(360,120,397,160),
+	       &NextLevelOverlay::doNextLevel );
     addButton( "Action Replay", Rect(0,180,200,240),
 	       &NextLevelOverlay::doActionReplay );
     addButton( "Continue", Rect(200,180,400,240),
@@ -516,9 +518,9 @@ public:
   {
     UiOverlay::draw( screen, area );
     if ( genIcon() ) {      
-      Font::blurbFont()->drawCenter( &screen, Vec2(m_x+200,m_y+70), 
+      Font::blurbFont()->drawCenter( &screen, Vec2(m_x+200,m_y+50), 
 				       m_game.levels().levelName(m_selectedLevel), 0 );
-      screen.drawImage( m_icon, m_x+100, m_y+75 );
+      screen.drawImage( m_icon, m_x+100, m_y+65 );
     } else {
       dirty();
     }

@@ -74,6 +74,9 @@
 
 #define ICON_SCALE_FACTOR 4
 
+#define VIDEO_FPS 20
+#define VIDEO_MAX_LEN 20  //seconds
+
 
 
 extern Rect FULLSCREEN_RECT;
