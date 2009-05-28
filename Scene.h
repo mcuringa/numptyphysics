@@ -89,6 +89,7 @@ private:
 
   b2World        *m_world;
   Array<Stroke*>  m_strokes;
+  Array<Stroke*>  m_deletedStrokes;
   std::string     m_title, m_author, m_bg;
   ScriptLog       m_log;
   ScriptRecorder  m_recorder;

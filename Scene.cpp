@@ -500,6 +500,7 @@ bool Scene::deleteStroke( Stroke *s ) {
     if ( i >= m_protect ) {
 	reset(s);
 	m_strokes.erase( i );
+	m_deletedStrokes.append( s );
 	m_recorder.deleteStroke( i );
 	return true;
     }
@@ -635,12 +636,24 @@ Rect Scene::dirtyArea()
 	  if ( numDirty==0 ) {	
 	    r = temp;
 	  } else {
-	    r.expand( m_strokes[i]->screenBbox() );
+	    r.expand( temp );
 	  }
 	  // plus prev areas to erase
 	  r.expand( m_strokes[i]->lastDrawnBbox() );
 	  numDirty++;
 	}
+    }
+  }
+  for ( int i=0; i<m_deletedStrokes.size(); i++ ) {
+    // acumulate new areas to draw
+    temp = m_strokes[i]->lastDrawnBbox();
+    if ( !temp.isEmpty() ) {
+      if ( numDirty==0 ) {	
+	r = temp;
+      } else {
+	r.expand( temp );
+      }
+      numDirty++;
     }
   }
   if ( !r.isEmpty() ) {
@@ -669,7 +682,10 @@ void Scene::draw( Canvas& canvas, const Rect& area )
 	m_strokes[i]->draw( canvas );
     }
   }
-  //canvas.drawRect( area, 0xffff0000, false );
+  while ( m_deletedStrokes.size() ) {
+    delete m_deletedStrokes[0];
+    m_deletedStrokes.erase(0);
+  }
 }
 
 void Scene::reset( Stroke* s, bool purgeUnprotected )
@@ -705,6 +721,10 @@ void Scene::clear()
   while ( m_strokes.size() ) {
     delete m_strokes[0];
     m_strokes.erase(0);
+  }
+  while ( m_deletedStrokes.size() ) {
+    delete m_deletedStrokes[0];
+    m_deletedStrokes.erase(0);
   }
   if ( m_world ) {
     //step is required to actually destroy bodies and joints

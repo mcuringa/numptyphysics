@@ -90,12 +90,8 @@ void ScriptRecorder::start( ScriptLog* log )
 void ScriptRecorder::stop()  
 { 
   if ( m_running ) {
-    printf("stop recording: %d events:\n", m_log->size());
     for ( int i=0; i<m_log->size(); i++ ) {
       std::string e = m_log->asString(i);
-      if ( e.length() > 0 ) {
-	printf("  %s\n",e.c_str());
-      }
     }
     m_running = false; 
   }
@@ -172,7 +168,6 @@ void ScriptPlayer::tick()
 
     while ( m_index < m_log->size()
 	 && m_log->at(m_index).t <= m_lastTick ) {
-      printf("script event at t=%d\n",m_lastTick);
       const ScriptEntry& e = m_log->at(m_index);
       switch (e.op) {
       case ScriptEntry::OP_NEW:
