@@ -203,14 +203,7 @@ private:
     Rect area = m_layers[0]->dirtyArea();
 
     for ( int i=1; i<m_layers.size(); i++ ) {
-      Rect dirt = m_layers[i]->dirtyArea();
-      if ( !dirt.isEmpty() ) {
-	if ( area.isEmpty() ) {
-	  area = dirt;
-	} else { 
-	  area.expand( dirt );
-	}
-      }
+      area.expand( m_layers[i]->dirtyArea() );
     }
 
     for ( int i=0; i<m_layers.size(); i++ ) {

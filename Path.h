@@ -93,6 +93,7 @@ public:
   inline Vec2& point(int i) { return at(i); }
   inline Vec2& first() { return at(0); }
   inline Vec2& last() { return at(size()-1); }
+  inline Vec2& endpt(unsigned char end) { return end?last():first(); }
 
   void simplify( float32 threshold );
   Rect bbox() const;

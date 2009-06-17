@@ -17,6 +17,7 @@
 #include "Array.h"
 #include "Config.h"
 #include "Scene.h"
+#include "Accelerometer.h"
 
 #include <sstream>
 #include <fstream>
@@ -70,6 +71,15 @@ void configureScreenTransform( int w, int h )
   }
 }
 
+
+struct Joint
+{
+  Joint( Stroke *j1, Stroke* j2, unsigned char e )
+    : joiner(j1), joinee(j2), end(e) {}
+  Stroke *joiner;
+  Stroke *joinee;
+  unsigned char end; //of joiner
+};
 
 class Stroke
 {
@@ -249,6 +259,40 @@ public:
     transform();
   }
 
+  void determineJoints( Stroke* other, Array<Joint>& joints )
+  {
+    if ( (m_attributes&ATTRIB_CLASSBITS)
+	 != (other->m_attributes&ATTRIB_CLASSBITS)
+	 || hasAttribute(ATTRIB_GROUND)
+	 || hasAttribute(ATTRIB_UNJOINABLE)
+	 || other->hasAttribute(ATTRIB_UNJOINABLE)) {
+      // cannot joint goals or tokens to other things
+      // and no point jointing ground endpts
+      return;
+    } 
+
+    transform();
+    for ( unsigned char end=0; end<2; end++ ) {
+      if ( !m_jointed[end] ) {
+	const Vec2& p = m_xformedPath.endpt(end);
+	if ( other->distanceTo( p ) <= JOINT_TOLERANCE ) {
+	  joints.append( Joint(this,other,end) );
+	}
+      }
+    }
+  }
+
+  void join( b2World* world, Stroke* other, unsigned char end )
+  {
+    if ( !m_jointed[end] ) {
+      b2Vec2 p = m_xformedPath.endpt( end );
+      p *= 1.0f/PIXELS_PER_METREf;
+      JointDef j( m_body, other->m_body, p );
+      world->CreateJoint( &j );
+      m_jointed[end] = true;
+    }
+  }
+
   bool maybeCreateJoint( b2World& world, Stroke* other )
   {
     if ( (m_attributes&ATTRIB_CLASSBITS)
@@ -373,6 +417,11 @@ public:
     return m_rawPath.numPoints();
   }
 
+  const Vec2& endpt( unsigned char end ) 
+  {
+    return m_xformedPath.endpt(end);
+  }
+
 private:
   static float32 vec2Angle( b2Vec2 v ) 
   {
@@ -459,16 +508,18 @@ private:
 Scene::Scene( bool noWorld )
   : m_world( NULL ),
     m_bgImage( NULL ),
-    m_protect( 0 )
+    m_protect( 0 ),
+    m_gravity(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf),
+    m_dynamicGravity(false),
+    m_accelerometer(Os::get()->getAccelerometer())
 {
   if ( !noWorld ) {
     b2AABB worldAABB;
     worldAABB.lowerBound.Set(-100.0f, -100.0f);
     worldAABB.upperBound.Set(100.0f, 100.0f);
     
-    b2Vec2 gravity(0.0f, 10.0f*PIXELS_PER_METREf/GRAVITY_FUDGEf);
     bool doSleep = true;
-    m_world = new b2World(worldAABB, gravity, doSleep);
+    m_world = new b2World(worldAABB, m_gravity, doSleep);
     m_world->SetContactListener( this );
   }
 }
@@ -538,6 +589,20 @@ bool Scene::activateStroke( Stroke *s )
   m_recorder.activateStroke( m_strokes.indexOf(s) );
 }
 
+void Scene::getJointCandidates( Stroke* s, Path& pts )
+{
+  Array<Joint> joints;
+  for ( int j=m_strokes.size()-1; j>=0; j-- ) {      
+    if ( s != m_strokes[j] ) {
+      s->determineJoints( m_strokes[j], joints );
+      m_strokes[j]->determineJoints( s, joints );
+    }
+  }
+  for ( int j=joints.size()-1; j>=0; j-- ) {
+    pts.append( joints[j].joiner->endpt(joints[j].end) );
+  }
+}
+
 bool Scene::activate( Stroke *s )
 {
   if ( s->numPoints() > 1 ) {
@@ -560,11 +625,19 @@ void Scene::activateAll()
 
 void Scene::createJoints( Stroke *s )
 {
+  if ( s->body()==NULL ) {
+    return;
+  }
+  Array<Joint> joints;
   for ( int j=m_strokes.size()-1; j>=0; j-- ) {      
-    if ( s != m_strokes[j] ) {
+    if ( s != m_strokes[j] && m_strokes[j]->body() ) {
 	//printf("try join to %d\n",j);
-	s->maybeCreateJoint( *m_world, m_strokes[j] );
-	m_strokes[j]->maybeCreateJoint( *m_world, s );
+      s->determineJoints( m_strokes[j], joints );
+      m_strokes[j]->determineJoints( s, joints );
+      for ( int i=0; i<joints.size(); i++ ) {
+	joints[i].joiner->join( m_world, joints[i].joinee, joints[i].end );
+      }
+      joints.empty();
     }
   }    
 }
@@ -575,6 +648,17 @@ void Scene::step( bool isPaused )
   m_player.tick();
 
   if ( !isPaused ) {
+    if (m_dynamicGravity && m_accelerometer) {
+      float32 gx, gy, gz;
+      if ( m_accelerometer->poll( gx, gy, gz ) ) {
+	const float32 factor = GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf;
+	b2Vec2 accel( m_gravity.x + gx*factor, 
+		      m_gravity.y + gy*factor );
+	m_world->SetGravity( accel );
+	//TODO record gravity
+      }
+    }
+
     m_world->Step( ITERATION_TIMESTEPf, SOLVER_ITERATIONS );
     // clean up delete strokes
     for ( int i=0; i< m_strokes.size(); i++ ) {
@@ -626,44 +710,25 @@ bool Scene::isCompleted()
 
 Rect Scene::dirtyArea()
 {
-  Rect r(0,0,0,0),temp;
-  int numDirty = 0;
+  Rect r(false);
   for ( int i=0; i<m_strokes.size(); i++ ) {
     if ( m_strokes[i]->isDirty() ) {
-	// acumulate new areas to draw
-	temp = m_strokes[i]->screenBbox();
-	if ( !temp.isEmpty() ) {
-	  if ( numDirty==0 ) {	
-	    r = temp;
-	  } else {
-	    r.expand( temp );
-	  }
-	  // plus prev areas to erase
-	  r.expand( m_strokes[i]->lastDrawnBbox() );
-	  numDirty++;
-	}
+      // acumulate new areas to draw
+      r.expand( m_strokes[i]->screenBbox() );
+      // plus prev areas to erase
+      r.expand( m_strokes[i]->lastDrawnBbox() );
     }
   }
   for ( int i=0; i<m_deletedStrokes.size(); i++ ) {
     // acumulate new areas to draw
-    temp = m_strokes[i]->lastDrawnBbox();
-    if ( !temp.isEmpty() ) {
-      if ( numDirty==0 ) {	
-	r = temp;
-      } else {
-	r.expand( temp );
-      }
-      numDirty++;
-    }
+    r.expand( m_strokes[i]->lastDrawnBbox() );
   }
   if ( !r.isEmpty() ) {
     // expand to allow for thick lines
-    r.tl.x--; r.tl.y--;
-    r.br.x++; r.br.y++;
+    r.grow(1);
   }
   return r;
 }
-
 void Scene::draw( Canvas& canvas, const Rect& area )
 {
   if ( m_bgImage ) {
@@ -733,14 +798,30 @@ void Scene::clear()
   m_log.empty();
 }
 
+void Scene::setGravity( const b2Vec2& g )
+{
+  m_gravity = g;
+  m_world->SetGravity( m_gravity );
+}
+
 void Scene::setGravity( const std::string& s )
 {
+  m_dynamicGravity = false;
+  setGravity( b2Vec2(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf) );
+
+  for (int i=0; i<s.find(':'); i++) {
+    switch (s[i]) {
+    case 'd': m_dynamicGravity = true; break;
+    }
+  }
+
+  std::string vector = s.substr(s.find(':')+1);
   float32 x,y;      
   if ( sscanf( s.c_str(), "%f,%f", &x, &y )==2) {
     if ( m_world ) {
 	b2Vec2 g(x,y);
 	g *= PIXELS_PER_METREf/GRAVITY_FUDGEf;
-	m_world->SetGravity( g );
+	setGravity( g );
     }
   } else {
     fprintf(stderr,"invalid gravity vector\n");
@@ -800,7 +881,7 @@ bool Scene::parseLine( const std::string& line )
     case 'B': m_bg = line.substr(line.find(':')+1);     return true;
     case 'A': m_author = line.substr(line.find(':')+1); return true;
     case 'S': m_strokes.append( new Stroke(line) );     return true;
-    case 'G': setGravity(line.substr(line.find(':')+1));return true;
+    case 'G': setGravity(line);                         return true;
     case 'E': m_log.append(line.substr(line.find(':')+1));return true;
     }
   } catch ( const char* e ) {

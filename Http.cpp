@@ -126,6 +126,7 @@ bool Http::post( const char* uri, const char*putname, const char* putfile,
   char path[256];
   char data[64*1024];
   int port;
+  static char hex[16+1] = "0123456789ABCDEF";
 
   if ( otherargs ) {
     sprintf(data,"%s&%s=",otherargs,putname);
@@ -145,8 +146,8 @@ bool Http::post( const char* uri, const char*putname, const char* putfile,
       break;
     default:
       *buf++ = '%';
-      *buf++ = c>>8;
-      *buf++ = c&0xf;
+      *buf++ = hex[c>>4];
+      *buf++ = hex[c&0xf];
       break;
     }
     //m_size = fread(data,1,sizeof(data),m_file);

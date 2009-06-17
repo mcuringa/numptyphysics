@@ -25,6 +25,7 @@
 
 class Stroke;
 class b2World;
+class Accelerometer;
 
 typedef enum {
   ATTRIB_DUMMY = 0,
@@ -35,7 +36,8 @@ typedef enum {
   ATTRIB_SLEEPING = 16,
   ATTRIB_HIDDEN = 32,
   ATTRIB_DELETED = 64,
-  ATTRIB_CLASSBITS = ATTRIB_TOKEN | ATTRIB_GOAL
+  ATTRIB_CLASSBITS = ATTRIB_TOKEN | ATTRIB_GOAL,
+  ATTRIB_UNJOINABLE = ATTRIB_DECOR | ATTRIB_HIDDEN | ATTRIB_DELETED
 } Attribute;
 
 
@@ -51,6 +53,7 @@ public:
   void extendStroke( Stroke* s, const Vec2& pt );
   void moveStroke( Stroke* s, const Vec2& origin );
   bool activateStroke( Stroke *s );
+  void getJointCandidates( Stroke* s, Path& pts );
 
   int numStrokes() {
     return m_strokes.size();
@@ -67,6 +70,8 @@ public:
   void reset( Stroke* s=NULL,  bool purgeUnprotected=false );
   Stroke* strokeAtPoint( const Vec2 pt, float32 max );
   void clear();
+
+  void setGravity( const b2Vec2& g );
   void setGravity( const std::string& s );
 
   bool load( unsigned char *buf, int bufsize );
@@ -75,8 +80,9 @@ public:
   void start( bool replay=false );
   void protect( int n=-1 );
   bool save( const std::string& file, bool saveLog=false );
-  ScriptLog* getLog() { return &m_log; }
 
+  ScriptLog* getLog() { return &m_log; }
+  const ScriptPlayer* replay() { return &m_player; }
 private:
   bool activate( Stroke *s );
   void activateAll();
@@ -97,6 +103,9 @@ private:
   Image          *m_bgImage;
   static Image   *g_bgImage;
   int             m_protect;
+  b2Vec2          m_gravity;
+  bool            m_dynamicGravity;
+  Accelerometer  *m_accelerometer;
 };
 
 

@@ -78,7 +78,9 @@ am_numptyphysics_OBJECTS = numptyphysics-Path.$(OBJEXT) \
 	numptyphysics-Scene.$(OBJEXT) numptyphysics-Game.$(OBJEXT) \
 	numptyphysics-Script.$(OBJEXT) numptyphysics-App.$(OBJEXT) \
 	numptyphysics-Overlay.$(OBJEXT) numptyphysics-Config.$(OBJEXT) \
-	numptyphysics-Http.$(OBJEXT) numptyphysics-happyhttp.$(OBJEXT) \
+	numptyphysics-Http.$(OBJEXT) numptyphysics-Os.$(OBJEXT) \
+	numptyphysics-Event.$(OBJEXT) \
+	numptyphysics-happyhttp.$(OBJEXT) \
 	numptyphysics-zoomer.$(OBJEXT) \
 	numptyphysics-OsHildon.$(OBJEXT) \
 	numptyphysics-OsFreeDesktop.$(OBJEXT) \
@@ -250,6 +252,8 @@ numptyphysics_SOURCES = \
 	Overlay.cpp \
 	Config.cpp \
 	Http.cpp \
+	Os.cpp \
+	Event.cpp \
 	happyhttp.cpp \
 	zoomer.cpp \
 	OsHildon.cpp \
@@ -313,15 +317,15 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
-	      echo ' cd $(srcdir) && $(AUTOMAKE) --foreign '; \
-	      cd $(srcdir) && $(AUTOMAKE) --foreign  \
+	      echo ' cd $(srcdir) && $(AUTOMAKE) --gnu '; \
+	      cd $(srcdir) && $(AUTOMAKE) --gnu  \
 		&& exit 0; \
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign  Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign  Makefile
+	  $(AUTOMAKE) --gnu  Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -414,10 +418,12 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-App.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Canvas.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Config.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Event.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Font.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Game.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Http.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Levels.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-Os.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-OsFreeDesktop.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-OsHildon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/numptyphysics-OsWin32.Po@am__quote@
@@ -1044,6 +1050,34 @@ numptyphysics-Http.obj: Http.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Http.cpp' object='numptyphysics-Http.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Http.obj `if test -f 'Http.cpp'; then $(CYGPATH_W) 'Http.cpp'; else $(CYGPATH_W) '$(srcdir)/Http.cpp'; fi`
+
+numptyphysics-Os.o: Os.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Os.o -MD -MP -MF $(DEPDIR)/numptyphysics-Os.Tpo -c -o numptyphysics-Os.o `test -f 'Os.cpp' || echo '$(srcdir)/'`Os.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Os.Tpo $(DEPDIR)/numptyphysics-Os.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Os.cpp' object='numptyphysics-Os.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Os.o `test -f 'Os.cpp' || echo '$(srcdir)/'`Os.cpp
+
+numptyphysics-Os.obj: Os.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Os.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Os.Tpo -c -o numptyphysics-Os.obj `if test -f 'Os.cpp'; then $(CYGPATH_W) 'Os.cpp'; else $(CYGPATH_W) '$(srcdir)/Os.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Os.Tpo $(DEPDIR)/numptyphysics-Os.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Os.cpp' object='numptyphysics-Os.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Os.obj `if test -f 'Os.cpp'; then $(CYGPATH_W) 'Os.cpp'; else $(CYGPATH_W) '$(srcdir)/Os.cpp'; fi`
+
+numptyphysics-Event.o: Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Event.o -MD -MP -MF $(DEPDIR)/numptyphysics-Event.Tpo -c -o numptyphysics-Event.o `test -f 'Event.cpp' || echo '$(srcdir)/'`Event.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Event.Tpo $(DEPDIR)/numptyphysics-Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Event.cpp' object='numptyphysics-Event.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Event.o `test -f 'Event.cpp' || echo '$(srcdir)/'`Event.cpp
+
+numptyphysics-Event.obj: Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-Event.obj -MD -MP -MF $(DEPDIR)/numptyphysics-Event.Tpo -c -o numptyphysics-Event.obj `if test -f 'Event.cpp'; then $(CYGPATH_W) 'Event.cpp'; else $(CYGPATH_W) '$(srcdir)/Event.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/numptyphysics-Event.Tpo $(DEPDIR)/numptyphysics-Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Event.cpp' object='numptyphysics-Event.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o numptyphysics-Event.obj `if test -f 'Event.cpp'; then $(CYGPATH_W) 'Event.cpp'; else $(CYGPATH_W) '$(srcdir)/Event.cpp'; fi`
 
 numptyphysics-happyhttp.o: happyhttp.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(numptyphysics_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT numptyphysics-happyhttp.o -MD -MP -MF $(DEPDIR)/numptyphysics-happyhttp.Tpo -c -o numptyphysics-happyhttp.o `test -f 'happyhttp.cpp' || echo '$(srcdir)/'`happyhttp.cpp

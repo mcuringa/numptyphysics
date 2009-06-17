@@ -22,6 +22,9 @@
 #include <glib-object.h>
 #include <glibconfig.h>
 #include <glib/gmacros.h>
+#include <mce/mode-names.h>
+#include <mce/dbus-names.h>
+#include <dbus/dbus-glib.h>
 #include <libosso.h>
 
 #include <hildon/hildon-program.h>
@@ -30,6 +33,7 @@
 
 #include "Os.h"
 #include "Http.h"
+#include "Accelerometer.h"
 #define Font __FONT_REDEF
 #include "Config.h"
 
@@ -41,16 +45,24 @@
 #define MAX_FILES 32
 
 
-static gint dbus_handler(const gchar *interface,
+static void orientation_callback (DBusGProxy *proxy,
+				  DBusGProxyCall *call, 
+				  void *data);
+static gint mime_handler(const gchar *interface,
                          const gchar *method,
                          GArray *arguments,
                          gpointer data,
                          osso_rpc_t *retval);
 
-class OsHildon : public Os
+class OsHildon : public Os, private Accelerometer
 {
   GMainContext   *m_gcontext;
   osso_context_t *m_osso;
+  DBusGProxy     *m_mce_proxy;
+  DBusGProxyCall *m_mce_call;
+  bool            m_mce_ok;
+  gint            m_mgx, m_mgy, m_mgz;
+
 
  public:
   int             m_numFiles;
@@ -72,10 +84,17 @@ class OsHildon : public Os
 			   NP_SERVICE,
 			   NP_OBJECT,
 			   NP_INTERFACE,
-			   dbus_handler, NULL) != OSSO_OK) {
+			   mime_handler, NULL) != OSSO_OK) {
       fprintf(stderr, "Failed to set mime callback\n");
-      return;
     }
+
+    m_mce_proxy = dbus_g_proxy_new_for_name_owner( dbus_g_bus_get(DBUS_BUS_SYSTEM, NULL),
+						   "com.nokia.mce",
+						   "/com/nokia/mce/request",
+						   "com.nokia.mce.request", NULL);
+    m_mce_call = NULL;
+    m_mce_ok = false;
+    m_mgx = m_mgy = m_mgz = 0;
   }
 
   ~OsHildon()
@@ -86,6 +105,56 @@ class OsHildon : public Os
     if ( m_gcontext ) {
       g_main_context_unref( m_gcontext );
     }
+  }
+
+  virtual Accelerometer* getAccelerometer()
+  {
+    return this;
+  }
+
+  virtual bool poll( float32& gx, float32& gy, float32& gz )
+  {
+    if ( m_mce_call ) {
+      // without a glib main loop we have to do a blocking wait on
+      // call end here.  this means we are lockstepped to 1 dbus
+      // roundtrip per poll.
+      orientationCallback( m_mce_proxy, m_mce_call );
+    } 
+    if ( !m_mce_call ) {
+      // dispatch a new call.
+      m_mce_call = dbus_g_proxy_begin_call( m_mce_proxy,
+					    "get_device_orientation",
+					    orientation_callback,
+					    this, NULL,
+					    G_TYPE_INVALID );
+    }
+    if ( m_mce_ok ) {
+      // align with screen coords
+      gx = -(float32)m_mgx / 1000.0f;
+      gy = -(float32)m_mgy / 1000.0f;
+      gz =  (float32)m_mgz / 1000.0f;
+      return true;
+    }
+    return false;
+  }
+
+  void orientationCallback (DBusGProxy *proxy, DBusGProxyCall *call)
+  {
+    if (proxy == m_mce_proxy && call==m_mce_call) {
+      gchar *s1, *s2, *s3;
+
+      if (dbus_g_proxy_end_call (proxy, call, NULL,
+				 G_TYPE_STRING, &s1,
+				 G_TYPE_STRING, &s2,
+				 G_TYPE_STRING, &s3,
+				 G_TYPE_INT, &m_mgx,
+				 G_TYPE_INT, &m_mgy,
+				 G_TYPE_INT, &m_mgz,
+				 G_TYPE_INVALID)) {
+	m_mce_ok = true;
+      }
+    }
+    m_mce_call = NULL;
   }
 
   virtual void poll() 
@@ -137,7 +206,16 @@ class OsHildon : public Os
 };
 
 
-static gint dbus_handler(const gchar *interface,
+static void orientation_callback (DBusGProxy *proxy,
+				  DBusGProxyCall *call, 
+				  void *data)
+{
+  OsHildon* os =(OsHildon*)data;
+  os->orientationCallback(proxy,call);
+}
+
+
+static gint mime_handler(const gchar *interface,
                          const gchar *method,
                          GArray *arguments,
                          gpointer data,

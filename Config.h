@@ -24,6 +24,7 @@
 #define WORLD_WIDTH  800
 #define WORLD_HEIGHT 480
 #define PIXELS_PER_METREf 10.0f
+#define GRAVITY_ACCELf 9.8f // m/s/s
 #define GRAVITY_FUDGEf 5.0f
 #define CLOSED_SHAPE_THREHOLDf 0.4f
 #define SIMPLIFY_THRESHOLDf 1.0f //PIXELs //(1.0/PIXELS_PER_METREf)
@@ -101,7 +102,7 @@ class Config
   }
   static const std::string& planetRoot()
   {
-    static const std::string d("http://xyz/planet.cgi");
+    static const std::string d("http://10.10.10.10:8080");
     return d;
   }
   static std::string findFile( const std::string& name );

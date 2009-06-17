@@ -16,6 +16,7 @@
 #ifndef OS_H
 #define OS_H
 
+#include "Event.h"
 #include <stdlib.h>
 
 class Accelerometer;
@@ -28,7 +29,7 @@ class Os
   virtual bool  openBrowser( const char* url ) = 0;
   virtual char* saveDialog( const char* path ) { return NULL; }
   virtual Accelerometer*  getAccelerometer() { return NULL; }
-
+  virtual EventMap* getEventMap( EventMapType type );
   static Os* get();
   static const char pathSep;
 };

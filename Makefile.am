@@ -24,6 +24,8 @@ numptyphysics_SOURCES = \
 	Overlay.cpp \
 	Config.cpp \
 	Http.cpp \
+	Os.cpp \
+	Event.cpp \
 	happyhttp.cpp \
 	zoomer.cpp \
 	OsHildon.cpp \

@@ -77,14 +77,28 @@ inline Vec2 Max( const Vec2& a, const Vec2& b )
 
 struct Rect {
   Rect() {}
+  Rect(bool) { clear(); }
   Rect( const Vec2& atl, const Vec2& abr ) : tl(atl), br(abr) {} 
   Rect( int x1, int y1, int x2, int y2 ) : tl(x1,y1), br(x2,y2) {}
   int width() const { return br.x-tl.x+1;  }
   int height() const { return br.y-tl.y+1;  }
   void clear() { tl.x=tl.y=br.x=br.y=0; }
-  bool isEmpty() { return tl.x==0 && br.x==0; }
+  bool isEmpty() const { return tl.x==0 && br.x==0; }
+  void grow(int by) { 
+    if (!isEmpty()) {
+      tl.x -= by; tl.y -= by;
+      br.x += by; br.y += by;
+    }
+  }
   void expand( const Vec2& v ) { tl=Min(tl,v); br=Max(br,v); }
-  void expand( const Rect& r ) { expand(r.tl); expand(r.br); }
+  void expand( const Rect& r ) { 
+    if (isEmpty()) {
+      *this = r;
+    } else if (!r.isEmpty()) {
+      expand(r.tl); 
+      expand(r.br); 
+    }
+  }
   void clipTo( const Rect& r ) { tl=Max(tl,r.tl); br=Min(br,r.br); }
   bool contains( const Vec2& p ) const {
     return p.x >= tl.x && p.x <= br.x && p.y >= tl.y && p.y <= br.y;

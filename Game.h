@@ -22,6 +22,22 @@
 class Widget;
 class Canvas;
 
+struct GameStats
+{
+  int startTime;
+  int endTime;
+  int strokeCount;
+  int pausedStrokes;
+  int undoCount;
+  void reset(int t) {
+    startTime = t;
+    strokeCount = 0;
+    pausedStrokes = 0;
+    undoCount = 0;
+  }
+};
+
+
 struct GameControl
 {
   GameControl() : m_quit(false),
@@ -41,6 +57,7 @@ struct GameControl
   virtual void gotoLevel( int l, bool replay=false ) {}
   Levels& levels() { return *m_levels; }
   virtual bool  renderScene( Canvas& c, int level ) =0; 
+  const GameStats& stats() { return m_stats; }
   bool  m_quit;
   bool  m_edit;
   bool  m_refresh;
@@ -51,6 +68,8 @@ struct GameControl
   bool  m_strokeDecor;
   Levels*m_levels;
   int    m_level;
+protected:
+  GameStats         m_stats;
 };
 
 

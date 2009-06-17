@@ -21,7 +21,8 @@
 class Accelerometer
 {
  public:  
-  virtual bool poll( float32& mGx, float32& mGy, float32& mGz );
+  // in Gs
+  virtual bool poll( float32& gx, float32& gy, float32& gz )=0;
 };
 
 

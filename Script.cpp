@@ -156,7 +156,7 @@ void ScriptPlayer::stop()
   m_log = NULL;
 }
 
-bool ScriptPlayer::isRunning()
+bool ScriptPlayer::isRunning() const
 {
   return m_log && m_log->size() > 0 && m_playing; 
 }

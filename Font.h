@@ -31,6 +31,8 @@ class Font
   Vec2 metrics( const std::string& text ) const;
   void drawLeft( Canvas* canvas, Vec2 pt,
 		 const std::string& text, int colour ) const;
+  void drawRight( Canvas* canvas, Vec2 pt,
+		  const std::string& text, int colour ) const;
   void drawCenter( Canvas* canvas, Vec2 pt,
 		   const std::string& text, int colour ) const;
   void drawWrap( Canvas* canvas, Rect area,

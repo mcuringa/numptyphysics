@@ -80,21 +80,6 @@ public:
 };
 
 
-struct GameStats
-{
-  int startTime;
-  int endTime;
-  int strokeCount;
-  int pausedStrokes;
-  int undoCount;
-  void reset() {
-    startTime = SDL_GetTicks();
-    strokeCount = 0;
-    pausedStrokes = 0;
-    undoCount = 0;
-  }
-};
-
 class Game : public GameControl, public Widget
 {
   Scene   	    m_scene;
@@ -107,9 +92,10 @@ class Game : public GameControl, public Widget
   Overlay          *m_completedOverlay;
   CollectionSelector m_cselector;
   Os               *m_os;
-  GameStats         m_stats;
   bool              m_isCompleted;
   bool              m_paused;
+  Path              m_jointCandidates;
+  Canvas           *m_spot;
 public:
   Game( Levels* levels, int width, int height ) 
   : m_createStroke(NULL),
@@ -121,7 +107,8 @@ public:
     m_isCompleted(false),
     m_cselector( *this ),
     m_os( Os::get() ),
-    m_paused( false )
+    m_paused( false ),
+    m_spot(new Image("spot.png",true))
     //,m_demoOverlay( *this )
   {
     configureScreenTransform( m_window.width(), m_window.height() );
@@ -165,7 +152,7 @@ public:
       }
       m_refresh = true;
       m_level = level;
-      m_stats.reset();
+      m_stats.reset(SDL_GetTicks());
     }
   }
 
@@ -195,12 +182,12 @@ public:
   {
     if ( save( SEND_TEMP_FILE ) ) {
       Http h;
-      if ( h.post( Config::planetRoot().c_str(),
-		   "upload", SEND_TEMP_FILE, "type=level" ) ) {
+      if ( h.post( (Config::planetRoot()+"/upload").c_str(),
+		   "data", SEND_TEMP_FILE, "type=1" ) ) {
 	std::string id = h.getHeader("NP-Upload-Id");
 	if ( id.length() > 0 ) {
 	  printf("uploaded as id %s\n",id.c_str());
-	  if ( !m_os->openBrowser((Config::planetRoot()+"?level="+id).c_str()) ) {
+	  if ( !m_os->openBrowser((Config::planetRoot()+"/editlevel?id="+id).c_str()) ) {
 	    showMessage("Unable to launch browser");
 	  }
 	} else {
@@ -342,6 +329,7 @@ public:
   }
 
 
+  //TODO move this to Os event filter
   bool handleModEvent( SDL_Event &ev )
   {
     static int mod=0;
@@ -483,11 +471,28 @@ public:
 
   virtual Rect dirtyArea() 
   {
+    //todo include dirt  for old joint candidates
+    m_jointCandidates.empty();
     if ( m_refresh  ) {
       m_refresh = false;
+      if ( m_createStroke ) {
+	//this messes up dirty calc so do _after_ dirty area eval.
+	m_scene.getJointCandidates( m_createStroke, m_jointCandidates );
+      }
       return FULLSCREEN_RECT;
     } else {
-      return m_scene.dirtyArea();
+      Rect r = m_scene.dirtyArea();
+      if ( m_createStroke ) {
+	//this messes up dirty calc so do _after_ dirty area eval.
+	m_scene.getJointCandidates( m_createStroke, m_jointCandidates );
+	if ( m_jointCandidates.size() ) {
+	  Rect jr = m_jointCandidates.bbox();
+	  jr.grow( 8 );
+	  r.expand( jr );
+	}
+      }
+      r.grow(8);
+      return r;
     }
   }
 
@@ -532,6 +537,15 @@ public:
   virtual void draw( Canvas& screen, const Rect& area )
   {
     m_scene.draw( screen, area );
+    if ( m_jointCandidates.size() ) {
+      for ( int i=0; i<m_jointCandidates.size(); i++ ) {
+	Rect r( m_jointCandidates[i], m_jointCandidates[i] );
+	r.grow( 5 );
+	screen.drawRect( r, 0x00ff00, false );
+	screen.drawImage(m_spot,
+			 m_jointCandidates[i].x-8,m_jointCandidates[i].y-8);
+      }
+    }
     if ( m_fade ) {
       screen.fade( area );
     }
@@ -539,10 +553,12 @@ public:
 
   virtual bool handleEvent( SDL_Event& ev )
   {
+    bool isReplay = m_scene.replay()->isRunning();
+
     if (handleModEvent(ev)
 	|| handleGameEvent(ev)
-	|| handleEditEvent(ev)
-	|| handlePlayEvent(ev)) {
+	|| (!isReplay && (handleEditEvent(ev)
+			  || handlePlayEvent(ev)))) {
       return true;
     }
     return false;

@@ -476,25 +476,26 @@ class NextLevelOverlay : public UiOverlay
 {
 public:
   NextLevelOverlay( GameControl& game )
-    : UiOverlay(game,Rect(FULLSCREEN_RECT.centroid().x-200,
+    : UiOverlay(game,Rect(FULLSCREEN_RECT.centroid().x-220,
 			  FULLSCREEN_RECT.centroid().y-120,
-			  FULLSCREEN_RECT.centroid().x+200,
-			  FULLSCREEN_RECT.centroid().y+120 ) ),
+			  FULLSCREEN_RECT.centroid().x+220,
+			  FULLSCREEN_RECT.centroid().y+160 ) ),
       m_levelIcon(-2),
       m_icon(NULL)
   {
-    Font::titleFont()->drawCenter( m_canvas, Vec2(200,26), "BRAVO!", 0 );
+    const Font *f = Font::titleFont();
+    f->drawCenter( m_canvas, Vec2(220,7), "BRAVO!", 0 );
+    f = Font::headingFont();
+    f->drawLeft( m_canvas, Vec2(20,50),  "Stats:", 0 );
+    f->drawLeft( m_canvas, Vec2(240,50), "Next:", 0 );
 
-    addHotSpot( Rect(0,    0,100,180), &NextLevelOverlay::doPrevLevel );
-    addHotSpot( Rect(300,  0,400,180), &NextLevelOverlay::doNextLevel );
-
-    addButton( "<<", Rect(3,120,40,160),
+    addButton( "<<", Rect(230,190,270,210),
 	       &NextLevelOverlay::doPrevLevel );
-    addButton( ">>", Rect(360,120,397,160),
+    addButton( ">>", Rect(380,190,420,210),
 	       &NextLevelOverlay::doNextLevel );
-    addButton( "Action Replay", Rect(0,180,200,240),
+    addButton( "Review", Rect(0,220,200,270),
 	       &NextLevelOverlay::doActionReplay );
-    addButton( "Continue", Rect(200,180,400,240),
+    addButton( "Continue", Rect(200,220,400,270),
 	       &NextLevelOverlay::doContinue );
   }
   ~NextLevelOverlay()
@@ -507,6 +508,23 @@ public:
     m_game.m_refresh = true; //for fullscreen fade
     m_game.m_fade = true;
     m_selectedLevel = m_game.m_level+1;
+
+    m_canvas->clear(Rect(20,80,220,210));
+    char buf[80];
+    const GameStats& stats = m_game.stats();
+    const Font *f = Font::blurbFont();    
+    f->drawLeft( m_canvas, Vec2(40,90),  "time", 0 );
+    sprintf(buf,"%.02f", (float)(stats.endTime - stats.startTime)/1000.0f );
+    f->drawRight( m_canvas, Vec2(160,90),  buf, 0 );
+    f->drawLeft( m_canvas, Vec2(40,110), "strokes", 0 );
+    sprintf(buf,"%d", stats.strokeCount );
+    f->drawRight( m_canvas, Vec2(160,110),  buf, 0 );
+    f->drawLeft( m_canvas, Vec2(50,130), "undone", 0 );
+    sprintf(buf,"%d", stats.undoCount );
+    f->drawRight( m_canvas, Vec2(160,130),  buf, 0 );
+    f->drawLeft( m_canvas, Vec2(50,150), "paused", 0 );
+    sprintf(buf,"%d", stats.pausedStrokes );
+    f->drawRight( m_canvas, Vec2(160,150),  buf, 0 );
   }
   virtual void onHide()
   {
@@ -518,9 +536,9 @@ public:
   {
     UiOverlay::draw( screen, area );
     if ( genIcon() ) {      
-      Font::blurbFont()->drawCenter( &screen, Vec2(m_x+200,m_y+50), 
+      Font::blurbFont()->drawCenter( &screen, Vec2(m_x+330,m_y+210), 
 				       m_game.levels().levelName(m_selectedLevel), 0 );
-      screen.drawImage( m_icon, m_x+100, m_y+65 );
+      screen.drawImage( m_icon, m_x+230, m_y+85 );
     } else {
       dirty();
     }

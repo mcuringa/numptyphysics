@@ -102,8 +102,9 @@ struct AlphaBrush
   inline void ink( PIX* pix, int step, int a ) 
   {
     int ia = ALPHA_MAX - a;
-    int o=-W/2+1;
+    int o=-W/2;
     AlphaBlend( *(pix+o*step), m_r, m_g, m_b, a, ia );
+    o++;
     for ( ; o<=W/2; o++ ) {
       *(pix+o*step) = m_c;
     } 
@@ -664,7 +665,7 @@ void Window::setSubName( const char *sub )
 
 Image::Image( const char* file, bool alpha )
 {
-  alpha = false;
+  //alpha = false;
   std::string f( "data/" );
   SDL_Surface* img = IMG_Load((f+file).c_str());
   if ( !img ) {
@@ -674,12 +675,12 @@ Image::Image( const char* file, bool alpha )
   if ( img ) {
     printf("loaded image %s\n",(f+file).c_str());
     if ( alpha ) {
+      SDL_SetColorKey( img,
+ 		       SDL_SRCCOLORKEY|SDL_RLEACCEL,
+ 		       img->format->colorkey );
       m_state = SDL_DisplayFormatAlpha( img );
     } else {
       m_state = SDL_DisplayFormat( img );
-//       SDL_SetColorKey( SURFACE(this),
-// 		       SDL_SRCCOLORKEY|SDL_RLEACCEL,
-// 		       makeColour( 0x00ff00ff ) );
     }
     if ( m_state ) {
       SDL_FreeSurface( img );

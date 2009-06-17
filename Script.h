@@ -86,7 +86,7 @@ class ScriptPlayer
 public:
 
   void start( const ScriptLog* log, Scene* scene );
-  bool isRunning();
+  bool isRunning() const;
   void stop();
   void tick();
 

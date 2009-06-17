@@ -55,10 +55,16 @@ void Font::drawLeft( Canvas* canvas, Vec2 pt,
   canvas->drawImage( &temp, pt.x, pt.y );
 }
 
+void Font::drawRight( Canvas* canvas, Vec2 pt,
+		     const std::string& text, int colour ) const
+{
+  drawLeft( canvas, pt - Vec2(metrics(text).x,0), text, colour );
+}
+
 void Font::drawCenter( Canvas* canvas, Vec2 pt,
 		       const std::string& text, int colour ) const
 {
-  drawLeft( canvas, pt - metrics(text)/2, text, colour );
+  drawLeft( canvas, pt - Vec2(metrics(text).x/2,0), text, colour );
 }
 
 void Font::drawWrap( Canvas* canvas, Rect area,
@@ -87,19 +93,19 @@ void Font::drawWrap( Canvas* canvas, Rect area,
 
 const Font* Font::titleFont()
 {
-  static Font* f = new Font("femkeklaver.ttf",36);
+  static Font* f = new Font("femkeklaver.ttf",45);
   return f;
 }
 
 const Font* Font::headingFont()
 {
-  static Font* f = new Font("femkeklaver.ttf",24);
+  static Font* f = new Font("femkeklaver.ttf",28);
   return f;
 }
 
 const Font* Font::blurbFont()
 {
-  static Font* f = new Font("femkeklaver.ttf",16);
+  static Font* f = new Font("femkeklaver.ttf",20);
   return f;
 }
 
