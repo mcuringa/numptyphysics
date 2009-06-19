@@ -44,6 +44,7 @@ using namespace std;
 unsigned char levelbuf[64*1024];
 
 
+#define JOINT_IND_PATH "282,39 280,38 282,38 285,39 300,39 301,60 303,66 302,64 301,63 300,48 297,41 296,42 294,43 293,45 291,46 289,48 287,49 286,52 284,53 283,58 281,62 280,66 282,78 284,82 287,84 290,85 294,88 297,88 299,89 302,90 308,90 311,89 314,89 320,85 321,83 323,83 324,81 327,78 328,75 327,63 326,58 325,55 323,54 321,51 320,49 319,48 316,46 314,44 312,43 314,43"
 
 
 
@@ -95,6 +96,7 @@ class Game : public GameControl, public Widget
   bool              m_isCompleted;
   bool              m_paused;
   Path              m_jointCandidates;
+  Path              m_jointInd;
   Canvas           *m_spot;
 public:
   Game( Levels* levels, int width, int height ) 
@@ -108,9 +110,13 @@ public:
     m_cselector( *this ),
     m_os( Os::get() ),
     m_paused( false ),
+    m_jointInd(JOINT_IND_PATH),
     m_spot(new Image("spot.png",true))
     //,m_demoOverlay( *this )
   {
+    m_jointInd.scale( 12.0f / (float32)m_jointInd.bbox().width() );
+    //m_jointInd.simplify( 2.0f );
+    m_jointInd.makeRelative();
     configureScreenTransform( m_window.width(), m_window.height() );
     m_levels = levels;
     gotoLevel(0);
@@ -536,15 +542,19 @@ public:
 
   virtual void draw( Canvas& screen, const Rect& area )
   {
+    static int drawCount = 0 ;
     m_scene.draw( screen, area );
     if ( m_jointCandidates.size() ) {
+      float32 rot = (float32)(drawCount&127) / 128.0f;
       for ( int i=0; i<m_jointCandidates.size(); i++ ) {
 	Rect r( m_jointCandidates[i], m_jointCandidates[i] );
 	r.grow( 5 );
-	screen.drawRect( r, 0x00ff00, false );
-	screen.drawImage(m_spot,
-			 m_jointCandidates[i].x-8,m_jointCandidates[i].y-8);
+	Path joint = m_jointInd;
+	joint.rotate( b2Mat22(rot*2.0*3.141) );
+	joint.translate( r.tl - joint.bbox().tl );
+	screen.drawPath( joint, 0x606060 );
       }
+      drawCount++;
     }
     if ( m_fade ) {
       screen.fade( area );
