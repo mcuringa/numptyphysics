@@ -60,12 +60,12 @@ class BasicEventMap : public EventMap
 {
  public:
   struct KeyPair { SDLKey sym; Event::Code ev; };
-  struct ButtonPair { uint8_t button; Event::Code down; Event::Code move; Event::Code up; };
+  struct ButtonPair { unsigned char button; Event::Code down; Event::Code move; Event::Code up; };
   BasicEventMap( const KeyPair* keys, const ButtonPair* buttons );
   Event process(const SDL_Event& ev);
  protected:
   const KeyPair* lookupKey(SDLKey sym);
-  const ButtonPair* lookupButton(uint8_t button);
+  const ButtonPair* lookupButton(unsigned char button);
  private:
   const KeyPair* m_keys;
   const ButtonPair* m_buttons;

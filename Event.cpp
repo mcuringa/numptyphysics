@@ -54,7 +54,7 @@ BasicEventMap::lookupKey(SDLKey sym)
 }
 
 const BasicEventMap::ButtonPair*
-BasicEventMap::lookupButton(uint8_t button)
+BasicEventMap::lookupButton(unsigned char button)
 {
   const ButtonPair* p = m_buttons;
   while (p && p->button) {
