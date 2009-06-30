@@ -243,6 +243,8 @@ private:
       case SDLK_2:
 	m_drawDirty = !m_drawDirty;
 	return true;
+      default:
+	break;
       }
     }
     return false;
