@@ -644,8 +644,8 @@ void Scene::createJoints( Stroke *s )
 
 void Scene::step( bool isPaused )
 {
-  m_recorder.tick();
-  m_player.tick();
+  m_recorder.tick(isPaused);
+  isPaused |= m_player.tick();
 
   if ( !isPaused ) {
     if (m_dynamicGravity && m_accelerometer) {

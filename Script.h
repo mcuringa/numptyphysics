@@ -27,15 +27,16 @@ struct ScriptEntry {
     OP_DELETE,
     OP_EXTEND,
     OP_MOVE,
-    OP_ACTIVATE
+    OP_ACTIVATE,
+    OP_PAUSE
   };
 
+  int  t;
   Op   op;
   int  stroke;
   int  arg1;
   int  arg2;
   Vec2 pt;
-  int  t;
 
   ScriptEntry( int _t, Op _op, int _stroke,
 	     int _arg1, int _arg2, const Vec2& _pt ) 
@@ -65,7 +66,7 @@ public:
   ScriptRecorder();
   void start(ScriptLog* log);
   void stop();
-  void tick();
+  void tick(bool isPaused);
   void newStroke( const Path& p, int colour, int attribs );
   void deleteStroke( int index );
   void extendStroke( int index, const Vec2& pt );
@@ -76,7 +77,8 @@ public:
 
 private:
   bool          m_running;
-  ScriptLog      *m_log;
+  bool          m_isPaused;
+  ScriptLog    *m_log;
   int 		m_lastTick;
 };
 
@@ -88,10 +90,11 @@ public:
   void start( const ScriptLog* log, Scene* scene );
   bool isRunning() const;
   void stop();
-  void tick();
+  bool tick(); 
 
 private:
   bool           m_playing;
+  bool           m_isPaused;
   const ScriptLog* m_log;
   Scene         *m_scene;
   int            m_index;

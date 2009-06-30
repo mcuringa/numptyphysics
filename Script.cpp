@@ -32,6 +32,7 @@ ScriptEntry::ScriptEntry( const std::string& str )
     case 'e': op = OP_EXTEND; break;
     case 'm': op = OP_MOVE; break;
     case 'a': op = OP_ACTIVATE; break;
+    case 'p': op = OP_PAUSE; break;
     default:
       fprintf(stderr,"bad script op\n");
     }
@@ -43,7 +44,7 @@ ScriptEntry::ScriptEntry( const std::string& str )
 
 std::string ScriptEntry::asString()
 {
-  static const char opcodes[] = "ndema";
+  static const char opcodes[] = "ndemap";
   std::stringstream s;
   s << t << "," << opcodes[op] << ","
     << stroke << "," << arg1 << "," << arg2 << ","
@@ -74,13 +75,15 @@ void ScriptLog::append( const std::string& str )
 
 ScriptRecorder::ScriptRecorder()
   : m_log(NULL),
-    m_running(false)
+    m_running(false),
+    m_isPaused(false)
 {
 }
 
 void ScriptRecorder::start( ScriptLog* log ) 
 {
   m_running = true;
+  m_isPaused = false;
   m_log = log;
   m_log->empty();
   m_log->capacity(128);
@@ -97,10 +100,14 @@ void ScriptRecorder::stop()
   }
 }
 
-void ScriptRecorder::tick() 
+void ScriptRecorder::tick(bool isPaused) 
 {
   if ( m_running ) {
     m_lastTick++;
+    if (isPaused != m_isPaused) {
+      m_isPaused = isPaused;
+      m_log->append( m_lastTick, ScriptEntry::OP_PAUSE, isPaused?1:0 );
+    }
   }
 }
 
@@ -142,6 +149,7 @@ void ScriptRecorder::activateStroke( int index )
 void ScriptPlayer::start( const ScriptLog* log, Scene* scene )
 {
   m_playing = true;
+  m_isPaused = false;
   m_log = log;
   m_index = 0;
   m_lastTick = 0;
@@ -161,7 +169,7 @@ bool ScriptPlayer::isRunning() const
   return m_log && m_log->size() > 0 && m_playing; 
 }
 
-void ScriptPlayer::tick() 
+bool ScriptPlayer::tick() 
 {
   if ( m_playing ) {
     m_lastTick++;
@@ -185,10 +193,15 @@ void ScriptPlayer::tick()
       case ScriptEntry::OP_ACTIVATE:
 	m_scene->activateStroke( m_scene->strokes()[e.stroke] );
 	break;
+      case ScriptEntry::OP_PAUSE:
+	m_isPaused = (e.stroke != 0);
+	break;
       }
       m_index++;
     }
+    return m_isPaused;
   }
+  return false;
 }
 
 
