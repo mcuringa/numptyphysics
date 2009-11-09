@@ -18,21 +18,18 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <string.h>
 #include <glib-object.h>
 #include <glibconfig.h>
 #include <glib/gmacros.h>
-#include <mce/mode-names.h>
-#include <mce/dbus-names.h>
-#include <dbus/dbus-glib.h>
 #include <libosso.h>
 
-#include <hildon/hildon-program.h>
-//#include <hildon/hildon-file-chooser-dialog.h>
 #include <gtk/gtk.h>
 
 #include "Os.h"
 #include "Http.h"
+#include "Ui.h"
 #include "Accelerometer.h"
 #define Font __FONT_REDEF
 #include "Config.h"
@@ -45,30 +42,76 @@
 #define MAX_FILES 32
 
 
-static void orientation_callback (DBusGProxy *proxy,
-				  DBusGProxyCall *call, 
-				  void *data);
 static gint mime_handler(const gchar *interface,
                          const gchar *method,
                          GArray *arguments,
                          gpointer data,
                          osso_rpc_t *retval);
 
+
+class HildonModEventMap : public EventMap
+{
+  EventMap* m_map;
+  int m_mod;
+public:
+  HildonModEventMap(EventMap *m) : m_map(m), m_mod(0) {}
+
+  virtual Event process(const SDL_Event& ev1)
+  {
+    SDL_Event ev = ev1;
+    // \todo we should do a real event map instead of just modding
+    // button clicks...
+    switch( ev.type ) {      
+    case SDL_KEYDOWN:
+      if ( ev.key.keysym.sym == SDLK_F8 ) {
+	m_mod = 1;  //zoom- == middle (delete)
+	return Event();
+      } else if ( ev.key.keysym.sym == SDLK_F7 ) {
+	m_mod = 2;  //zoom+ == right (move)
+	return Event();
+      }
+      break;
+    case SDL_KEYUP:
+      if ( ev.key.keysym.sym == SDLK_F7
+	   || ev.key.keysym.sym == SDLK_F8 ) {
+	m_mod = 0;     
+	return Event();
+      }
+      break;
+    case SDL_MOUSEBUTTONDOWN: 
+    case SDL_MOUSEBUTTONUP: 
+      if ( ev.button.button == SDL_BUTTON_LEFT ) {
+	if ( m_mod == 1 ) {
+	  ev.button.button = SDL_BUTTON_MIDDLE;
+	} else if ( m_mod == 2 ) {
+	  ev.button.button = SDL_BUTTON_RIGHT;
+	}
+      }
+      break;
+    default:
+      break;
+    }
+    return m_map->process(ev);
+  }
+};
+
+
+
+
 class OsHildon : public Os, private Accelerometer
 {
   GMainContext   *m_gcontext;
   osso_context_t *m_osso;
-  DBusGProxy     *m_mce_proxy;
-  DBusGProxyCall *m_mce_call;
-  bool            m_mce_ok;
-  gint            m_mgx, m_mgy, m_mgz;
-
+  bool            m_useProximity;
+  bool            m_proximityClosed;
 
  public:
   int             m_numFiles;
   char*           m_files[MAX_FILES];
 
   OsHildon()
+    : m_useProximity(false),
+      m_proximityClosed(false)
   {
     g_type_init();
     m_gcontext = g_main_context_new();
@@ -88,13 +131,9 @@ class OsHildon : public Os, private Accelerometer
       fprintf(stderr, "Failed to set mime callback\n");
     }
 
-    m_mce_proxy = dbus_g_proxy_new_for_name_owner( dbus_g_bus_get(DBUS_BUS_SYSTEM, NULL),
-						   "com.nokia.mce",
-						   "/com/nokia/mce/request",
-						   "com.nokia.mce.request", NULL);
-    m_mce_call = NULL;
-    m_mce_ok = false;
-    m_mgx = m_mgy = m_mgz = 0;
+#if MAEMO_VERSION >= 5
+    m_useProximity = true;
+#endif
   }
 
   ~OsHildon()
@@ -114,54 +153,81 @@ class OsHildon : public Os, private Accelerometer
 
   virtual bool poll( float32& gx, float32& gy, float32& gz )
   {
-    if ( m_mce_call ) {
-      // without a glib main loop we have to do a blocking wait on
-      // call end here.  this means we are lockstepped to 1 dbus
-      // roundtrip per poll.
-      orientationCallback( m_mce_proxy, m_mce_call );
-    } 
-    if ( !m_mce_call ) {
-      // dispatch a new call.
-      m_mce_call = dbus_g_proxy_begin_call( m_mce_proxy,
-					    "get_device_orientation",
-					    orientation_callback,
-					    this, NULL,
-					    G_TYPE_INVALID );
-    }
-    if ( m_mce_ok ) {
-      // align with screen coords
-      gx = -(float32)m_mgx / 1000.0f;
-      gy = -(float32)m_mgy / 1000.0f;
-      gz =  (float32)m_mgz / 1000.0f;
-      return true;
-    }
-    return false;
-  }
-
-  void orientationCallback (DBusGProxy *proxy, DBusGProxyCall *call)
-  {
-    if (proxy == m_mce_proxy && call==m_mce_call) {
-      gchar *s1, *s2, *s3;
-
-      if (dbus_g_proxy_end_call (proxy, call, NULL,
-				 G_TYPE_STRING, &s1,
-				 G_TYPE_STRING, &s2,
-				 G_TYPE_STRING, &s3,
-				 G_TYPE_INT, &m_mgx,
-				 G_TYPE_INT, &m_mgy,
-				 G_TYPE_INT, &m_mgz,
-				 G_TYPE_INVALID)) {
-	m_mce_ok = true;
+    bool ok = false;
+    int x,y,z;
+    FILE *f = fopen("/sys/class/i2c-adapter/i2c-3/3-001d/coord", "rt");
+    //FILE *f = fopen("coord", "rt");
+    if ( f ) {
+      if ( fscanf(f,"%d %d %d",&x,&y,&z)==3 ) {
+	gx = -(float32)x / 1000.0f;
+	gy = -(float32)y / 1000.0f;
+	gz =  (float32)z / 1000.0f;
+	ok = true;
       }
+      fclose(f);
     }
-    m_mce_call = NULL;
+    return ok;
   }
 
   virtual void poll() 
   {
+    // run the gobject main loop for dbus ops
     if ( g_main_context_iteration( m_gcontext, FALSE ) ) {
       fprintf(stderr, "Hildon::poll event!\n");
     }
+#if MAEMO_VERSION >= 5
+    // poll the proximity sensor to emulate esc key (undo)
+    if ( m_useProximity ) {
+      int fd = open("/sys/devices/platform/gpio-switch/proximity/state", 0);
+      if ( fd >= 0 ) {
+	char c;
+	if ( read(fd,&c,1)==1 ) {
+	  bool proxState = (c=='c');
+	  if (proxState != m_proximityClosed) {
+	    SDL_Event event;
+	    event.key.type = proxState ? SDL_KEYDOWN : SDL_KEYUP;	
+	    event.key.state = proxState ? SDL_PRESSED : SDL_RELEASED;
+	    event.key.keysym.sym = SDLK_ESCAPE;
+	    event.key.keysym.unicode = 27;
+	    SDL_PushEvent(&event);
+	    m_proximityClosed = proxState;
+	  }
+	}
+	close(fd);
+      } else {
+	m_useProximity = false;
+      }
+#endif
+    }
+  }
+
+  EventMap* getEventMap( EventMapType type )
+  {
+    static HildonModEventMap gameMap(Os::getEventMap(GAME_MAP));
+    static HildonModEventMap editMap(Os::getEventMap(EDIT_MAP));
+
+    switch (type) {
+    case GAME_MAP:
+      return &gameMap;
+    case EDIT_MAP:
+      return &editMap;
+    default:
+      return Os::getEventMap(type);
+    }
+  }
+
+  virtual void decorateGame( WidgetParent* game )
+  {
+    Button *b;
+    // play options on the right
+    b = new Button("",Event(Event::OPTION,1));
+    b->setBg(0x408040);
+    game->add( b, Rect(SCREEN_WIDTH-10,0,
+SCREEN_WIDTH,SCREEN_HEIGHT) );
+    // palette/edit options on the left
+    b = new Button("",Event(Event::OPTION,2));
+    b->setBg(0x408040);
+    game->add( b, Rect(0,0,10,SCREEN_HEIGHT));
   }
 
   virtual char *getLaunchFile() 
@@ -204,15 +270,6 @@ class OsHildon : public Os, private Accelerometer
   }
 
 };
-
-
-static void orientation_callback (DBusGProxy *proxy,
-				  DBusGProxyCall *call, 
-				  void *data)
-{
-  OsHildon* os =(OsHildon*)data;
-  os->orientationCallback(proxy,call);
-}
 
 
 static gint mime_handler(const gchar *interface,
@@ -261,6 +318,28 @@ static gint mime_handler(const gchar *interface,
 }
 
 
+#if 1
+/* cortex-a8 runfast mode to shovel vfp isntructions into the neon
+   unit.  runfast implies:
+   * Subnormal numbers are being flushed to zero
+   * Default NaN mode is active
+   * No floating point exceptions are enabled
+ */
+void enable_runfast()
+{
+  static const unsigned int x = 0x04086060;
+  static const unsigned int y = 0x03000000;
+  int r;
+  asm volatile ("fmrx   %0, fpscr   \n\t"   //r0 = FPSCR
+                "and    %0, %0, %1  \n\t"   //r0 = r0 & x
+                "orr    %0, %0, %2  \n\t"   //r0 = r0 | y
+                "fmxr   fpscr, %0   \n\t"   //FPSCR = r0
+                : "=r"(r)
+                : "r"(x), "r"(y));
+}
+#endif
+
+
 Os* Os::get()
 {
   static OsHildon os;
@@ -271,7 +350,10 @@ const char Os::pathSep = '/';
 
 int main(int argc, char** argv)
 {
+#if 0
   gtk_init(&argc, &argv);
+#endif
+  enable_runfast();
   npmain(argc,argv);
 }
 

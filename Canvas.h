@@ -62,6 +62,8 @@ class Window : public Canvas
   void update( const Rect& r );
   void raise();
   void setSubName( const char *sub );
+ protected:
+  std::string m_title;
 };
 
 

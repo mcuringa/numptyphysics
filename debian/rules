@@ -34,7 +34,12 @@ ifneq (,$(findstring arm-linux,$(DEB_BUILD_GNU_TYPE)))
 	#internal compiler error under maemo scratchbox
         #CPPFLAGS += -frename-registers
 	CPPFLAGS += -ffast-math
-	CPPFLAGS += -mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp 
+	#omap2
+#	CPPFLAGS += -mcpu=arm1136j-s -mfpu=vfp -mfloat-abi=softfp 
+	#omap3
+#	CPPFLAGS += -mcpu=cortex-a8 -mfpu=vfp3 -mfloat-abi=softfp 
+	CPPFLAGS += -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp
+	CPPFLAGS += -ftree-vectorize -fsingle-precision-constant
 endif
 
 
@@ -42,7 +47,7 @@ endif
 config.status: configure
 	dh_testdir
 	# Add here commands to configure the package.
-	CPPFLAGS="$(CPPFLAGS)" ./configure --prefix=/usr
+	CPPFLAGS="$(CPPFLAGS)" CFLAGS="$(CPPFLAGS)" ./configure --prefix=/usr
 
 configure:
 	./autogen.sh

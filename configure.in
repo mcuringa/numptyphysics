@@ -1,4 +1,5 @@
-AC_INIT(README)
+AC_INIT
+AC_CONFIG_SRCDIR([README])
 AM_INIT_AUTOMAKE(numptyphysics,0.3)
 #AM_CONFIG_HEADER(amconfig.h)
 
@@ -75,4 +76,5 @@ AC_CHECK_LIB(X11, main)
 AC_CHECK_LIB(z, main)
 
 
-AC_OUTPUT(Makefile)
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT

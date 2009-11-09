@@ -31,16 +31,20 @@
 #define MULTI_VERTEX_LIMIT 64
 
 #define ITERATION_RATE    60 //fps
-#define SOLVER_ITERATIONS 10
-#define MIN_RENDER_RATE   10 //fps
-#define MAX_RENDER_RATE   ITERATION_RATE //fps
-#define AVG_RENDER_RATE   ((MIN_RENDER_RATE+MAX_RENDER_RATE)/2)
+#define SOLVER_ITERATIONS 8
 
 #ifdef USE_HILDON //maemo
+#  define MIN_RENDER_RATE   10 //fps
+#  define MAX_RENDER_RATE   60 //fps
+#  define AVG_RENDER_RATE   20 //fps
 #  define JOINT_TOLERANCE   4.0f //PIXELs
 #  define SELECT_TOLERANCE  8.0f //PIXELS_PER_METREf)
 #  define CLICK_TOLERANCE   16 //PIXELs 
+#  define MAEMO_VERSION 5
 #else
+#  define MIN_RENDER_RATE   10 //fps
+#  define MAX_RENDER_RATE   ITERATION_RATE //fps
+#  define AVG_RENDER_RATE   ((MIN_RENDER_RATE+MAX_RENDER_RATE)/2)
 #  define JOINT_TOLERANCE   4.0f //PIXELs
 #  define SELECT_TOLERANCE  5.0f //PIXELS_PER_METREf)
 #  define CLICK_TOLERANCE   4 //PIXELs 
@@ -89,6 +93,22 @@ extern const int NUM_BRUSHES;
 #define RED_BRUSH       0
 #define YELLOW_BRUSH    1
 #define DEFAULT_BRUSH   2
+
+
+#define DEFAULT_BG 0x303030
+#define DEFAULT_FG 0xf8fcf8
+#define BUTTON_BG 0x383c38
+#define SELECTED_BG 0x704040
+#define TL_BORDER 0x909490
+#define BR_BORDER 0x182018
+#define BUTTON_WIDTH 140
+#define BUTTON_HEIGHT 60
+#define BUTTON_SPACING 8
+#define TAB_WIDTH 160
+#define TAB_HEIGHT 40
+#define DIALOG_TITLE_HEIGHT 48
+#define MENU_COLUMNS 1
+
 
 class Font;
 

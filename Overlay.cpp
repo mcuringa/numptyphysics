@@ -20,10 +20,12 @@
 #include "Config.h"
 #include "Path.h"
 #include "Font.h"
-//#include "Worker.h"
+#include "Worker.h"
+#include "Scene.h"
 
 #include <SDL/SDL.h>
 #include <string>
+#include <algorithm>
 
 extern Rect FULLSCREEN_RECT;
 
@@ -34,24 +36,20 @@ public:
     : m_game(game),
       m_x(x), m_y(y),
       m_canvas(NULL),
-      m_isDirty(true),
       m_dragging(false),
       m_dragging_allowed(dragging_allowed),
       m_buttonDown(false)
-  {}
+  {
+    moveTo(Vec2(x,y));
+  }
   virtual ~OverlayBase() 
   {
     delete m_canvas;
   }
 
-  bool isDirty()
-  {
-    return m_isDirty;
-  }
-
   Rect dirtyArea() 
   {
-    if ( m_isDirty ) {
+    if ( isDirty() ) {
       return Rect(m_x,m_y,m_x+m_canvas->width()-1,m_y+m_canvas->height()-1);
     } else {
       return Rect(0,0,0,0);
@@ -63,15 +61,19 @@ public:
   virtual void onTick( int tick ) {}
 
   virtual void draw( Canvas& screen, const Rect& area )
-  {
+  {    
     if ( m_canvas ) {
       screen.drawImage( m_canvas, m_x, m_y );
     }
-    m_isDirty = false;
+    Overlay::draw(screen,area);
+    dirty(false);
   }
 
-  virtual bool handleEvent( SDL_Event& ev )
+  virtual bool processEvent( SDL_Event& ev )
   {
+    if (Overlay::processEvent(ev)) {
+      return true;
+    }
     switch( ev.type ) {      
     case SDL_MOUSEBUTTONDOWN:
       //printf("overlay click\n"); 
@@ -122,16 +124,6 @@ public:
   }
   
 protected:
-  void dirty()
-  {
-    m_isDirty = true;
-  }
-
-  void dirty( const Rect& r )
-  {
-    m_isDirty = true;
-  }
-
   virtual bool onKey( int k )
   {
     return false;
@@ -146,6 +138,7 @@ protected:
   }
   virtual bool onDrag( int dx, int dy ) 
   {
+    move(Vec2(dx,dy));
     m_x += dx;
     m_y += dy;
     m_game.m_refresh = true;
@@ -200,7 +193,6 @@ protected:
 private:
   int     m_orgx, m_orgy;
   int     m_prevx, m_prevy;
-  bool    m_isDirty;
   bool    m_dragging;
   bool    m_dragging_allowed;
   bool    m_buttonDown;
@@ -287,14 +279,17 @@ private:
 };
 
 
-class ListOverlay : public UiOverlay
+#if 0
+class GridOverlay : public UiOverlay
 {
 public:
-  ListOverlay( GameControl& game,
-	       ListProvider* provider,
+  GridOverlay( GameControl& game,
+	       GridProvider* provider,
 	       int x, int y,
-	       int w, int h )
+	       int w, int h,
+	       int columns )
     : UiOverlay(game,Rect(x,y,x+w,y+h)),
+      m_columns( columns ),
       m_provider( provider ),
       m_first( 0 ),
       m_current( 0 ),
@@ -306,17 +301,31 @@ public:
   {
     Canvas *first = m_provider->provideItem( m_first, NULL );
     m_itemh = first->height();
-    m_numvis = m_listarea.height() / (m_itemh + m_vgap) + 2;
+    m_itemw = first->width();
+    m_rows = m_provider->countItems()+m_columns-1)/m_columns;
+    m_horizvis = m_listarea.height() / (m_itemh + m_vgap);
+    m_vertvis = m_listarea.width() / (m_itemw + m_hgap);
+    m_numvis = m_horizvis * m_vertvis;
 
     if ( m_numvis <= m_provider->countItems() ) {
       m_allowscroll = false;
     } else {
       m_allowscroll = true;
-      m_listarea.tl.y += 20;
-      m_listarea.br.y -= 20;
-      m_numvis = m_listarea.height() / (m_itemh + m_vgap);
-      addButton( "Back", Rect(0,0,w,20), &ListOverlay::doBack );
-      addButton( "Forward", Rect(0,y-20,w,20), &ListOverlay::doForward );      
+      if ( m_horizvis < m_columns ) {
+	m_listarea.tl.x += 20;
+	m_listarea.br.x -= 20;
+	addButton( "<<", Rect(0,0,h,20), &GridOverlay::doColLeft );
+	addButton( ">>", Rect(x-20,0,h,20), &GridOverlay::doColRight );
+      }
+      if ( m_vertvis < m_rows ) {
+	m_listarea.tl.y += 20;
+	m_listarea.br.y -= 20;
+	addButton( "^^^^", Rect(0,0,w,20), &GridOverlay::doRowUp );
+	addButton( "vvvv", Rect(0,y-20,w,20), &GridOverlay::doRowDown );
+      }
+      m_horizvis = m_listarea.height() / (m_itemh + m_vgap);
+      m_vertvis = m_listarea.wdith() / (m_itemw + m_hgap);
+      m_numvis = m_horizvis * m_vertvis;
     }
 
     m_items = (Canvas**)calloc( sizeof(Canvas*),  m_numvis);
@@ -328,7 +337,7 @@ public:
     renderItems();
   }
 
-  ~ListOverlay()
+  ~GridOverlay()
   {
     for ( int i=0; i<m_numvis; i++ ) {
       if ( m_items[0] ) {
@@ -340,25 +349,29 @@ public:
   void renderItems()
   {
     m_canvas->clear( m_listarea );
-    for ( int i=0; i < m_numvis; i++ ) {
-      int q = m_first + i;
-      if ( q < m_provider->countItems() ) {
-	m_canvas->drawImage( m_items[q%m_numvis], 
-			    m_listarea.tl.x + m_offset.x,
-			    m_listarea.tl.y + m_offset.y + (m_itemh+m_vgap)*i );
-      }
-      if ( q == m_current ) {
-	m_canvas->drawRect( m_listarea.tl.x-1 + m_offset.x,
-			    m_listarea.tl.y + (m_itemh+m_vgap)*i - 1 + m_offset.y,
-			    m_items[q%m_numvis]->width()+2,
-			    m_items[q%m_numvis]->height()+2,
-			    m_fgColour,
-			    false );
+    for ( int r=0; r < m_vertvis; r++ ) {
+      for ( int c=0; c < m_horizvis; c++ ) {
+	int imgindex = r*m_horizvis + c;
+	int item = m_first + r*m_columns + c;
+	if ( m_items[imgindex] ) {
+	  m_canvas->drawImage( m_items[imgindex], 
+			       m_listarea.tl.x + m_offset.x,
+			       m_listarea.tl.y + m_offset.y + (m_itemh+m_vgap)*i );
+	}
+	if ( item == m_current ) {
+	  m_canvas->drawRect( m_listarea.tl.x-1 + m_offset.x,
+			      m_listarea.tl.y + (m_itemh+m_vgap)*i - 1 + m_offset.y,
+			      m_items[imgindex]->width()+2,
+			      m_items[imgindex]->height()+2,
+			      m_fgColour,
+			      false );
+	}
       }
     }
     dirty();
   }
 
+#if 0
   void onTick( int tick )
   {
     UiOverlay::onTick( tick );
@@ -378,6 +391,7 @@ public:
       renderItems();
     }
   }
+#endif
 
   virtual bool onClick( int x, int y ) 
   {
@@ -391,39 +405,68 @@ public:
     }
   }
 
-  virtual bool onKey( int k )
-  {
-    switch (k) {
-    case SDLK_UP:
-      if ( m_current > 0 ) {
-	m_current--;
-	if ( m_current < m_first ) {
-	  doBack();
-	}
-	renderItems();
-      }
-      return true;
-    case SDLK_DOWN:
-      if ( m_current < m_provider->countItems()-1 ) {
-	m_current++;
-	if ( m_current >= m_first+m_numvis-1 ) {
-	  doForward();
-	}
-	renderItems();
-      }
-      return true;
-    }
-    return false;
-  }
-
   bool onDrag( int dx, int dy )
   {
     m_velocity.x = dx;
     m_velocity.y = dy;
   }
 
-  void doBack()
+  void doRowUp() { pan(0,-5); }
+  void doRowDown() { pan(0,5); }
+  void doColLeft() { pan(-5,0); }
+  void doColRight() { pan(5,0); }
+
+  void pan( int dx, int dy )
   {
+    Vec2 motion(0,0);
+    m_offset += Vec2(dx,dy);
+    while ( m_offset.x < 0 ) {
+      if (m_first%m_columns == 0) {
+	m_offset.x = 0;
+      } else {
+	motion.x--;
+	m_first--;
+	m_offset.x += m_itemw;
+      }
+    }
+    while ( m_offset.x > m_itemw ) {
+      if (m_first%m_columns == m_columns-m_horizvis) {
+	m_offset.x = 0;
+      } else {
+	motion.x++;
+	m_first++;
+	m_offset.x -= m_itemw;
+      }
+    }
+    while ( m_offset.y < 0 ) {
+      if (m_first/m_columns == 0) {
+	m_offset.y = 0;
+      } else {
+	motion.y--;
+	m_first-=m_columns;
+	m_offset.y += m_itemh;
+      }
+    }
+    while ( m_offset.x > m_itemh ) {
+      if (m_first/m_columns == m_rows-m_vertvis) {
+	m_offset.y = 0;
+      } else {
+	motion.y++;
+	m_first+=m_columns;
+	m_offset.y -= m_itemh;
+      }
+    }
+
+    if ( motion.x < 0 ) {
+      // shuffle columsn right.
+    } else if ( motion.x > 0 ) {
+      // shuffle columns left.
+    }
+    if ( motion.y < 0 ) {
+      // shuffle rows down.
+    } else if ( motion.y > 0 ) {
+      // shuffle rows up.
+    }
     if ( m_first > 0 ) {
       m_first--;      
       m_items[m_first%m_numvis] = m_provider->provideItem( m_first,
@@ -431,22 +474,17 @@ public:
     }
   }
 
-  void doForward()
-  {
-    int last = m_first + m_numvis - 1;
-    if ( last < m_provider->countItems() ) {
-      m_first++;
-      last = m_first + m_numvis - 1;
-      m_items[last%m_numvis] = m_provider->provideItem( last, m_items[last%m_numvis] );
-    }
-  }
-
 private:
+  int          m_columns;
+  int          m_rows;
   ListProvider *m_provider;
   int          m_first;
   int          m_current;
+  int          m_horizvis
+  int          m_vertvis;
   int          m_numvis;
   int          m_itemh;
+  int          m_itemw;
   int          m_hgap, m_vgap;
   bool         m_allowscroll;
   Rect         m_listarea;
@@ -454,7 +492,7 @@ private:
   Vec2         m_velocity;
   Canvas**     m_items;
 };
-
+#endif
 
 class MenuOverlay : public UiOverlay
 {
@@ -472,35 +510,126 @@ public:
   
 };
 
+
+class LevelThumbnailer : public Worker
+{
+public:
+  LevelThumbnailer( Levels& levels, int sel )
+    : m_levels(levels),
+      m_selected(sel),
+      m_thumb(0)
+  {}
+  virtual void main()
+  {    
+    fprintf(stderr,"creating thumb\n");
+    Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
+    Scene scene( true );
+    int size = m_levels.load( m_selected, m_buf, sizeof(m_buf) );
+    if ( size && scene.load( m_buf, size ) ) {
+      scene.draw( temp, FULLSCREEN_RECT );
+      m_thumb = temp.scale( ICON_SCALE_FACTOR );
+      fprintf(stderr,"thumb done\n");
+    }
+  }
+  int level() { return m_selected; }
+  Canvas* thumb() { return m_thumb; }
+private:
+  unsigned char m_buf[64*1024];
+  Levels&       m_levels;
+  int           m_selected;
+  Canvas*       m_thumb;
+};
+
+
 class NextLevelOverlay : public UiOverlay
 {
 public:
   NextLevelOverlay( GameControl& game )
-    : UiOverlay(game,Rect(FULLSCREEN_RECT.centroid().x-220,
+    : UiOverlay(game,Rect(FULLSCREEN_RECT.centroid().x-200,
 			  FULLSCREEN_RECT.centroid().y-120,
-			  FULLSCREEN_RECT.centroid().x+220,
-			  FULLSCREEN_RECT.centroid().y+160 ) ),
+			  FULLSCREEN_RECT.centroid().x+200,
+			  FULLSCREEN_RECT.centroid().y+80 ) ),
       m_levelIcon(-2),
-      m_icon(NULL)
+      m_worker(NULL)
   {
+    sizeTo(Vec2(400,240));
+    TabBook *tabs = new TabBook();
+
+    struct PrevButton : public Button {
+      NextLevelOverlay *m_d;
+      PrevButton(NextLevelOverlay *d) : Button("<< Prev"), m_d(d) {}
+      void onSelect() { m_d->doPrevLevel(); }
+    };
+    struct NextButton : public Button {
+      NextLevelOverlay *m_d;
+      NextButton(NextLevelOverlay *d) : Button(">> Next"), m_d(d) {}
+      void onSelect() { m_d->doNextLevel(); }
+    };
+
+    Panel* panel = new Panel();
+    m_preview = new Icon();
+    panel->add(m_preview,50,10);
+    m_previewCaption = new Label("--");
+    panel->add(m_previewCaption,50,125);
+    panel->add(new PrevButton(this),Rect(300,10,380,35));
+    panel->add(new NextButton(this),Rect(300,40,380,65));
+    tabs->addTab("Choose",panel);
+
+    tabs->addTab("Play",new Label("statsstuff"));
+
+    panel = new Panel();
+    panel->add(new Label("BRAVO!!",Font::titleFont()),Rect(100,10,200,32));
+    panel->add(new Label("Stats:"),Rect(20,50,100,82));
+    panel->add(new Label("time"),Vec2(40,90));
+    //sprintf(buf,"%.02f", (float)(stats.endTime - stats.startTime)/1000.0f );
+    //f->drawRight( m_canvas, Vec2(160,90),  buf, 0 );
+    panel->add(new Label("strokes"),Vec2(40,110));
+    //sprintf(buf,"%d", stats.strokeCount );
+    //f->drawRight( m_canvas, Vec2(160,110),  buf, 0 );
+    panel->add(new Label("undone"),Vec2(50,130));
+    //sprintf(buf,"%d", stats.undoCount );
+    //f->drawRight( m_canvas, Vec2(160,130),  buf, 0 );
+    panel->add(new Label("paused"),Vec2(50,150));
+    //sprintf(buf,"%d", stats.pausedStrokes );
+    //f->drawRight( m_canvas, Vec2(160,150),  buf, 0 );
+    panel->add(new Button("Replay"), Rect(300,10,380,35));
+    panel->add(new Button("Share"),  Rect(300,40,380,65));
+    panel->add(new Button("Continue"),Rect(300,70,380,95));
+
+    tabs->addTab("Review",panel);
+
+    tabs->addTab("Help",new Label("helpstuff"));
+    add(tabs,Rect(5,5,395,195));
+
     const Font *f = Font::titleFont();
-    f->drawCenter( m_canvas, Vec2(220,7), "BRAVO!", 0 );
+    //f->drawCenter( m_canvas, Vec2(220,30), "BRAVO!", 0 );
     f = Font::headingFont();
-    f->drawLeft( m_canvas, Vec2(20,50),  "Stats:", 0 );
     f->drawLeft( m_canvas, Vec2(240,50), "Next:", 0 );
 
-    addButton( "<<", Rect(230,190,270,210),
+    addButton( "<<", Rect(230,210,280,230),
 	       &NextLevelOverlay::doPrevLevel );
-    addButton( ">>", Rect(380,190,420,210),
+    addButton( ">>", Rect(390,210,420,230),
 	       &NextLevelOverlay::doNextLevel );
-    addButton( "Review", Rect(0,220,200,270),
+    addButton( "Review", Rect(0,240,200,280),
 	       &NextLevelOverlay::doActionReplay );
-    addButton( "Continue", Rect(200,220,400,270),
+    addButton( "Continue", Rect(200,240,400,280),
 	       &NextLevelOverlay::doContinue );
   }
   ~NextLevelOverlay()
   {
-    delete m_icon;
+    delete m_worker;
+  }
+  virtual bool processEvent( SDL_Event& ev )
+  {
+    switch( ev.type ) {      
+    case SDL_USEREVENT:
+      if (ev.user.code==WORKER_DONE && m_worker && m_worker->done()) {
+	genIcon();
+      }
+      return false;
+    default:
+      return UiOverlay::processEvent(ev);
+    }
   }
   virtual void onShow()
   {
@@ -525,6 +654,7 @@ public:
     f->drawLeft( m_canvas, Vec2(50,150), "paused", 0 );
     sprintf(buf,"%d", stats.pausedStrokes );
     f->drawRight( m_canvas, Vec2(160,150),  buf, 0 );
+    genIcon();
   }
   virtual void onHide()
   {
@@ -532,28 +662,33 @@ public:
     m_game.m_refresh = true; //for fullscreen fade
     m_game.m_fade = false;
   }
-  virtual void draw( Canvas& screen, const Rect& area )
+  void setCaption()
   {
-    UiOverlay::draw( screen, area );
-    if ( genIcon() ) {      
-      Font::blurbFont()->drawCenter( &screen, Vec2(m_x+330,m_y+210), 
-				       m_game.levels().levelName(m_selectedLevel), 0 );
-      screen.drawImage( m_icon, m_x+230, m_y+85 );
-    } else {
-      dirty();
+    std::string caption = m_game.levels().levelName(m_selectedLevel);
+    if (caption[0]=='L') {
+      int s = caption.find("_");
+      if (s>1 && s<5) {
+	caption = caption.substr(s+1);
+      }
     }
+    std::replace(caption.begin(),caption.end(),'_',' ');
+    m_previewCaption->text(caption);
   }
   void doPrevLevel()
   {
     if (m_selectedLevel>0) {
       m_selectedLevel--; 
+      genIcon();
       dirty();
+      fprintf(stderr,"prevlevel %d\n",m_selectedLevel);
     }
   }
   void doNextLevel()
   {
     m_selectedLevel++;
+    genIcon();
     dirty();
+    fprintf(stderr,"nextlevel %d\n",m_selectedLevel);
   }
   void doActionReplay()
   {
@@ -566,30 +701,39 @@ public:
 private:
   bool genIcon()
   {
-    if ( m_icon==NULL || m_levelIcon != m_selectedLevel ) {
+    if ( m_levelIcon != m_selectedLevel ) {
+      fprintf(stderr,"icon %d deleted for %d\n",m_levelIcon,m_selectedLevel);
+      m_preview->canvas(NULL);
+      m_levelIcon = -1;
 
-      //Worker w( NULL, 1, 100, 200 );
-
-      delete m_icon;
-      m_icon = NULL;
-      if ( m_selectedLevel < m_game.levels().numLevels() ) {
-	Canvas temp( SCREEN_WIDTH, SCREEN_HEIGHT );
-	if ( m_game.renderScene( temp, m_selectedLevel) ) {
-	  m_icon = temp.scale( ICON_SCALE_FACTOR );
-	}
-      } else {
+      if ( m_selectedLevel >= m_game.levels().numLevels() ) {
 	m_icon = new Image("theend.png");
-	m_caption = "no more levels!";
-	m_selectedLevel = m_game.levels().numLevels();
+	m_preview->canvas(m_icon);
+	m_previewCaption->text("no more levels!");
+	m_levelIcon = m_selectedLevel = m_game.levels().numLevels();
+      } else if (m_worker==NULL) {
+	fprintf(stderr,"starting new thumb for %d\n",m_selectedLevel);
+	m_worker = new LevelThumbnailer(m_game.levels(),m_selectedLevel);
+	m_worker->start();
+      } else if (m_worker->done()) {
+	m_levelIcon = m_worker->level();
+	m_icon = m_worker->thumb();
+	delete m_worker;
+	m_worker = NULL;
+	m_preview->canvas(m_icon);
+	setCaption();
+	fprintf(stderr,"thumb complete for %d\n",m_levelIcon);
       }
-      m_levelIcon = m_selectedLevel;
     }
-    return m_icon;
+    return m_levelIcon==m_selectedLevel;
   }
+
   int          m_selectedLevel;
   int          m_levelIcon;
   Canvas*      m_icon;
-  std::string  m_caption;
+  Icon*        m_preview;
+  LevelThumbnailer *m_worker;
+  Label*       m_previewCaption;
 };
 
 
@@ -675,13 +819,16 @@ Overlay* createNextLevelOverlay( GameControl& game )
   return new NextLevelOverlay( game );
 }
 
-Overlay* createListOverlay( GameControl& game,
-			    ListProvider* provider,
+#if 0
+Overlay* createGridOverlay( GameControl& game,
+			    GridProvider* provider,
 			    int x, int y,
-			    int w, int h )
+			    int w, int h,
+			    int columns )
 {
-  return new ListOverlay( game, provider, x, y, w, h );
+  return new GridOverlay( game, provider, x, y, w, h, columns );
 }
+#endif
 
 Overlay* createMenuOverlay( GameControl& game )
 {

@@ -35,12 +35,13 @@ struct Vec2 {
   void operator-=( const Vec2& o ) { x-=o.x; y-=o.y; }
   Vec2 operator-() { return Vec2(-x,-y); }
   void operator*=( int o ) { x*=o; y*=o; }
-  bool operator==( const Vec2& o ) const { return x==o.x && y==y; }
+  bool operator==( const Vec2& o ) const { return x==o.x && y==o.y; }
   bool operator!=( const Vec2& o ) const { return !(*this==o); }
   operator b2Vec2() const { return b2Vec2((float32)x,(float32)y); } 
   Vec2 operator+( const Vec2& b ) const { return Vec2(x+b.x,y+b.y); }
   Vec2 operator-( const Vec2& b ) const { return Vec2(x-b.x,y-b.y); }
   Vec2 operator/( int r ) const { return Vec2(x/r,y/r); }
+  Vec2 operator*( int r ) const { return Vec2(x*r,y*r); }
   int x,y;
 };
 
@@ -82,6 +83,7 @@ struct Rect {
   Rect( int x1, int y1, int x2, int y2 ) : tl(x1,y1), br(x2,y2) {}
   int width() const { return br.x-tl.x+1;  }
   int height() const { return br.y-tl.y+1;  }
+  Vec2 size() const { return br-tl; }
   void clear() { tl.x=tl.y=br.x=br.y=0; }
   bool isEmpty() const { return tl.x==0 && br.x==0; }
   void grow(int by) { 

@@ -24,6 +24,7 @@ class Canvas;
 
 struct GameStats
 {
+  GameStats() {reset(0);}
   int startTime;
   int endTime;
   int strokeCount;
@@ -31,6 +32,7 @@ struct GameStats
   int undoCount;
   void reset(int t) {
     startTime = t;
+    endTime = 0;
     strokeCount = 0;
     pausedStrokes = 0;
     undoCount = 0;
@@ -48,6 +50,8 @@ struct GameControl
 		 m_strokeFixed( false ),
 		 m_strokeSleep( false ),
 		 m_strokeDecor( false ),
+                 m_replaying( false ),
+                 m_paused( false ),
                  m_level(0)
   {}
   virtual ~GameControl() {}
@@ -56,7 +60,6 @@ struct GameControl
   virtual bool load( const char* file ) { return false; }
   virtual void gotoLevel( int l, bool replay=false ) {}
   Levels& levels() { return *m_levels; }
-  virtual bool  renderScene( Canvas& c, int level ) =0; 
   const GameStats& stats() { return m_stats; }
   bool  m_quit;
   bool  m_edit;
@@ -66,6 +69,8 @@ struct GameControl
   bool  m_strokeFixed;
   bool  m_strokeSleep;
   bool  m_strokeDecor;
+  bool  m_replaying;
+  bool  m_paused;
   Levels*m_levels;
   int    m_level;
 protected:

@@ -20,20 +20,29 @@
 #include <stdlib.h>
 
 class Accelerometer;
+class WidgetParent;
 
 class Os
 {
  public:  
+  virtual ~Os() {}
   virtual void  poll() {};
   virtual char* getLaunchFile() { return NULL; }
   virtual bool  openBrowser( const char* url ) = 0;
   virtual char* saveDialog( const char* path ) { return NULL; }
   virtual Accelerometer*  getAccelerometer() { return NULL; }
   virtual EventMap* getEventMap( EventMapType type );
+  virtual void decorateGame( WidgetParent* game ) {}
   static Os* get();
   static const char pathSep;
 };
 
+class OsObj
+{
+ public:
+  Os* operator->() { return Os::get(); }
+};
+extern OsObj OS;
 
 extern int npmain(int argc, char** argv);
 

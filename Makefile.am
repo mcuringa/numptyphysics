@@ -21,11 +21,13 @@ numptyphysics_SOURCES = \
 	Game.cpp \
 	Script.cpp \
 	App.cpp \
-	Overlay.cpp \
 	Config.cpp \
 	Http.cpp \
 	Os.cpp \
+	Ui.cpp \
+	Dialogs.cpp \
 	Event.cpp \
+	Worker.cpp \
 	happyhttp.cpp \
 	zoomer.cpp \
 	OsHildon.cpp \
@@ -36,13 +38,21 @@ numptyphysics_CPPFLAGS = -IXX $(SDL_CFLAGS) $(HILDON_CFLAGS)
 numptyphysics_LDADD = libbox2d.a $(SDL_LIBS) $(HILDON_LIBS)
 
 numptyphysics_DATA = \
+	data/C00_Title.npz \
 	data/C01_Tutorial.npz \
 	data/C10_Standard.npz \
+	data/C50_Gesualdi.npz \
+	data/L99_Gravity_Test.nph \
 	data/edit.png \
 	data/next.png \
 	data/paper.png \
 	data/pause.png \
 	data/play.png \
+	data/reset.png \
+	data/help.png \
+	data/choose.png \
+	data/undo.png \
+	data/close.png \
 	data/record.png \
 	data/theend.png \
 	data/femkeklaver.ttf

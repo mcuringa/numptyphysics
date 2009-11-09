@@ -125,7 +125,7 @@ void Path::simplify( float32 threshold )
   // remove duplicate points (shouldn't be any)
   for ( int i=size()-1; i>0; i-- ) {
     if ( at(i) == at(i-1) ) {
-      //printf("alert: duplicate pt!\n");
+      //printf("alert: duplicate pt %d == %d!\n",i,i-1);
       erase( i );
     }
   }

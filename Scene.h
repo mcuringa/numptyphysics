@@ -88,6 +88,7 @@ private:
   void activateAll();
   void createJoints( Stroke *s );
   bool parseLine( const std::string& line );
+  void calcDirtyArea();
 
   // b2ContactListener callback when a new contact is detected
   virtual void Add(const b2ContactPoint* point) ;
@@ -104,8 +105,10 @@ private:
   static Image   *g_bgImage;
   int             m_protect;
   b2Vec2          m_gravity;
+  b2Vec2          m_currentGravity;
   bool            m_dynamicGravity;
   Accelerometer  *m_accelerometer;
+  Rect            m_dirtyArea;
 };
 
 

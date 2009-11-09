@@ -18,7 +18,6 @@
 #include "Array.h"
 #include "Config.h"
 #include "Game.h"
-#include "Overlay.h"
 #include "Path.h"
 #include "Canvas.h"
 #include "Font.h"
@@ -27,6 +26,8 @@
 #include "Os.h"
 #include "Scene.h"
 #include "Script.h"
+#include "Dialogs.h"
+#include "Ui.h"
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
@@ -49,94 +50,53 @@ unsigned char levelbuf[64*1024];
 
 
 
-class CollectionSelector : public ListProvider
-{
-  Overlay* m_list;
-public:
-  CollectionSelector( GameControl& game )
-  {
-    m_list = createListOverlay( game, this );
-  }
-  Overlay* overlay() { return m_list; }
-
-  virtual int     countItems() {
-    return 58;
-  }
-  virtual Canvas* provideItem( int i, Canvas* old ) {
-    delete old;
-    char buf[18];
-    sprintf(buf,"%d. Item",i);
-    Canvas* c = new Canvas( 100, 32 );
-    c->setBackground(0xffffff);
-    c->clear();
-    Font::headingFont()->drawLeft( c, Vec2(3,3), buf, i<<3 );
-    return c;
-  }
-  virtual void    releaseItem( Canvas* old ) {
-    delete old;
-  }
-  virtual void    onSelection( int i, int ix, int iy ) { 
-    printf("Selected: %d (%d,%d)\n",i,ix,iy);
-  }
-};
-
-
-class Game : public GameControl, public Widget
+class Game : public GameControl, public Container
 {
   Scene   	    m_scene;
   Stroke  	   *m_createStroke;
   Stroke           *m_moveStroke;
-  Array<Overlay*>   m_overlays;
-  Window            m_window;
-  Overlay          *m_pauseOverlay;
-  Overlay          *m_editOverlay;
-  Overlay          *m_completedOverlay;
-  CollectionSelector m_cselector;
+  Widget           *m_pauseLabel;
+  Widget           *m_editLabel;
+  Widget           *m_completedDialog;
+  Widget           *m_options;
   Os               *m_os;
   bool              m_isCompleted;
-  bool              m_paused;
   Path              m_jointCandidates;
   Path              m_jointInd;
-  Canvas           *m_spot;
 public:
   Game( Levels* levels, int width, int height ) 
   : m_createStroke(NULL),
     m_moveStroke(NULL),
-    m_window(width,height,"Numpty Physics","NPhysics"),
-    m_pauseOverlay( NULL ),
-    m_editOverlay( NULL ),
-    m_completedOverlay( createNextLevelOverlay(*this) ),
+    m_pauseLabel( NULL ),
+    m_editLabel( NULL ),
+    m_completedDialog( NULL ),
     m_isCompleted(false),
-    m_cselector( *this ),
+    m_options( NULL ),
     m_os( Os::get() ),
-    m_paused( false ),
-    m_jointInd(JOINT_IND_PATH),
-    m_spot(new Image("spot.png",true))
-    //,m_demoOverlay( *this )
+    m_jointInd(JOINT_IND_PATH)
   {
+    setEventMap(Os::get()->getEventMap(GAME_MAP));
+    sizeTo(Vec2(width,height));
+    m_transparent = true; //don't clear
+    m_greedyMouse = true; //get mouse clicks outside the window!
+
     m_jointInd.scale( 12.0f / (float32)m_jointInd.bbox().width() );
     //m_jointInd.simplify( 2.0f );
     m_jointInd.makeRelative();
-    configureScreenTransform( m_window.width(), m_window.height() );
+    configureScreenTransform( width, height );
     m_levels = levels;
     gotoLevel(0);
+
+    //add( new Button("O",Event::OPTION), Rect(800-32,0,32,32) );
   }
 
 
-  virtual bool renderScene( Canvas& c, int level ) 
-  {
-    Scene scene( true );
-    int size = m_levels->load( level, levelbuf, sizeof(levelbuf) );
-    if ( size && scene.load( levelbuf, size ) ) {
-      scene.draw( c, FULLSCREEN_RECT );
-      return true;
-    }
-    return false;
-  }
+  const char* name() {return "Game";}
 
   void gotoLevel( int level, bool replay=false )
   {
     bool ok = false;
+    m_replaying = replay;
 
     if ( replay ) {
       // reset scene, delete user strokes, but retain log
@@ -155,10 +115,13 @@ public:
       //m_window.setSubName( file );
       if ( m_edit ) {
 	m_scene.protect(0);
+      } else {
       }
       m_refresh = true;
       m_level = level;
-      m_stats.reset(SDL_GetTicks());
+      if (!m_replaying) {
+	m_stats.reset(SDL_GetTicks());
+      }
     }
   }
 
@@ -176,7 +139,7 @@ public:
       int l = m_levels->findLevel( p.c_str() );
       if ( l >= 0 ) {
 	m_level = l;
-	m_window.setSubName( p.c_str() );
+	//m_window.setSubName( p.c_str() );
       }
       return true;
     }
@@ -222,29 +185,19 @@ public:
     printf("showMessage \"%s\"\n",msg.c_str());
   }
 
-  void showOverlay( Overlay* o )
-  {
-    parent()->add( o );
-    o->onShow();
-  }
-
-  void hideOverlay( Overlay* o )
-  {
-    parent()->remove( o );
-    o->onHide();
-    m_refresh = true;
-  }
-
   void togglePause()
   {
     if ( !m_paused ) {
-      if ( !m_pauseOverlay ) {
-	m_pauseOverlay = createIconOverlay( *this, "pause.png", 50, 50 );
+      if ( !m_pauseLabel ) {
+      	m_pauseLabel = new Button("PAUSED",Event::PAUSE);
+	m_pauseLabel->setBg(0xff0000);
+	m_pauseLabel->setFg(0x000000);
       }
-      showOverlay( m_pauseOverlay );
+      add( m_pauseLabel, Rect(0,0,100,32) );
       m_paused = true;
     } else {
-      hideOverlay( m_pauseOverlay );
+      remove( m_pauseLabel );
+      m_pauseLabel = NULL;
       m_paused = false;
     }
   }
@@ -258,14 +211,17 @@ public:
   {
     if ( m_edit != doEdit ) {
       m_edit = doEdit;
-      if ( m_edit ) {
-	if ( !m_editOverlay ) {
-	  m_editOverlay = createEditOverlay(*this);
-	}
-	showOverlay( m_editOverlay );
+      if ( m_edit ) {	
+	if ( !m_editLabel ) {
+ 	  m_editLabel = new Button("EDIT",Event::OPTION);
+	  m_editLabel->setBg(0xff0000);
+	  m_editLabel->setFg(0x000000);
+ 	}
+	add(m_editLabel, Rect(0,0,100,32));
 	m_scene.protect(0);
       } else {
-	hideOverlay( m_editOverlay );
+	remove(m_editLabel);
+	m_editLabel = NULL;
 	m_strokeFixed = false;
 	m_strokeSleep = false;
 	m_strokeDecor = false;
@@ -275,195 +231,13 @@ public:
     }
   }
 
-  Vec2 mousePoint( SDL_Event ev )
+  Vec2 mousePoint( Event& ev )
   {
-    Vec2 pt( ev.button.x, ev.button.y );
+    Vec2 pt( ev.x, ev.y );
     worldToScreen.inverseTransform( pt );
     return pt;
   }
 
-  bool handleGameEvent( SDL_Event &ev )
-  {
-    switch( ev.type ) {
-    case SDL_KEYDOWN:
-      switch ( ev.key.keysym.sym ) {
-      case SDLK_SPACE:
-      case SDLK_KP_ENTER:
-      case SDLK_RETURN:
-	togglePause();
-	break;
-      case SDLK_s:
-	save();
-	break;
-      case SDLK_F4: 
-	showOverlay( createMenuOverlay( *this ) );
-	break;
-      case SDLK_c:
-	showOverlay( m_cselector.overlay() );
-	break;
-      case SDLK_e:
-      case SDLK_F6:
-	edit( !m_edit );
-	break;
-      case SDLK_d:
-	//toggleOverlay( m_demoOverlay );
-	m_scene.save("test.npd",true);
-	break;
-      case SDLK_r:
-      case SDLK_UP:
-	gotoLevel( m_level );
-	break;
-      case SDLK_n:
-      case SDLK_RIGHT:
-	gotoLevel( m_level+1 );
-	break;
-      case SDLK_p:
-      case SDLK_LEFT:
-	gotoLevel( m_level-1 );
-	break;
-      case SDLK_v:
-	gotoLevel( m_level, true );
-	break;
-      default:
-	break;
-      }
-      break;
-    default:
-      break;
-    }
-    return false;
-  }
-
-
-  //TODO move this to Os event filter
-  bool handleModEvent( SDL_Event &ev )
-  {
-    static int mod=0;
-    //printf("mod=%d\n",ev.key.keysym.sym,mod);
-    switch( ev.type ) {      
-    case SDL_KEYDOWN:
-      //printf("mod key=%x mod=%d\n",ev.key.keysym.sym,mod);
-      if ( ev.key.keysym.sym == SDLK_F8 ) {
-	mod = 1;  //zoom- == middle (delete)
-	return true;
-      } else if ( ev.key.keysym.sym == SDLK_F7 ) {
-	mod = 2;  //zoom+ == right (move)
-	return true;
-      }
-      break;
-    case SDL_KEYUP:
-      if ( ev.key.keysym.sym == SDLK_F7
-	   || ev.key.keysym.sym == SDLK_F8 ) {
-	mod = 0;     
-	return true;
-      }
-      break;
-    case SDL_MOUSEBUTTONDOWN: 
-    case SDL_MOUSEBUTTONUP: 
-      if ( ev.button.button == SDL_BUTTON_LEFT && mod != 0 ) {
-	ev.button.button = ((mod==1) ? SDL_BUTTON_MIDDLE : SDL_BUTTON_RIGHT);
-      }
-      break;
-    }
-    return false;
-  }
-
-  bool handlePlayEvent( SDL_Event &ev )
-  {
-    switch( ev.type ) {      
-    case SDL_MOUSEBUTTONDOWN: 
-      if ( ev.button.button == SDL_BUTTON_LEFT
-	   && !m_createStroke ) {
-	int attrib;
-	if ( m_strokeFixed ) {
-	  attrib |= ATTRIB_GROUND;
-	}
-	if ( m_strokeSleep ) {
-	  attrib |= ATTRIB_SLEEPING;
-	}
-	if ( m_strokeDecor ) {
-	  attrib |= ATTRIB_DECOR;
-	}
-	m_createStroke = m_scene.newStroke( Path()&mousePoint(ev), m_colour, attrib );
-	return true;
-      }
-      break;
-    case SDL_MOUSEBUTTONUP:
-      if ( ev.button.button == SDL_BUTTON_LEFT
-	   && m_createStroke ) {
-	if ( m_scene.activateStroke( m_createStroke ) ) {
-	  m_stats.strokeCount++;
-	  if ( isPaused() ) {
-	    m_stats.pausedStrokes++; 
-	  }
-	} else {
-	  m_scene.deleteStroke( m_createStroke );
-	}
-	m_createStroke = NULL;
-	return true;
-      }
-      break;
-    case SDL_MOUSEMOTION:
-      if ( m_createStroke ) {
-	m_scene.extendStroke( m_createStroke, mousePoint(ev) );
-	return true;
-      }
-      break;
-    case SDL_KEYDOWN:
-      if ( ev.key.keysym.sym == SDLK_ESCAPE ) {
-	if ( m_createStroke ) {
-	  m_scene.deleteStroke( m_createStroke );
-	  m_createStroke = NULL;
-	} else if ( m_scene.deleteStroke( m_scene.strokes().at(m_scene.strokes().size()-1) ) ) {
-	  m_stats.undoCount++;
-	}
-	m_refresh = true;
-	return true;
-      }
-      break;
-    default:
-      break;
-    }
-    return false;
-  }
-
-  bool handleEditEvent( SDL_Event &ev )
-  {
-    //allow move/delete in normal play!!
-    //if ( !m_edit ) return false;
-
-    switch( ev.type ) {      
-    case SDL_MOUSEBUTTONDOWN: 
-      if ( ev.button.button == SDL_BUTTON_RIGHT
-	   && !m_moveStroke ) {
-	m_moveStroke = m_scene.strokeAtPoint( mousePoint(ev),
-					      SELECT_TOLERANCE );
-	return true;
-      } else if ( ev.button.button == SDL_BUTTON_MIDDLE ) {
-	m_scene.deleteStroke( m_scene.strokeAtPoint( mousePoint(ev),
-						     SELECT_TOLERANCE ) );
-	m_refresh = true;
-	return true;
-      }
-      break;
-    case SDL_MOUSEBUTTONUP:
-      if ( ev.button.button == SDL_BUTTON_RIGHT
-	   && m_moveStroke ) {
-	m_moveStroke = NULL;
-	return true;
-      }
-      break;
-    case SDL_MOUSEMOTION:
-      if ( m_moveStroke ) {
-	m_scene.moveStroke( m_moveStroke, mousePoint(ev) );
-	return true;
-      }
-      break;
-    default:
-      break;
-    }
-    return false;
-  }
 
   ////////////////////////////////////////////////////////////////
   // layer interface
@@ -472,7 +246,7 @@ public:
   virtual bool isDirty()
   {
     //TODO this can be a bit heavyweight
-    return !dirtyArea().isEmpty();
+    return Container::isDirty() || !dirtyArea().isEmpty();
   }
 
   virtual Rect dirtyArea() 
@@ -480,7 +254,6 @@ public:
     //todo include dirt  for old joint candidates
     m_jointCandidates.empty();
     if ( m_refresh  ) {
-      m_refresh = false;
       if ( m_createStroke ) {
 	//this messes up dirty calc so do _after_ dirty area eval.
 	m_scene.getJointCandidates( m_createStroke, m_jointCandidates );
@@ -498,29 +271,44 @@ public:
 	}
       }
       r.grow(8);
+      r.expand(Container::dirtyArea());
       return r;
     }
+  }
+
+  void remove( Widget* w )
+  {
+    if (w==m_completedDialog) {
+      m_completedDialog = NULL;
+    }
+    Container::remove(w);
   }
 
   virtual void onTick( int tick ) 
   {
     m_scene.step( isPaused() );
 
-    if ( m_isCompleted && m_edit ) {
-      hideOverlay( m_completedOverlay );
+    if ( m_isCompleted && m_completedDialog && m_edit ) {
+      remove( m_completedDialog );
+      m_completedDialog = NULL;
       m_isCompleted = false;
     }
     if ( m_scene.isCompleted() != m_isCompleted && !m_edit ) {
       m_isCompleted = m_scene.isCompleted();
       if ( m_isCompleted ) {
-	m_stats.endTime = SDL_GetTicks();
+	if (m_stats.endTime==0) {
+	  //don't overwrite time after replay
+	  m_stats.endTime = SDL_GetTicks();
+	}
 	fprintf(stderr,"STATS:\ttime=%dms\n\t"
 		"strokes=%d (%d paused, %d undone)\n",
 		m_stats.endTime-m_stats.startTime, m_stats.strokeCount,
 		m_stats.pausedStrokes, m_stats.undoCount);
-	showOverlay( m_completedOverlay );
-      } else {
-	hideOverlay( m_completedOverlay );
+	m_completedDialog = createNextLevelDialog(this);
+	add( m_completedDialog );
+      } else if (m_completedDialog) {
+	remove( m_completedDialog );
+	m_completedDialog = NULL;
       }
     }
 
@@ -534,24 +322,25 @@ public:
 	int l = m_levels->findLevel( f );
 	if ( l >= 0 ) {
 	  gotoLevel( l );
-	  m_window.raise();
+	  //m_window.raise();
 	}
       }    
     }  
+    Container::onTick(tick);
   }
 
   virtual void draw( Canvas& screen, const Rect& area )
   {
     static int drawCount = 0 ;
+    m_refresh = false;
     m_scene.draw( screen, area );
     if ( m_jointCandidates.size() ) {
       float32 rot = (float32)(drawCount&127) / 128.0f;
       for ( int i=0; i<m_jointCandidates.size(); i++ ) {
-	Rect r( m_jointCandidates[i], m_jointCandidates[i] );
-	r.grow( 5 );
 	Path joint = m_jointInd;
+	joint.translate( -joint.bbox().centroid() );
 	joint.rotate( b2Mat22(rot*2.0*3.141) );
-	joint.translate( r.tl - joint.bbox().tl );
+	joint.translate( m_jointCandidates[i] + joint.bbox().centroid() );
 	screen.drawPath( joint, 0x606060 );
       }
       drawCount++;
@@ -559,20 +348,174 @@ public:
     if ( m_fade ) {
       screen.fade( area );
     }
+    Container::draw(screen,area);
   }
 
-  virtual bool handleEvent( SDL_Event& ev )
+  virtual bool processEvent( SDL_Event& ev )
   {
-    bool isReplay = m_scene.replay()->isRunning();
-
-    if (handleModEvent(ev)
-	|| handleGameEvent(ev)
-	|| (!isReplay && (handleEditEvent(ev)
-			  || handlePlayEvent(ev)))) {
-      return true;
+    Event opt1Event(Event::OPTION,1);
+    Event opt2Event(Event::OPTION,2);
+    if (ev.type==SDL_MOUSEBUTTONDOWN) {
+      printf("clicky: %d,%d\n",ev.button.x,ev.button.y);
+      if (ev.button.x < 10
+	  && dispatchEvent(opt1Event)) {
+	return true;
+      } else if (ev.button.x > SCREEN_WIDTH-10
+		 && dispatchEvent(opt2Event)) {
+	return true;
+      }
     }
-    return false;
+    return Container::processEvent(ev);
   }
+
+  virtual bool onEvent( Event& ev )
+  {
+
+    static MenuItem editStyleOpts[] = {
+      MenuItem("GROUND",Event(Event::SELECT,2,0)),
+      MenuItem("SLEEPY",Event(Event::SELECT,2,1)),
+      MenuItem("DECOR",Event(Event::SELECT,2,2)),
+      MenuItem("",Event::NOP)
+    };
+
+    bool used = true;
+    switch (ev.code) {
+    case Event::MENU:
+      remove( m_completedDialog );
+      add( createMainMenu(this) );
+      break;
+    case Event::PAUSE:
+      fprintf(stderr,"Game pause!\n");
+      togglePause();
+      break;
+    case Event::UNDO:
+      if ( !m_replaying ) {
+	if ( m_createStroke ) {
+	  m_scene.deleteStroke( m_createStroke );
+	  m_createStroke = NULL;
+	} else if ( m_scene.deleteStroke( m_scene.strokes().at(m_scene.strokes().size()-1) ) ) {
+	  m_stats.undoCount++;
+	}
+      }
+      m_refresh = true;
+      break;
+    case Event::SAVE:
+      save();
+      break;
+    case Event::CANCEL:
+      if ( m_edit ) {
+	edit(false);
+      }
+      break;
+    case Event::OPTION:
+      remove( m_options );
+      if (ev.x == 1) {
+	//edit menu
+	m_options = createEditOpts(this);
+      } else if (ev.x == 2) {
+	//play menu
+	m_options = createPlayOpts(this);
+      }
+      if (m_options) {
+	add( m_options );
+      }
+      break;
+    case Event::SELECT:
+      switch (ev.x) {
+      case 1:
+	switch (ev.y) {
+	case -1:
+	  add( createColourDialog(NUM_BRUSHES, brushColours) ); 
+	  break;
+	default:
+	  fprintf(stderr,"SetTool %d\n",ev.y);
+	  setTool(ev.y);
+	  break;
+	}
+	break;
+      case 2:
+	switch (ev.y) {
+	case -1:
+	  add( createIconDialog("Edit Style",editStyleOpts) ); 
+	  break;
+	default:
+	  switch (ev.y) {
+	  case 0: m_strokeFixed = !m_strokeFixed; break;
+	  case 1: m_strokeSleep = !m_strokeSleep; break;
+	  case 2: m_strokeDecor = !m_strokeDecor; break;
+	  }
+	}	    
+	break;
+      }
+      break;
+    case Event::EDIT:
+      edit( !m_edit );
+      break;
+    case Event::RESET:
+      gotoLevel( m_level );
+      break;
+    case Event::NEXT:
+      gotoLevel( m_level+1 );
+      break;
+    case Event::PREVIOUS:
+      gotoLevel( m_level-1 );
+      break;
+    case Event::REPLAY:
+      gotoLevel( m_level, true );
+      break;
+    case Event::DRAWBEGIN:
+      if ( !m_replaying && !m_createStroke ) {
+	int attrib;
+	if ( m_strokeFixed ) attrib |= ATTRIB_GROUND;
+	if ( m_strokeSleep ) attrib |= ATTRIB_SLEEPING;
+	if ( m_strokeDecor ) attrib |= ATTRIB_DECOR;
+	m_createStroke = m_scene.newStroke( Path()&mousePoint(ev), 
+					    m_colour, attrib );
+      }
+      break;
+    case Event::DRAWMORE:
+      if ( m_createStroke ) {
+	m_scene.extendStroke( m_createStroke, mousePoint(ev) );
+      }
+      break;
+    case Event::DRAWEND:
+      if ( m_createStroke ) {
+	if ( m_scene.activateStroke( m_createStroke ) ) {
+	  m_stats.strokeCount++;
+	  if ( isPaused() ) {
+	    m_stats.pausedStrokes++; 
+	  }
+	} else {
+	  m_scene.deleteStroke( m_createStroke );
+	}
+	m_createStroke = NULL;
+      }
+      break;
+    case Event::MOVEBEGIN:
+      if ( !m_replaying && !m_moveStroke ) {
+	m_moveStroke = m_scene.strokeAtPoint( mousePoint(ev),
+					      SELECT_TOLERANCE );
+      }
+      break;
+    case Event::MOVEMORE:
+      if ( m_moveStroke ) {
+	m_scene.moveStroke( m_moveStroke, mousePoint(ev) );
+      }
+      break;
+    case Event::MOVEEND:
+      m_moveStroke = NULL;
+      break;
+    case Event::DELETE:
+      m_scene.deleteStroke( m_scene.strokeAtPoint( mousePoint(ev),
+						   SELECT_TOLERANCE ) );
+      m_refresh = true;
+      break;
+    default:
+      used = Container::onEvent(ev);
+    }
+    return used;
+  }
+
 };
 
 

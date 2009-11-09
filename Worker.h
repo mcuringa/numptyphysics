@@ -18,35 +18,41 @@
 #define WORKER_H
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_thread.h>
 
 class WorkerBase
 {
  public:
-  WorkerBase( void (*func)(void*) ) { m_func = func; }  
+  WorkerBase( int (*func)(void*)=startThread );  
+  virtual ~WorkerBase();
   void start();
+  virtual void main() =0;
+  void wait();
   bool done();
 
  private:
-  void       (*m_func)(void*);
+  static int  startThread(void* wbase);
+  int        (*m_func)(void*);
   SDL_Thread  *m_thread;
 };
 
+typedef WorkerBase Worker;
+
 template< typename A, typename B, typename C >
-class Worker : public WorkerBase
+class WorkerF : public WorkerBase
 {
  public:
   typedef void (*F)(A,B,C);
 
-  Worker( F ff, A aa, B bb, C cc )
-    : f(ff), a(aa), b(bb), c(cc),
-      WorkerBase( worker, this )
+  WorkerF( F ff, A aa, B bb, C cc )
+    : f(ff), a(aa), b(bb), c(cc)
     {}
   
-  static void worker( void *s)    
+  virtual void main() 
   {
-    Worker* self = (Worker*)s;
-    self->f( self->a, self->b, self->c );
+    f( a, b, c );
   }
+
  private:
   F f; A a; B b; C c;
 };

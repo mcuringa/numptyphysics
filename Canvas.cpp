@@ -246,6 +246,9 @@ Canvas::Canvas( State state )
 
 Canvas::~Canvas()
 {
+  if (SURFACE(this)) {
+    SDL_FreeSurface(SURFACE(this));
+  }
 }
 
 int Canvas::width() const
@@ -280,6 +283,7 @@ void Canvas::resetClip()
 
 void Canvas::setClip( int x, int y, int w, int h )
 {
+  //fprintf(stderr,"setclip %d,%d+%d+%d\n",x,y,w,h);
   m_clip = Rect(x,y,x+w-1,y+h-1);
 }
 
@@ -310,8 +314,8 @@ void Canvas::fade( const Rect& rr )
   bpp = SURFACE(this)->format->BytesPerPixel;
   char* row = (char*)SURFACE(this)->pixels;
   int pixStride = width();
-  int w = r.br.x - r.tl.x + 1;
-  int h = r.br.y - r.tl.y + 1;
+  int w = r.br.x - r.tl.x;
+  int h = r.br.y - r.tl.y;
   row += (r.tl.x + r.tl.y * pixStride) * bpp;
 
   SDL_LockSurface(SURFACE(this));
@@ -412,8 +416,17 @@ void Canvas::clear( const Rect& r )
 
 void Canvas::drawImage( Canvas *canvas, int x, int y )
 {
-  SDL_Rect dest = { x, y, 0, 0 };
-  SDL_BlitSurface( SURFACE(canvas), NULL, SURFACE(this), &dest );
+  Rect dest(x,y,x+canvas->width(),y+canvas->height());
+  dest.clipTo(m_clip);
+//   if (dest.tl.y != y) {
+//     fprintf(stderr,"clipped (%d,%d-%d,%d) to (%d,%d)-(%d,%d)\n",
+// 	    x,y,x+canvas->width(),y+canvas->height(),
+// 	    dest.tl.x, dest.tl.y, dest.br.x, dest.br.y);
+//   }
+
+  SDL_Rect sdlsrc = { dest.tl.x-x, dest.tl.y-y, dest.width(), dest.height() };
+  SDL_Rect sdldst = { dest.tl.x, dest.tl.y, 0, 0 };
+  SDL_BlitSurface( SURFACE(canvas), &sdlsrc, SURFACE(this), &sdldst );
 }
 
 void Canvas::drawPixel( int x, int y, int c )
@@ -558,24 +571,26 @@ void Canvas::drawRect( int x, int y, int w, int h, int c, bool fill )
 
 void Canvas::drawRect( const Rect& r, int c, bool fill )
 {
-  drawRect( r.tl.x, r.tl.y, r.br.x-r.tl.x, r.br.y-r.tl.y, c, fill );
+  drawRect( r.tl.x, r.tl.y, r.br.x-r.tl.x+1, r.br.y-r.tl.y+1, c, fill );
 }
 
 
 
 Window::Window( int w, int h, const char* title, const char* winclass, bool fullscreen )
+  : m_title(title)
 {
   if ( winclass ) {
     char s[80];
     snprintf(s,80,"SDL_VIDEO_X11_WMCLASS=%s",winclass);
     putenv(s);
   }
-  if ( title ) {
-    SDL_WM_SetCaption( title, title );
-  }
 #ifdef USE_HILDON
+#if 0
   m_state = SDL_SetVideoMode( w, h, 16, SDL_SWSURFACE);//SDL_FULLSCREEN);
   SDL_WM_ToggleFullScreen( SURFACE(this) );
+#else //n900
+  m_state = SDL_SetVideoMode( w, h, 0, SDL_SWSURFACE|SDL_FULLSCREEN);
+#endif
   SDL_ShowCursor( SDL_DISABLE );
 #else
   m_state = SDL_SetVideoMode( w, h, 32, SDL_SWSURFACE | ((fullscreen==true)?(SDL_FULLSCREEN):(0)));
@@ -584,6 +599,10 @@ Window::Window( int w, int h, const char* title, const char* winclass, bool full
     throw "Unable to set video mode";
   }
   resetClip();
+
+  if ( title ) {
+    SDL_WM_SetCaption( title, title );
+  }
 
 #ifdef USE_HILDON
   SDL_SysWMinfo sys;
@@ -596,9 +615,32 @@ Window::Window( int w, int h, const char* title, const char* winclass, bool full
   uint32_t pid = getpid();
   XChangeProperty( sys.info.x11.display,
 		   sys.info.x11.wmwindow,
-		   XInternAtom (sys.info.x11.display, "_NET_WM_PID", False),
+		   XInternAtom (sys.info.x11.display,
+				"_NET_WM_PID", False),
 		   XA_CARDINAL, 32, PropModeReplace,
 		   (unsigned char*)&pid, 1 );
+
+  // SDL_WM_SetCaption is broken on maemo4
+  XStoreName( sys.info.x11.display,
+	      sys.info.x11.wmwindow,
+	      title );
+  XStoreName( sys.info.x11.display,
+	      sys.info.x11.fswindow,
+	      title );
+		  
+#if 0
+  /* Fremantle: tell maemo-status-volume daemon to ungrab keys */
+  unsigned long val = 1; /* ungrab, use 0 to grab */
+  XChangeProperty( sys.info.x11.display,
+		   sys.info.x11.wmwindow,
+		   XInternAtom(sys.info.x11.display,
+			       "_HILDON_ZOOM_KEY_ATOM", False),
+		   XA_INTEGER, 32,
+		   PropModeReplace,
+		   (unsigned char*)&val, 1);
+#endif //0
+
+  
 #endif
 }
 
@@ -614,6 +656,50 @@ void Window::update( const Rect& r )
     int h  = Max( 0, y2-y1 );
     if ( w > 0 && h > 0 ) {
       SDL_UpdateRect( SURFACE(this), x1, y1, w, h );
+#ifdef USE_HILDON
+#if MAEMO_VERSION >= 5
+      static bool captured = false;
+      if (!captured) {
+	SDL_SysWMinfo sys;
+	SDL_VERSION( &sys.version );
+	SDL_GetWMInfo( &sys );
+
+	// setup hildon pre-load screenshot
+	XEvent xev = { 0 };
+	xev.xclient.type = ClientMessage;
+	xev.xclient.serial = 0;
+	xev.xclient.send_event = True;
+	xev.xclient.display = sys.info.x11.display;
+	xev.xclient.window = XDefaultRootWindow(xev.xclient.display);
+	xev.xclient.message_type = XInternAtom (xev.xclient.display,
+						"_HILDON_LOADING_SCREENSHOT",
+						False);
+	xev.xclient.format = 32;
+	xev.xclient.data.l[0] = 0;
+	xev.xclient.data.l[1] = sys.info.x11.fswindow;
+	XSendEvent (xev.xclient.display,
+		    xev.xclient.window,
+		    False,
+		    SubstructureRedirectMask | SubstructureNotifyMask,
+		    &xev);
+	xev.xclient.data.l[1] = sys.info.x11.wmwindow;
+	XSendEvent (xev.xclient.display,
+		    xev.xclient.window,
+		    False,
+		    SubstructureRedirectMask | SubstructureNotifyMask,
+		    &xev);
+	xev.xclient.data.l[1] = sys.info.x11.window;
+	XSendEvent (xev.xclient.display,
+		    xev.xclient.window,
+		    False,
+		    SubstructureRedirectMask | SubstructureNotifyMask,
+		    &xev);
+	XFlush (xev.xclient.display);
+	XSync (xev.xclient.display, False);
+	captured = true;
+      }
+#endif
+#endif
     }
   }
 }
@@ -654,11 +740,17 @@ void Window::setSubName( const char *sub )
   SDL_VERSION( &sys.version );
   SDL_GetWMInfo( &sys );
 
-  XChangeProperty( sys.info.x11.display,
-		   sys.info.x11.fswindow,
-		   XInternAtom (sys.info.x11.display, "_MB_WIN_SUB_NAME", False),
-		   XA_STRING, 8, PropModeReplace,
-		   (unsigned char*)sub, strlen(sub) );
+  char title[128];
+  snprintf(title,128,"%s - %s\n",m_title.c_str(),sub);
+  title[127] = '\0';
+
+  // SDL_WM_SetCaption is broken on maemo4
+  XStoreName( sys.info.x11.display,
+	      sys.info.x11.wmwindow,
+	      title );
+  XStoreName( sys.info.x11.display,
+	      sys.info.x11.fswindow,
+	      title );
 #endif
 }
 
@@ -689,7 +781,14 @@ Image::Image( const char* file, bool alpha )
       m_state = img;
     }
   } else {
-    throw "image not found";
+    fprintf(stderr,"failed to load image %s\n",(f+file).c_str());
+    m_state = SDL_CreateRGBSurface( SDL_SWSURFACE, 32, 32, 
+				    SDL_GetVideoInfo()->vfmt->BitsPerPixel,
+				    SDL_GetVideoInfo()->vfmt->Rmask,
+				    SDL_GetVideoInfo()->vfmt->Gmask,
+				    SDL_GetVideoInfo()->vfmt->Bmask,
+				    SDL_GetVideoInfo()->vfmt->Amask );
+    drawRect(0,0,32,32,0xff0000);
   }
   resetClip();
 }

@@ -167,6 +167,7 @@ public:
     if ( m_rawPath.size() < 2 ) {
       throw "invalid stroke def";
     }
+    //fprintf(stderr,"created stroke with %d points\n",m_rawPath.size());
     m_origin = m_rawPath.point(0);
     m_rawPath.translate( -m_origin );
     setAttribute( ATTRIB_DUMMY );
@@ -323,13 +324,27 @@ public:
     return true; ///nothing to do
   }
 
-  void draw( Canvas& canvas )
+  void draw( Canvas& canvas, bool drawJoints=false )
   {
     if ( m_hide < HIDE_STEPS ) {
+      int colour = canvas.makeColour(m_colour);
       bool thick = (canvas.width() > 400);
       transform();
-      canvas.drawPath( m_screenPath, canvas.makeColour(m_colour), thick );
+      canvas.drawPath( m_screenPath, colour, thick );
       m_drawn = true;
+      
+      if ( drawJoints ) {
+	int jointcolour = canvas.makeColour(0xff0000);
+	for ( int e=0; e<2; e++ ) {
+	  if (m_jointed[e]) {
+	    const Vec2& pt = m_screenPath.endpt(e);
+	    //canvas.drawPixel( pt.x, pt.y, jointcolour );
+	    //canvas.drawRect( pt.x-1, pt.y-1, 3, 3, jointcolour );
+	    canvas.drawRect( pt.x-1, pt.y, 3, 1, jointcolour );
+	    canvas.drawRect( pt.x, pt.y-1, 1, 3, jointcolour );
+	  }
+	}
+      }
     }
     m_drawnBbox = m_screenBbox;
   }
@@ -433,6 +448,7 @@ private:
     float32 thresh = SIMPLIFY_THRESHOLDf;
     m_rawPath.simplify( thresh );
     m_shapePath = m_rawPath;
+    //fprintf(stderr,"simplified stroke to %d points\n",m_rawPath.size());
 
     while ( m_shapePath.numPoints() > MULTI_VERTEX_LIMIT ) {
       thresh += SIMPLIFY_THRESHOLDf;
@@ -511,7 +527,8 @@ Scene::Scene( bool noWorld )
     m_protect( 0 ),
     m_gravity(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf),
     m_dynamicGravity(false),
-    m_accelerometer(Os::get()->getAccelerometer())
+    m_accelerometer(Os::get()->getAccelerometer()),
+    m_dirtyArea(false)
 {
   if ( !noWorld ) {
     b2AABB worldAABB;
@@ -648,13 +665,21 @@ void Scene::step( bool isPaused )
   isPaused |= m_player.tick();
 
   if ( !isPaused ) {
-    if (m_dynamicGravity && m_accelerometer) {
+    if (m_accelerometer && m_dynamicGravity) {
       float32 gx, gy, gz;
       if ( m_accelerometer->poll( gx, gy, gz ) ) {
-	const float32 factor = GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf;
-	b2Vec2 accel( m_gravity.x + gx*factor, 
-		      m_gravity.y + gy*factor );
-	m_world->SetGravity( accel );
+	
+	if (m_dynamicGravity || gx*gx+gy*gy > 1.2*1.2)  {
+	  //fprintf(stderr,"dynamic grav = %f,%f\n", gx, gy );
+	  const float32 factor = GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf;
+	  m_currentGravity = b2Vec2( m_gravity.x + gx*factor, 
+				     m_gravity.y + gy*factor );
+	  m_world->SetGravity( m_currentGravity );
+	} else if (!(m_currentGravity == m_gravity)) {
+	  m_currentGravity += m_gravity;
+	  m_currentGravity *= 0.5;
+	  m_world->SetGravity( m_currentGravity );
+	}
 	//TODO record gravity
       }
     }
@@ -675,6 +700,7 @@ void Scene::step( bool isPaused )
 	activate( m_strokes[i] );	  
       }
     }
+    calcDirtyArea();
   }
 }
 
@@ -710,6 +736,11 @@ bool Scene::isCompleted()
 
 Rect Scene::dirtyArea()
 {
+  return m_dirtyArea;
+}
+
+void Scene::calcDirtyArea()
+{
   Rect r(false);
   for ( int i=0; i<m_strokes.size(); i++ ) {
     if ( m_strokes[i]->isDirty() ) {
@@ -727,7 +758,8 @@ Rect Scene::dirtyArea()
     // expand to allow for thick lines
     r.grow(1);
   }
-  return r;
+  //fprintf(stderr,"scene dirty %d,%d-%d,%d!\n",r.tl.x,r.tl.y,r.br.x,r.br.y);
+  m_dirtyArea = r;
 }
 void Scene::draw( Canvas& canvas, const Rect& area )
 {
@@ -800,15 +832,14 @@ void Scene::clear()
 
 void Scene::setGravity( const b2Vec2& g )
 {
-  m_gravity = g;
-  m_world->SetGravity( m_gravity );
+  m_gravity = m_currentGravity = g;
+  if (m_world) {
+    m_world->SetGravity( m_gravity );
+  }
 }
 
 void Scene::setGravity( const std::string& s )
 {
-  m_dynamicGravity = false;
-  setGravity( b2Vec2(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf) );
-
   for (int i=0; i<s.find(':'); i++) {
     switch (s[i]) {
     case 'd': m_dynamicGravity = true; break;
@@ -817,14 +848,14 @@ void Scene::setGravity( const std::string& s )
 
   std::string vector = s.substr(s.find(':')+1);
   float32 x,y;      
-  if ( sscanf( s.c_str(), "%f,%f", &x, &y )==2) {
+  if ( sscanf( vector.c_str(), "%f,%f", &x, &y )==2) {
     if ( m_world ) {
 	b2Vec2 g(x,y);
 	g *= PIXELS_PER_METREf/GRAVITY_FUDGEf;
 	setGravity( g );
     }
   } else {
-    fprintf(stderr,"invalid gravity vector\n");
+    fprintf(stderr,"invalid gravity vector [%s]\n",vector.c_str());
   }
 }
 
@@ -844,6 +875,8 @@ bool Scene::load( const std::string& file )
 bool Scene::load( std::istream& in )
 {
   clear();
+  m_dynamicGravity = false;
+  setGravity( b2Vec2(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf) );
   if ( g_bgImage==NULL ) {
     g_bgImage = new Image("paper.png");
     g_bgImage->scale( SCREEN_WIDTH, SCREEN_HEIGHT );

@@ -100,11 +100,13 @@ class Array
 
   void erase( int i )
   {
-    ASSERT( i < m_size );
-    if ( i < m_size-1 ) {
-      memcpy( m_data+i, m_data+i+1, (m_size-i-1)*sizeof(T) );
+    if (i >= 0 ) {
+      ASSERT( i < m_size );
+      if ( i < m_size-1 ) {
+	memcpy( m_data+i, m_data+i+1, (m_size-i-1)*sizeof(T) );
+      }
+      m_size--;
     }
-    m_size--;
   }
 
   void trim( int i )

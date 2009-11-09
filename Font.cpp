@@ -47,11 +47,10 @@ Vec2 Font::metrics( const std::string& text ) const
 void Font::drawLeft( Canvas* canvas, Vec2 pt,
 		     const std::string& text, int colour ) const
 {
-  SDL_Surface *surf;  
-  SDL_Color bg = { 0xff,0xff,0xff };
+  SDL_Color fg = { colour>>16, colour>>8, colour };
   FontCanvas temp( TTF_RenderText_Blended( FONT(this),
 					   text.c_str(),
-					   SDL_Color() ) );
+					   fg ) );
   canvas->drawImage( &temp, pt.x, pt.y );
 }
 
@@ -64,7 +63,7 @@ void Font::drawRight( Canvas* canvas, Vec2 pt,
 void Font::drawCenter( Canvas* canvas, Vec2 pt,
 		       const std::string& text, int colour ) const
 {
-  drawLeft( canvas, pt - Vec2(metrics(text).x/2,0), text, colour );
+  drawLeft( canvas, pt - metrics(text)/2, text, colour );
 }
 
 void Font::drawWrap( Canvas* canvas, Rect area,
@@ -93,19 +92,19 @@ void Font::drawWrap( Canvas* canvas, Rect area,
 
 const Font* Font::titleFont()
 {
-  static Font* f = new Font("femkeklaver.ttf",45);
+  static Font* f = new Font("femkeklaver.ttf",48);
   return f;
 }
 
 const Font* Font::headingFont()
 {
-  static Font* f = new Font("femkeklaver.ttf",28);
+  static Font* f = new Font("femkeklaver.ttf",32);
   return f;
 }
 
 const Font* Font::blurbFont()
 {
-  static Font* f = new Font("femkeklaver.ttf",20);
+  static Font* f = new Font("femkeklaver.ttf",24);
   return f;
 }
 

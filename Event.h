@@ -18,6 +18,8 @@
 #define EVENT_H
 #include <SDL/SDL.h>
 
+// custom SDL User Event code
+const int WORKER_DONE = 1;
 
 struct Event
 {
@@ -30,23 +32,48 @@ struct Event
     MOVEBEGIN,
     MOVEMORE,
     MOVEEND,
+    SELECT,
+    FOCUS,
+    CANCEL,
+    OPTION,
+    CLOSE,
     QUIT,
     EDIT,
     MENU,
     DELETE,
     NEXT,
     PREVIOUS,
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
     RESET,
     UNDO,
     PAUSE,
     REPLAY,
-    SAVE
-  } event;
+    SAVE,
+    SEND,
+    TEXT
+  };
+
+  enum Modes {
+    MOD_BUTTON_LEFT = SDL_BUTTON(SDL_BUTTON_LEFT),
+    MOD_BUTTON_RIGHT = SDL_BUTTON(SDL_BUTTON_RIGHT),
+    MOD_BUTTON_MIDDLE = SDL_BUTTON(SDL_BUTTON_MIDDLE),
+    MOD_CTRL = 16,
+    MOD_SHIFT = 32
+  };
+  
+  Code code;
   int  x,y;
   char c;
+  char mods;
 
-  Event(Code op, char cc=0) : event(op), c(cc) {}
-  Event(Code op, int xx, int yy) : event(op), x(xx), y(yy) {}
+  Event(Code op=NOP, char cc=0) : code(op), c(cc), mods(g_mods) {}
+  Event(Code op, int xx, int yy=0, char cc=0) : code(op), x(xx), y(yy), c(cc), mods(g_mods) {}
+  Event(char cc) : code(TEXT), c(cc), mods(g_mods) {}
+
+  static char g_mods;
 };
 
 
@@ -76,7 +103,10 @@ enum EventMapType
 {
   GAME_MAP,
   APP_MAP,
-  EDIT_MAP
+  EDIT_MAP,
+  UI_BUTTON_MAP,
+  UI_DRAGGABLE_MAP,
+  UI_DIALOG_MAP,
 };
 
 #endif //EVENT_H

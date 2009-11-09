@@ -23,6 +23,8 @@
 #include "Canvas.h"
 #include "Ui.h"
 #include "Font.h"
+#include "Dialogs.h"
+#include "Event.h"
 
 #include <cstdio>
 #include <string>
@@ -30,19 +32,19 @@
 #include <SDL/SDL.h>
 
 
-class App : private WidgetParent
+class App : private Container
 {
   int   m_width;
   int   m_height;
-  bool  m_rotate;
+  bool  m_rotate;  
   bool  m_thumbnailMode;
   bool  m_videoMode;
+  std::string m_testOp;
   bool  m_quit;
   bool  m_drawFps;
   bool  m_drawDirty;
   int   m_renderRate;
   Array<const char*> m_files;
-  Array<Widget *>    m_layers;
   Window            *m_window;
 public:
   App(int argc, char** argv)
@@ -57,7 +59,9 @@ public:
       m_window(NULL)
   {
     for ( int i=1; i<argc; i++ ) {
-      if ( strcmp(argv[i],"-bmp")==0 ) {
+      if ( strcmp(argv[i],"-test")==0 && i < argc-1) {
+	m_testOp = argv[i+++1];
+      } else if ( strcmp(argv[i],"-bmp")==0 ) {
 	m_thumbnailMode = true;
       } else if ( strcmp(argv[i],"-video")==0 ) {
 	m_videoMode = true;
@@ -77,6 +81,7 @@ public:
       }
     }
     init();
+    setEventMap(APP_MAP);
   }
 
   ~App()
@@ -84,9 +89,13 @@ public:
     delete m_window;
   }
 
+  const char* name() {return "App";}
+
   void run()
   {
-    if ( m_thumbnailMode ) {
+    if ( m_testOp.length() > 0 ) {
+      test( m_testOp );
+    } else if ( m_thumbnailMode ) {
       for ( int i=0; i<m_files.size(); i++ ) {
 	renderThumbnail( m_files[i], m_width, m_height );
       }
@@ -95,7 +104,8 @@ public:
 	renderVideo( m_files[i], m_width, m_height );
       }
     } else {      
-      m_window = new Window(m_width,m_height,"Numpty Physics","NPhysics"),
+      m_window = new Window(m_width,m_height,"Numpty Physics","NPhysics");
+      sizeTo(Vec2(m_width,m_height));
       runGame( m_files, m_width, m_height );
     }
   }
@@ -104,7 +114,7 @@ private:
 
   void init()
   {
-    if ( m_thumbnailMode || m_videoMode ) {
+    if ( m_thumbnailMode || m_videoMode || m_testOp.length() > 0 ) {
       putenv((char*)"SDL_VIDEODRIVER=dummy");
     } else {
       putenv((char*)"SDL_VIDEO_X11_WMCLASS=NPhysics");
@@ -150,31 +160,16 @@ private:
 
     for ( int f=0; f<VIDEO_FPS*VIDEO_MAX_LEN; f++ ) {
       while ( iterateCounter < ITERATION_RATE ) {
-	m_layers[0]->onTick( f*1000/VIDEO_FPS );
+	m_children[0]->onTick( f*1000/VIDEO_FPS );
 	iterateCounter += VIDEO_FPS;
       }
       iterateCounter -= ITERATION_RATE;
-      m_layers[0]->draw( canvas, area );
+      m_children[0]->draw( canvas, area );
       char bfile[128];
       sprintf(bfile,"%s.%04d.bmp",file,f);
       canvas.writeBMP( bfile );
     }
   }
-
-  void add( Widget* w )
-  {
-    m_layers.append( w );
-    w->setParent( this );
-  }
-
-  void remove( Widget* w )
-  {
-    if ( m_layers.indexOf( w ) >= 0 ) {
-      m_layers.erase( m_layers.indexOf( w ) );
-      w->setParent( NULL );
-    }
-  }
-
 
   void runGame( Array<const char*>& files, int width, int height )
   {
@@ -194,39 +189,38 @@ private:
       levels->addPath( Config::userDataDir().c_str() );
     }
         
-    add( createGameLayer( levels, width, height ) );
+    add( createGameLayer( levels, width, height ), 0, 0 );
     mainLoop();
   }
 
-  void renderLayers()
+  void render()
   {
-    Rect area = m_layers[0]->dirtyArea();
+    if (isDirty()) {
+      
+      Rect area = dirtyArea();
+      //fprintf(stderr,"render %d,%d-%d,%d!\n",area.tl.x,area.tl.y,area.br.x,area.br.y);
+      m_window->setClip(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
+      draw(*m_window, area);
 
-    for ( int i=1; i<m_layers.size(); i++ ) {
-      area.expand( m_layers[i]->dirtyArea() );
-    }
+      if ( m_drawDirty ) {
+	Rect b = area; b.br.x--; b.br.y--;
+	m_window->drawRect( b, m_window->makeColour(0x00af00), false );
+      }
 
-    for ( int i=0; i<m_layers.size(); i++ ) {
-      m_layers[i]->draw( *m_window, area );
-    }
- 
-    if ( m_drawDirty ) {
-      m_window->drawRect( area, 0x00ff00, false );
-    }
+      if ( m_drawFps ) {
+	m_window->drawRect( Rect(0,0,50,50), m_window->makeColour(0xbfbf8f), true );
+	char buf[32];
+	sprintf(buf,"%d",m_renderRate);
+	Font::headingFont()->drawLeft( m_window, Vec2(20,20), buf, 0 );
+	m_window->update( Rect(0,0,50,50) );
+      }
 
-    if ( m_drawFps ) {
-      m_window->drawRect( Rect(0,0,50,50), 0xbfbf8f, true );
-      char buf[32];
-      sprintf(buf,"%d",m_renderRate);
-      Font::headingFont()->drawLeft( m_window, Vec2(20,20), buf, 0 );
-      area.expand( Rect(0,0,50,50) );
+      m_window->update( area );
     }
-
-    m_window->update( area );
   }
 
 
-  bool handleGameEvent( SDL_Event &ev )
+  bool processEvent( SDL_Event &ev )
   {
     switch( ev.type ) {
     case SDL_QUIT:
@@ -234,43 +228,39 @@ private:
       return true;
     case SDL_KEYDOWN:
       switch ( ev.key.keysym.sym ) {
-      case SDLK_q:
-	m_quit = true;
-	return true;
       case SDLK_1:
+      case SDLK_f:
 	m_drawFps = !m_drawFps;
 	return true;
       case SDLK_2:
+      case SDLK_d:
 	m_drawDirty = !m_drawDirty;
+	return true;
+      case SDLK_3:
+	fprintf(stderr,"UI: %s\n",toString().c_str());
 	return true;
       default:
 	break;
       }
     }
+    return Container::processEvent(ev);
+  }
+
+  virtual bool onEvent( Event& ev )
+  {
+    switch (ev.code) {
+    case Event::QUIT:
+      m_quit = true;
+      return true;
+    default:
+      break;
+    }
     return false;
   }
-
-  void dispatchEvents( int lastTick )
-  {
-    for ( int i=0; i<m_layers.size(); i++ ) {
-      m_layers[i]->onTick( lastTick );
-    }
-    
-    SDL_Event ev;
-    while ( SDL_PollEvent(&ev) ) {
-      if ( !handleGameEvent(ev) ) {
-	for ( int i=m_layers.size()-1; i>=0; i-- ) {
-	  if ( m_layers[i]->handleEvent(ev) ) {
-	    break;
-	  }
-	}
-      }
-    }
-  }
-
+  
   void mainLoop()
   {
-    renderLayers();
+    render();
 
     m_renderRate = (MIN_RENDER_RATE+MAX_RENDER_RATE)/2;
     int iterationRate = ITERATION_RATE;
@@ -282,29 +272,37 @@ private:
 
       //assumes RENDER_RATE <= ITERATION_RATE
       while ( iterateCounter < iterationRate ) {
-	dispatchEvents( lastTick );
+	for ( int i=0; i<m_children.size(); i++ ) {
+	  m_children[i]->onTick( lastTick );
+	}
+    
+	SDL_Event ev;
+	while ( SDL_PollEvent(&ev) ) {
+	  processEvent(ev);
+	}
+
 	if ( m_quit ) return;
 	iterateCounter += m_renderRate;
       }
       iterateCounter -= iterationRate;
 
-      renderLayers();
+      render();
 
       int sleepMs = lastTick + 1000/m_renderRate -  SDL_GetTicks();
 
       if ( sleepMs > 1 && m_renderRate < MAX_RENDER_RATE ) {
 	m_renderRate++;
-	//printf("increasing render rate to %dfps\n",m_renderRate);
+	printf("increasing render rate to %dfps\n",m_renderRate);
 	sleepMs = lastTick + 1000/m_renderRate -  SDL_GetTicks();
       }
 
       if ( sleepMs > 0 ) {
 	SDL_Delay( sleepMs );
       } else {
-	//printf("overrun %dms\n",-sleepMs);
+	printf("overrun %dms\n",-sleepMs);
 	if ( m_renderRate > MIN_RENDER_RATE ) {
 	  m_renderRate--;
-	  //printf("decreasing render rate to %dfps\n",m_renderRate);
+	  printf("decreasing render rate to %dfps\n",m_renderRate);
 	} else if ( iterationRate > 30 ) {
 	  //slow down simulation time to maintain fps??
 	}
@@ -314,7 +312,22 @@ private:
   }
   
 
-
+  void test( std::string op ) 
+  {
+    if ( op=="levels" ) {
+      Levels levels;
+      for ( int i=0; i<m_files.size(); i++ ) {
+	levels.addPath( m_files[i] );
+	fprintf(stderr,"LEVELS after %s\n",m_files[i]);
+	for (int j=0; j<levels.numLevels(); j++) {
+	  fprintf(stderr," %02d: %s\n",j,
+		  levels.levelName(j).c_str());
+	}
+      }
+    } else {
+      throw "bad test";
+    }
+  }
 
 };
 

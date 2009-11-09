@@ -31,8 +31,14 @@ class Levels
   int load( int i, unsigned char* buf, int bufLen );
   std::string levelName( int i );
   int findLevel( const char *file );
+
+  int  numCollections();
+  std::string collectionName( int i );
+  int  collectionSize(int c);
+  int  collectionLevel(int c, int i);
+
  private:
-  bool scanCollection( const std::string& file, int rank );
+
   struct LevelDesc
   {
   LevelDesc( const std::string& f,int r=0, int i=-1)
@@ -41,7 +47,23 @@ class Levels
     int         index;
     int         rank;
   };
-  Array<LevelDesc*> m_levels;
+
+  struct Collection
+  {
+    std::string file;
+    std::string name;
+    int rank;
+    Array<LevelDesc*> levels;
+  };
+
+  bool addLevel( Collection* collection,
+		 const std::string& file, int rank, int index );
+  LevelDesc* findLevel( int i );
+  Collection* getCollection( const std::string& file );
+  bool scanCollection( const std::string& file, int rank );
+
+  int m_numLevels;
+  Array<Collection*> m_collections;
 };
 
 #endif //LEVELS_H
