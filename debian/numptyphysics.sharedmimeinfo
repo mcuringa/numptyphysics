@@ -8,4 +8,8 @@
          <comment>NumptyPhysics collection</comment>
          <glob pattern="*.npz"/>
   </mime-type>
+  <mime-type type="application/x-numptyphysics-demo">
+         <comment>NumptyPhysics recording</comment>
+         <glob pattern="*.npd"/>
+  </mime-type>
 </mime-info>

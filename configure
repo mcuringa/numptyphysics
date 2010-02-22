@@ -702,6 +702,7 @@ HILDON_CFLAGS
 HILDON_LIBS
 desktopentrydir
 serviceentrydir
+numptyphysicsdir
 icon_26x26dir
 icon_34x34dir
 icon_40x40dir
@@ -5120,6 +5121,7 @@ _ACEOF
 
    desktopentrydir=`$PKG_CONFIG osso-af-settings --variable=desktopentrydir`
    serviceentrydir=`$PKG_CONFIG osso-af-settings --variable=dbusservicedir`
+   numptyphysicsdir=/opt/numptyphysics
    icon_26x26dir=$datadir/icons/hicolor/26x26/hildon
    icon_34x34dir=$datadir/icons/hicolor/34x34/hildon
    icon_40x40dir=$datadir/icons/hicolor/40x40/hildon
@@ -5131,6 +5133,7 @@ _ACEOF
 else
    desktopentrydir=/usr/share/applications
    serviceentrydir=$datadir/numptyphysics
+   numptyphysicsdir=$datadir/numptyphysics
    icon_26x26dir=$datadir/icons/hicolor/26x26/apps
    icon_34x34dir=$datadir/icons/hicolor/34x34/apps
    icon_40x40dir=$datadir/icons/hicolor/40x40/apps
@@ -5138,6 +5141,7 @@ else
    icon_64x64dir=$datadir/icons/hicolor/64x64/apps
    icon_scalabledir=$datadir/icons/hicolor/scalable/apps
 fi
+
 
 
 
@@ -6097,6 +6101,7 @@ HILDON_CFLAGS!$HILDON_CFLAGS$ac_delim
 HILDON_LIBS!$HILDON_LIBS$ac_delim
 desktopentrydir!$desktopentrydir$ac_delim
 serviceentrydir!$serviceentrydir$ac_delim
+numptyphysicsdir!$numptyphysicsdir$ac_delim
 icon_26x26dir!$icon_26x26dir$ac_delim
 icon_34x34dir!$icon_34x34dir$ac_delim
 icon_40x40dir!$icon_40x40dir$ac_delim
@@ -6104,7 +6109,6 @@ icon_50x50dir!$icon_50x50dir$ac_delim
 icon_64x64dir!$icon_64x64dir$ac_delim
 icon_scalabledir!$icon_scalabledir$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
-LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
@@ -6139,6 +6143,50 @@ N; s/^.*\n//; s/[,\\&]/\\&/g; s/@/@|#_!!_#|/g; b n
 ' >>$CONFIG_STATUS <conf$$subs.sed
 rm -f conf$$subs.sed
 cat >>$CONFIG_STATUS <<_ACEOF
+CEOF$ac_eof
+_ACEOF
+
+
+ac_delim='%!_!# '
+for ac_last_try in false false false false false :; do
+  cat >conf$$subs.sed <<_ACEOF
+LTLIBOBJS!$LTLIBOBJS$ac_delim
+_ACEOF
+
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 1; then
+    break
+  elif $ac_last_try; then
+    { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
+echo "$as_me: error: could not make $CONFIG_STATUS" >&2;}
+   { (exit 1); exit 1; }; }
+  else
+    ac_delim="$ac_delim!$ac_delim _$ac_delim!! "
+  fi
+done
+
+ac_eof=`sed -n '/^CEOF[0-9]*$/s/CEOF/0/p' conf$$subs.sed`
+if test -n "$ac_eof"; then
+  ac_eof=`echo "$ac_eof" | sort -nru | sed 1q`
+  ac_eof=`expr $ac_eof + 1`
+fi
+
+cat >>$CONFIG_STATUS <<_ACEOF
+cat >"\$tmp/subs-2.sed" <<\CEOF$ac_eof
+/@[a-zA-Z_][a-zA-Z_0-9]*@/!b end
+_ACEOF
+sed '
+s/[,\\&]/\\&/g; s/@/@|#_!!_#|/g
+s/^/s,@/; s/!/@,|#_!!_#|/
+:n
+t n
+s/'"$ac_delim"'$/,g/; t
+s/$/\\/; p
+N; s/^.*\n//; s/[,\\&]/\\&/g; s/@/@|#_!!_#|/g; b n
+' >>$CONFIG_STATUS <conf$$subs.sed
+rm -f conf$$subs.sed
+cat >>$CONFIG_STATUS <<_ACEOF
+:end
+s/|#_!!_#|//g
 CEOF$ac_eof
 _ACEOF
 
@@ -6386,7 +6434,7 @@ s&@abs_builddir@&$ac_abs_builddir&;t t
 s&@abs_top_builddir@&$ac_abs_top_builddir&;t t
 s&@INSTALL@&$ac_INSTALL&;t t
 $ac_datarootdir_hack
-" $ac_file_inputs | sed -f "$tmp/subs-1.sed" | sed 's/|#_!!_#|//g' >$tmp/out
+" $ac_file_inputs | sed -f "$tmp/subs-1.sed" | sed -f "$tmp/subs-2.sed" >$tmp/out
 
 test -z "$ac_datarootdir_hack$ac_datarootdir_seen" &&
   { ac_out=`sed -n '/\${datarootdir}/p' "$tmp/out"`; test -n "$ac_out"; } &&

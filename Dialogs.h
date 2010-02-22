@@ -26,7 +26,8 @@ class GameControl;
 Widget* createMainMenu(GameControl* game);
 Widget* createPlayOpts(GameControl* game);
 Widget* createEditOpts(GameControl* game);
-Widget* createColourDialog(int n, const int* cols);
+Widget* createColourDialog(GameControl* game, int n, const int* cols);
+Widget* createToolDialog(GameControl* game);
 Widget *createIconDialog( const std::string &title, const MenuItem* items );
 Widget *createNextLevelDialog( GameControl* game );
 

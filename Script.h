@@ -28,7 +28,8 @@ struct ScriptEntry {
     OP_EXTEND,
     OP_MOVE,
     OP_ACTIVATE,
-    OP_PAUSE
+    OP_PAUSE,
+    OP_MARKER
   };
 
   int  t;
@@ -72,6 +73,7 @@ public:
   void extendStroke( int index, const Vec2& pt );
   void moveStroke( int index, const Vec2& pt );
   void activateStroke( int index );
+  void mark( int goal );
 
   ScriptLog* getLog() { return m_log; }
 

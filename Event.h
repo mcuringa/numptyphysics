@@ -50,6 +50,7 @@ struct Event
     RESET,
     UNDO,
     PAUSE,
+    PLAY,
     REPLAY,
     SAVE,
     SEND,
@@ -102,6 +103,8 @@ class BasicEventMap : public EventMap
 enum EventMapType
 {
   GAME_MAP,
+  GAME_MOVE_MAP,
+  GAME_ERASE_MAP,
   APP_MAP,
   EDIT_MAP,
   UI_BUTTON_MAP,

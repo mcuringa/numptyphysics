@@ -52,13 +52,15 @@ struct GameControl
 		 m_strokeDecor( false ),
                  m_replaying( false ),
                  m_paused( false ),
-                 m_level(0)
+                 m_level(0),
+                 m_clickMode(0)
   {}
   virtual ~GameControl() {}
-  virtual bool save( const char *file=NULL ) { return false; }
-  virtual bool send() { return false; }
-  virtual bool load( const char* file ) { return false; }
-  virtual void gotoLevel( int l, bool replay=false ) {}
+  virtual bool save( const char *file=NULL ) =0;
+  virtual bool send() =0;
+  virtual bool load( const char* file ) {};
+  virtual void gotoLevel( int l, bool replay=false ) =0;
+  virtual void clickMode(int cm) =0;
   Levels& levels() { return *m_levels; }
   const GameStats& stats() { return m_stats; }
   bool  m_quit;
@@ -66,6 +68,7 @@ struct GameControl
   bool  m_refresh;
   bool  m_fade;
   int   m_colour;
+  int   m_clickMode;
   bool  m_strokeFixed;
   bool  m_strokeSleep;
   bool  m_strokeDecor;

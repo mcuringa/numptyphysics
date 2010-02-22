@@ -201,9 +201,10 @@ public:
       if ( m_colour==brushColours[i] )  s<<i;
     }
     s << ":";
-    transform();
-    for ( int i=0; i<m_xformedPath.size(); i++ ) {
-      const Vec2& p = m_xformedPath.point(i);
+    Path opath = m_rawPath;
+    opath.translate(m_origin);
+    for ( int i=0; i<opath.size(); i++ ) {
+      const Vec2& p = opath.point(i);
       s <<' '<< p.x << ',' << p.y; 
     }
     s << std::endl;
@@ -368,6 +369,7 @@ public:
       m_body->SetXForm( pw, m_body->GetAngle() );
     }
     m_origin = p;
+    m_drawn = false;
   }
 
   b2Body* body() { return m_body; }
@@ -498,7 +500,7 @@ private:
       m_xformedPath.translate( m_origin );
       worldToScreen.transform( m_xformedPath, m_screenPath );
       m_screenBbox = m_screenPath.bbox();      
-      return false;
+      return !hasAttribute(ATTRIB_DECOR);
     }
     return true;
   }
@@ -552,6 +554,8 @@ Scene::~Scene()
 
 Stroke* Scene::newStroke( const Path& p, int colour, int attribs ) {
   Stroke *s = new Stroke(p);
+  s->setAttribute( (Attribute)attribs );
+
   switch ( colour ) {
   case 0: s->setAttribute( ATTRIB_TOKEN ); break;
   case 1: s->setAttribute( ATTRIB_GOAL ); break;
@@ -700,8 +704,8 @@ void Scene::step( bool isPaused )
 	activate( m_strokes[i] );	  
       }
     }
-    calcDirtyArea();
   }
+  calcDirtyArea();
 }
 
 // b2ContactListener callback when a new contact is detected
@@ -718,6 +722,7 @@ void Scene::Add(const b2ContactPoint* point)
     if ( s1->hasAttribute(ATTRIB_TOKEN) 
 	   && s2->hasAttribute(ATTRIB_GOAL) ) {
 	s2->setAttribute(ATTRIB_DELETED);
+	m_recorder.mark(1);
     }
   }
 }
@@ -878,7 +883,7 @@ bool Scene::load( std::istream& in )
   m_dynamicGravity = false;
   setGravity( b2Vec2(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf) );
   if ( g_bgImage==NULL ) {
-    g_bgImage = new Image("paper.png");
+    g_bgImage = new Image("paper.jpg");
     g_bgImage->scale( SCREEN_WIDTH, SCREEN_HEIGHT );
   }
   m_bgImage = g_bgImage;
@@ -931,9 +936,6 @@ void Scene::protect( int n )
 bool Scene::save( const std::string& file, bool saveLog )
 {
   printf("saving to %s\n",file.c_str());
-  if ( saveLog ) {      
-    reset();
-  }
   std::ofstream o( file.c_str(), std::ios::out );
   if ( o.is_open() ) {
     o << "Title: "<<m_title<<std::endl;

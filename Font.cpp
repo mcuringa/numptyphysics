@@ -33,6 +33,7 @@ Font::Font( const std::string& file, int ptsize )
   TTF_Init();
   std::string fname = Config::findFile(file);
   m_state = TTF_OpenFont( fname.c_str(), ptsize );
+  m_height = metrics("M").y;
 }
 
 

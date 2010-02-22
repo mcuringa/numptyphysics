@@ -65,7 +65,9 @@ class Widget
   void fitToParent(bool fit) { m_fitToParent=fit;}
   bool fitToParent() {return m_fitToParent;}
   bool greedyMouse() {return m_greedyMouse;}
-  void transparent(bool t) {m_transparent=t;}
+  void transparent(bool t) {m_alpha=t?0:255;}
+  void alpha(int a) {m_alpha=a;}
+  void border(bool drawBorder) {m_border = drawBorder?1:0;}
  protected:
   Widget(WidgetParent *p=NULL);
   WidgetParent* m_parent;
@@ -73,11 +75,12 @@ class Widget
   Rect          m_pos;
   bool          m_dirty;
   bool          m_focussed;
-  bool          m_transparent;
+  int           m_alpha;
   bool          m_fitToParent;
   bool          m_greedyMouse;
   int           m_bg;
   int           m_fg;
+  int           m_border;
 };
 
 class Spacer : public Widget {
@@ -90,7 +93,7 @@ class Label : public Widget
   Label();
   Label(const std::string& s, const Font* f=NULL);
   const char* name() {return "Label";}
-  void text( const std::string& s );
+  virtual void text( const std::string& s );
   const std::string& text() const { return m_text; }
   void align( int a );
   virtual void draw( Canvas& screen, const Rect& area );
@@ -134,12 +137,35 @@ class IconButton : public Button
   IconButton(const std::string& s, const std::string& icon, const Event& ev);
   ~IconButton();
   const char* name() {return "IconButton";}
-  void canvas(Canvas *c);
+  void canvas(Canvas *c, bool takeOwnership=true);
+  Canvas* canvas();
+  void icon(const std::string& icon);
   void draw( Canvas& screen, const Rect& area );
+  void align(int dir) { m_vertical=(dir==0); }
  protected:
+  bool m_vertical;
+  bool m_ownIcon;
   Canvas *m_icon;
 };
 
+
+class RichText : public Label
+{
+ public:
+  RichText(const std::string& s, const Font* f=NULL);
+  virtual void text( const std::string& s );
+  virtual void draw( Canvas& screen, const Rect& area );
+  int layout(int w);
+ protected:
+  struct Snippet {
+    Vec2 pos;
+    int textoff;
+    int textlen;
+    const Font* font;
+  };
+  Array<Snippet> m_snippets;
+  bool m_layoutRequired;
+};
 
 class WidgetParent : public Widget
 {
@@ -215,13 +241,18 @@ class Draggable : public Panel
  public:
   Draggable();
   const char* name() {return "Draggable";}
+  bool processEvent( SDL_Event& ev );
+  bool onPreEvent( Event& ev );
   bool onEvent( Event& ev );
+  void onTick( int tick );
   void step( const Vec2& s ) { m_step = s; }
  protected:
   bool m_dragMaybe;
   bool m_dragging;
   Vec2 m_dragOrg;
   Vec2 m_step;
+  Vec2 m_delta;
+  bool m_internalEvent;
 };
 
 class ScrollArea : public Panel
@@ -281,7 +312,7 @@ class TabBook : public Panel
   Widget* m_contents;
 };
 
-class Dialog : public Draggable
+class Dialog : public Panel
 {
  public:
   Dialog( const std::string &title="", Event left=Event::NOP, Event right=Event::NOP );
@@ -298,6 +329,7 @@ class Dialog : public Draggable
   Button *m_left, *m_right;
   Container *m_content;
   Vec2 m_targetPos;
+  bool m_closeRequested;
 };
 
 class MenuDialog : public Dialog, public virtual Menu
@@ -313,6 +345,12 @@ class MenuDialog : public Dialog, public virtual Menu
   Box *m_box;
   int m_columns;
   Vec2 m_buttonDim;
+};
+
+class MessageBox : public Dialog
+{
+ public:
+  MessageBox( const std::string& text );
 };
 
 class Layer : public Dialog

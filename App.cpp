@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <string>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <SDL/SDL.h>
 
 
@@ -118,11 +119,7 @@ private:
       putenv((char*)"SDL_VIDEODRIVER=dummy");
     } else {
       putenv((char*)"SDL_VIDEO_X11_WMCLASS=NPhysics");
-
-      if ( mkdir( (std::string(getenv("HOME"))+"/"USER_BASE_PATH).c_str(),
-		  0755)!=0 ) {
-	fprintf(stderr,"failed to create user dir\n");
-      } 
+      OS->ensurePath(Config::userDataDir());
     }
     
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0) {
@@ -220,12 +217,42 @@ private:
   }
 
 
+  void waitActive()
+  {
+#if MAEMO_VERSION >= 4
+    SDL_Event ev;
+    while ( SDL_WaitEvent(&ev) ) {
+      OS->poll();
+      switch( ev.type ) {
+      case SDL_QUIT:
+	m_quit = true;
+	return;
+      case SDL_ACTIVEEVENT:
+	if (ev.active.gain > 0) {
+	  return;
+	}
+	break;
+      }
+    }
+#endif
+  }
+
   bool processEvent( SDL_Event &ev )
   {
     switch( ev.type ) {
     case SDL_QUIT:
       m_quit = true;
       return true;
+    case SDL_ACTIVEEVENT:
+      printf("active: %d\n",ev.active.gain);
+      if (ev.active.gain == 0) {
+	waitActive();
+      }
+      break;
+    case SDL_MOUSEBUTTONDOWN:
+      if (ev.button.x < 10) 
+	printf("clicky: %d,%d\n",ev.button.x,ev.button.y);
+      break;
     case SDL_KEYDOWN:
       switch ( ev.key.keysym.sym ) {
       case SDLK_1:
@@ -235,6 +262,9 @@ private:
       case SDLK_2:
       case SDLK_d:
 	m_drawDirty = !m_drawDirty;
+	return true;
+      case SDLK_q:
+	m_quit = true;
 	return true;
       case SDLK_3:
 	fprintf(stderr,"UI: %s\n",toString().c_str());
@@ -269,12 +299,12 @@ private:
     bool isComplete = false;    
 
     while ( !m_quit ) {
+      OS->poll();
 
       //assumes RENDER_RATE <= ITERATION_RATE
       while ( iterateCounter < iterationRate ) {
-	for ( int i=0; i<m_children.size(); i++ ) {
-	  m_children[i]->onTick( lastTick );
-	}
+
+	onTick( lastTick );
     
 	SDL_Event ev;
 	while ( SDL_PollEvent(&ev) ) {
@@ -292,17 +322,17 @@ private:
 
       if ( sleepMs > 1 && m_renderRate < MAX_RENDER_RATE ) {
 	m_renderRate++;
-	printf("increasing render rate to %dfps\n",m_renderRate);
+	//printf("increasing render rate to %dfps\n",m_renderRate);
 	sleepMs = lastTick + 1000/m_renderRate -  SDL_GetTicks();
       }
 
       if ( sleepMs > 0 ) {
 	SDL_Delay( sleepMs );
       } else {
-	printf("overrun %dms\n",-sleepMs);
+	//printf("overrun %dms\n",-sleepMs);
 	if ( m_renderRate > MIN_RENDER_RATE ) {
 	  m_renderRate--;
-	  printf("decreasing render rate to %dfps\n",m_renderRate);
+	  //printf("decreasing render rate to %dfps\n",m_renderRate);
 	} else if ( iterationRate > 30 ) {
 	  //slow down simulation time to maintain fps??
 	}
@@ -324,6 +354,9 @@ private:
 		  levels.levelName(j).c_str());
 	}
       }
+    } else if ( op=="rtf" ) {
+      RichText r("the quick brown fox, jumped over the lazy dog!");
+      r.layout(100);
     } else {
       throw "bad test";
     }

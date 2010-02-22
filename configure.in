@@ -43,6 +43,7 @@ if test "x${enable_hildon}" = "xyes" ; then
    AC_DEFINE( [USE_HILDON],[], using hildon )
    desktopentrydir=`$PKG_CONFIG osso-af-settings --variable=desktopentrydir`
    serviceentrydir=`$PKG_CONFIG osso-af-settings --variable=dbusservicedir`
+   numptyphysicsdir=/opt/numptyphysics
    icon_26x26dir=$datadir/icons/hicolor/26x26/hildon
    icon_34x34dir=$datadir/icons/hicolor/34x34/hildon
    icon_40x40dir=$datadir/icons/hicolor/40x40/hildon
@@ -54,6 +55,7 @@ if test "x${enable_hildon}" = "xyes" ; then
 else
    desktopentrydir=/usr/share/applications
    serviceentrydir=$datadir/numptyphysics
+   numptyphysicsdir=$datadir/numptyphysics
    icon_26x26dir=$datadir/icons/hicolor/26x26/apps
    icon_34x34dir=$datadir/icons/hicolor/34x34/apps
    icon_40x40dir=$datadir/icons/hicolor/40x40/apps
@@ -63,6 +65,7 @@ else
 fi
 AC_SUBST(desktopentrydir)
 AC_SUBST(serviceentrydir)
+AC_SUBST(numptyphysicsdir)
 AC_SUBST(icon_26x26dir)
 AC_SUBST(icon_34x34dir)
 AC_SUBST(icon_40x40dir)

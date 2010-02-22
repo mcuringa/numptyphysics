@@ -318,7 +318,6 @@ static gint mime_handler(const gchar *interface,
 }
 
 
-#if 1
 /* cortex-a8 runfast mode to shovel vfp isntructions into the neon
    unit.  runfast implies:
    * Subnormal numbers are being flushed to zero
@@ -327,6 +326,7 @@ static gint mime_handler(const gchar *interface,
  */
 void enable_runfast()
 {
+#if __ARM
   static const unsigned int x = 0x04086060;
   static const unsigned int y = 0x03000000;
   int r;
@@ -336,8 +336,8 @@ void enable_runfast()
                 "fmxr   fpscr, %0   \n\t"   //FPSCR = r0
                 : "=r"(r)
                 : "r"(x), "r"(y));
-}
 #endif
+}
 
 
 Os* Os::get()

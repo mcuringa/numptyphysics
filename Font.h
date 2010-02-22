@@ -28,6 +28,7 @@ class Font
 {
  public:
   Font( const std::string& file, int ptsize=10 );
+  int height() const { return m_height; }
   Vec2 metrics( const std::string& text ) const;
   void drawLeft( Canvas* canvas, Vec2 pt,
 		 const std::string& text, int colour ) const;
@@ -44,6 +45,7 @@ class Font
  private:
   typedef void* State;
   State m_state;
+  int m_height;
 };
 
 

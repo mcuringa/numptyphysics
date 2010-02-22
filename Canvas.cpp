@@ -557,7 +557,9 @@ void Canvas::drawPath( const Path& path, int color, bool thick )
 void Canvas::drawRect( int x, int y, int w, int h, int c, bool fill )
 {
   if ( fill ) {
-    SDL_Rect r = { x, y, w, h };
+    Rect dest(x,y,x+w,y+h);
+    dest.clipTo(m_clip);
+    SDL_Rect r = { dest.tl.x, dest.tl.y, dest.width(), dest.height() };
     SDL_FillRect( SURFACE(this), &r, c );
   } else {
     SDL_Rect f = { x, y, w, h };
@@ -676,18 +678,8 @@ void Window::update( const Rect& r )
 						False);
 	xev.xclient.format = 32;
 	xev.xclient.data.l[0] = 0;
-	xev.xclient.data.l[1] = sys.info.x11.fswindow;
-	XSendEvent (xev.xclient.display,
-		    xev.xclient.window,
-		    False,
-		    SubstructureRedirectMask | SubstructureNotifyMask,
-		    &xev);
-	xev.xclient.data.l[1] = sys.info.x11.wmwindow;
-	XSendEvent (xev.xclient.display,
-		    xev.xclient.window,
-		    False,
-		    SubstructureRedirectMask | SubstructureNotifyMask,
-		    &xev);
+	//xev.xclient.data.l[1] = sys.info.x11.fswindow;
+	//xev.xclient.data.l[1] = sys.info.x11.wmwindow;
 	xev.xclient.data.l[1] = sys.info.x11.window;
 	XSendEvent (xev.xclient.display,
 		    xev.xclient.window,

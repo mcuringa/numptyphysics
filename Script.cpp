@@ -33,6 +33,7 @@ ScriptEntry::ScriptEntry( const std::string& str )
     case 'm': op = OP_MOVE; break;
     case 'a': op = OP_ACTIVATE; break;
     case 'p': op = OP_PAUSE; break;
+    case 'g': op = OP_MARKER; break;
     default:
       fprintf(stderr,"bad script op\n");
     }
@@ -143,6 +144,11 @@ void ScriptRecorder::activateStroke( int index )
     m_log->append( m_lastTick, ScriptEntry::OP_ACTIVATE, index );
 }
 
+void ScriptRecorder::mark( int goal )
+{
+  if ( m_running )
+    m_log->append( m_lastTick, ScriptEntry::OP_MARKER, goal );
+}
 
 
 

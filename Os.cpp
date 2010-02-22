@@ -17,6 +17,9 @@
 #include "Os.h"
 #include <SDL/SDL.h>
 
+#include <sys/stat.h>
+#include <unistd.h>
+
 OsObj OS;
 
 static const BasicEventMap::KeyPair game_keymap[] = {
@@ -48,6 +51,15 @@ static const BasicEventMap::ButtonPair game_mousemap[] = {
   {}
 };
 
+static const BasicEventMap::ButtonPair game_move_mousemap[] = {
+  { SDL_BUTTON_LEFT, Event::MOVEBEGIN, Event::MOVEMORE, Event::MOVEEND },
+  {}
+};
+
+static const BasicEventMap::ButtonPair game_erase_mousemap[] = {
+  { SDL_BUTTON_LEFT, Event::NOP, Event::NOP, Event::DELETE },
+  {}
+};
 
 static const BasicEventMap::KeyPair app_keymap[] = {
   { SDLK_q, Event::QUIT },
@@ -105,15 +117,21 @@ public:
 EventMap* Os::getEventMap( EventMapType type )
 {
   static BasicEventMap gameMap(game_keymap,game_mousemap);
+  static BasicEventMap gameMoveMap(game_keymap,game_move_mousemap);
+  static BasicEventMap gameEraseMap(game_keymap,game_erase_mousemap);
   static BasicEventMap editMap(NULL,edit_mousemap);
   static BasicEventMap uiButtonMap(NULL,ui_button_mousemap);
   static BasicEventMap uiDraggableMap(ui_draggable_keymap,ui_draggable_mousemap);
-  static BasicEventMap uiDialogMap(ui_dialog_keymap,ui_draggable_mousemap);
+  static BasicEventMap uiDialogMap(ui_dialog_keymap,NULL);
   static AppMap appMap;
 
   switch (type) {
   case GAME_MAP:
     return &gameMap;
+  case GAME_MOVE_MAP:
+    return &gameMoveMap;
+  case GAME_ERASE_MAP:
+    return &gameEraseMap;
   case APP_MAP:
     return &appMap;
   case EDIT_MAP:
@@ -127,3 +145,23 @@ EventMap* Os::getEventMap( EventMapType type )
   }
   return NULL;
 }
+
+
+bool Os::ensurePath(const std::string& path)
+{
+  struct stat st;
+  if ( stat(path.c_str(),&st)!=0 ) {
+    size_t sep = path.rfind(Os::pathSep);
+    if ( sep != std::string::npos && sep > 0 ) {
+      ensurePath(path.substr(0,sep));
+    }
+    if ( mkdir( path.c_str(), 0755)!=0 ) {
+      fprintf(stderr,"failed to create dir %s\n", path.c_str());
+      return false;
+    } else {
+      fprintf(stderr,"created dir %s\n", path.c_str());
+      return true;
+    }
+  } 
+}
+

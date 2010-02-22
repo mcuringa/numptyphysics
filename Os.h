@@ -18,6 +18,8 @@
 
 #include "Event.h"
 #include <stdlib.h>
+#include <string>
+
 
 class Accelerometer;
 class WidgetParent;
@@ -33,6 +35,7 @@ class Os
   virtual Accelerometer*  getAccelerometer() { return NULL; }
   virtual EventMap* getEventMap( EventMapType type );
   virtual void decorateGame( WidgetParent* game ) {}
+  bool ensurePath(const std::string& path);
   static Os* get();
   static const char pathSep;
 };

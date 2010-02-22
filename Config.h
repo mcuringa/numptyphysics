@@ -40,7 +40,7 @@
 #  define JOINT_TOLERANCE   4.0f //PIXELs
 #  define SELECT_TOLERANCE  8.0f //PIXELS_PER_METREf)
 #  define CLICK_TOLERANCE   16 //PIXELs 
-#  define MAEMO_VERSION 5
+#  define MAEMO_VERSION 5   //4
 #else
 #  define MIN_RENDER_RATE   10 //fps
 #  define MAX_RENDER_RATE   ITERATION_RATE //fps
@@ -56,13 +56,21 @@
 
 
 #ifndef INSTALL_BASE_PATH
+# if MAEMO_VERSION >= 5
+#  define INSTALL_BASE_PATH "/opt/numptyphysics"
+# else
 #  define INSTALL_BASE_PATH "/usr/share/numptyphysics"
+# endif
 #endif
 #define DEFAULT_LEVEL_PATH INSTALL_BASE_PATH
 #define DEFAULT_RESOURCE_PATH DEFAULT_LEVEL_PATH
 #ifndef USER_BASE_PATH
 # ifdef USE_HILDON //maemo
-#  define USER_BASE_PATH "MyDocs/.games/NumptyPhysics"
+#  if MAEMO_VERSION >= 5
+#   define USER_BASE_PATH "MyDocs/Games/NumptyPhysics"
+#  else
+#   define USER_BASE_PATH "MyDocs/.games/NumptyPhysics"
+#  endif
 # else
 #  ifdef WIN32
 #   define USER_BASE_PATH ".\\data"
@@ -77,7 +85,7 @@
 #define HTTP_TEMP_FILE "/tmp/http.nph"
 #define SEND_TEMP_FILE "/tmp/mailto:numptyphysics@gmail.com.nph"
 
-#define ICON_SCALE_FACTOR 4
+#define ICON_SCALE_FACTOR 6
 
 #define VIDEO_FPS 20
 #define VIDEO_MAX_LEN 20  //seconds

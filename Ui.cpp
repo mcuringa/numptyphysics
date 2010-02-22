@@ -31,11 +31,12 @@ Widget::Widget(WidgetParent *p)
     m_eventMap(NULL),
     m_pos(0,0,2,2),
     m_focussed(false),
-    m_transparent(true),
+    m_alpha(0),
     m_fitToParent(false),
     m_greedyMouse(false),
     m_bg(DEFAULT_BG),
-    m_fg(DEFAULT_FG)
+    m_fg(DEFAULT_FG),
+    m_border(0)
 {}
 
 std::string Widget::toString()
@@ -98,17 +99,21 @@ void Widget::setEventMap(EventMapType map)
 
 void Widget::draw( Canvas& screen, const Rect& area )
 {
-  if ( !m_transparent ) {
+  if ( m_alpha > 0 ) {
     Rect r = m_pos;
     r.clipTo(area);
     if (!r.isEmpty()) {
       if ( m_focussed ) {
 	screen.drawRect(r,screen.makeColour(SELECTED_BG));
+      } else if (m_alpha==255) {
+	screen.drawRect(m_pos,screen.makeColour(m_bg));
       } else {
 	screen.fade(r);
-	//screen.drawRect(m_pos,screen.makeColour(m_bg));
       }
     }
+  }
+  if (m_border) {
+    screen.drawRect(m_pos,screen.makeColour(TL_BORDER),false);
   }
   dirty(false);
 }
@@ -161,7 +166,8 @@ Button::Button(const std::string& s, Event selEvent)
   : Label(s),
     m_selEvent(selEvent)
 {
-  m_transparent = false;
+  border(true);
+  alpha(100);
   font(Font::headingFont());
   setEventMap(UI_BUTTON_MAP);
 }
@@ -248,19 +254,35 @@ void Icon::draw( Canvas& screen, const Rect& area )
 
 IconButton::IconButton(const std::string& s, const std::string& icon, const Event& ev)
   : Button(s,ev),
-    m_icon(new Image(icon.c_str(),true))
+    m_icon(icon.size()==0?NULL:new Image(icon.c_str(),true)),
+    m_ownIcon(true),
+    m_vertical(true)
 {
 }
 
 IconButton::~IconButton()
 {
-  delete m_icon;
+  if (m_ownIcon) delete m_icon;
 }
 
-void IconButton::canvas(Canvas *c)
+void IconButton::canvas(Canvas *c, bool takeOwnership)
 {
-  delete m_icon;
+  if (m_ownIcon) delete m_icon;
   m_icon = c;
+  m_ownIcon = takeOwnership;
+  dirty();
+}
+
+Canvas* IconButton::canvas()
+{
+  return m_icon;
+}
+
+void IconButton::icon(const std::string& icon)
+{
+  if (m_ownIcon) delete m_icon;
+  m_icon = new Image(icon.c_str(),true);  
+  m_ownIcon = true;
   dirty();
 }
 
@@ -270,18 +292,25 @@ void IconButton::draw( Canvas& screen, const Rect& area )
   if (m_icon) {
     Widget::draw(screen,area);
     if (m_focussed) {
-      screen.drawRect(m_pos,screen.makeColour(0x6060a0),true);
+      screen.drawRect(m_pos,screen.makeColour(SELECTED_BG),true);
     }
-    Vec2 textsize = m_font->metrics(m_text);
-    int gap = m_pos.height() / 10;
-    int x = m_pos.centroid().x - m_icon->width()/2; 
-    int y = m_pos.centroid().y - m_icon->height()/2 - textsize.y/2; 
-    screen.drawImage(m_icon,x,y);
-    x = m_pos.centroid().x;
-    y += m_icon->height() + gap;
-    m_font->drawCenter( &screen, Vec2(x,y), m_text, m_fg);
-    if (!m_transparent) {
-      screen.drawRect(m_pos,screen.makeColour(TL_BORDER),false);
+    Vec2 textsize = m_font->metrics(m_text);    
+    int gap = (m_vertical ?  : m_pos.width()) / 10;
+    if (m_vertical) {
+      int x = m_pos.centroid().x - m_icon->width()/2; 
+      int y = m_pos.centroid().y - m_icon->height()/2 - textsize.y/2; 
+      if (y<m_pos.tl.y) y = m_pos.tl.y;
+      screen.drawImage(m_icon,x,y);
+      x = m_pos.centroid().x;
+      y += m_icon->height() + m_pos.height()/10;
+      m_font->drawCenter( &screen, Vec2(x,y), m_text, m_fg);
+    } else {
+      int x = m_pos.tl.x + 10;
+      int y = m_pos.centroid().y - m_icon->height()/2;
+      screen.drawImage(m_icon,x,y);
+      x += m_icon->width() + 10;
+      y = m_pos.centroid().y - textsize.y/2;
+      m_font->drawLeft( &screen, Vec2(x,y), m_text, m_fg);
     }
   } else {
     Button::draw(screen,area);
@@ -293,29 +322,206 @@ void IconButton::draw( Canvas& screen, const Rect& area )
 ////////////////////////////////////////////////////////////////
 
 
+RichText::RichText(const std::string& s, const Font* f)
+  : Label(s,f),
+    m_layoutRequired(true)
+{}
+
+void RichText::text( const std::string& s )
+{
+  Label::text(s);
+  m_layoutRequired = true;
+}
+
+void RichText::draw( Canvas& screen, const Rect& area )
+{
+  Widget::draw(screen,area);
+  if (m_layoutRequired) {
+    layout(m_pos.width()-20);
+    m_layoutRequired = false;
+  }
+  screen.setClip(area.tl.x,area.tl.y,area.width(),area.height());
+  for (int l=0; l<m_snippets.size(); l++) {
+    if (m_snippets[l].textlen > 0) {
+      Vec2 pos = m_pos.tl + m_snippets[l].pos;
+      Vec2 posnext = l==m_snippets.size()-1 ? pos:m_pos.tl+m_snippets[l+1].pos;
+      if (pos.y < area.br.y && posnext.y >= area.tl.y ) {
+	m_snippets[l].font->drawLeft( &screen, pos,
+				   m_text.substr(m_snippets[l].textoff,
+						 m_snippets[l].textlen),
+				   m_fg);
+      }
+    }
+  }
+  screen.resetClip();
+}
+
+int RichText::layout(int w)
+{
+  struct Tag {
+    Tag(const std::string& str, size_t begin, size_t end)
+      : m_str(str), m_closed(false), m_begin(begin), m_end(end)
+    {
+      if (str[m_begin]=='<') {m_begin++;}
+      if (str[m_begin]=='/') {m_closed=true; m_begin++;}
+      if (str[m_end]=='/') {m_closed=true; m_end--;}
+      m_tag = m_str.substr(m_begin,m_str.find_first_of(" \t/>",m_begin)-m_begin);
+    }
+    const std::string& tag() {return m_tag;}
+    bool closed() { return m_closed; }
+    const std::string& m_str;
+    bool m_closed;
+    size_t m_begin, m_end;
+    std::string m_tag;
+  };
+
+  const int margin = 10;
+  w -= margin*2;
+  int x = margin, y = 0, l = 0, h = 0;
+  size_t p=0;
+  int spacewidth = m_font->metrics(" ").x;
+  Snippet snippet = {Vec2(x,y),0,0,m_font};
+  Vec2 wordmetrics;
+  m_snippets.empty();
+  m_snippets.append(snippet);
+  //fprintf(stderr,"layout w=%d \"%s\"\n",w,m_text.c_str());
+
+  while (p != std::string::npos) {
+    int wordwidth;
+    bool newline = false;
+    size_t e = m_text.find_first_of(" \t\n\r<>", p); 
+
+    if (e==std::string::npos) {
+      wordmetrics = snippet.font->metrics(m_text.substr(p,e));
+    } else {
+      wordmetrics = snippet.font->metrics(m_text.substr(p,e-p));
+    }
+    //fprintf(stderr,"word \"%s\" w=%d\n",m_text.substr(p,e-p).c_str(),wordmetrics.x);
+    if (x!=margin) {
+      // space
+      wordmetrics.x += spacewidth;
+    }
+    if (x==margin || x+wordmetrics.x < w) {
+      // add to snippet
+      p = e;
+      x += wordmetrics.x;
+    } else {
+      e = p;
+      newline = true;
+    }
+
+    if (e!=std::string::npos && m_text[e]=='<') {
+      size_t f = m_text.find('>',e);
+      Tag tag(m_text,e,f);
+      //fprintf(stderr,"got tag \"%s\"\n",tag.tag().c_str());
+      if (tag.tag() == "H1") {
+	newline = true;
+	if (tag.closed()) {
+	  snippet.font = m_font;
+	  y += snippet.font->height()/2;
+	} else {
+	  snippet.font = Font::titleFont();
+	  h += snippet.font->height();
+	}
+      } else if (tag.tag() == "H2") {
+	newline = true;
+	if (tag.closed()) {
+	  snippet.font = m_font;
+	  y += snippet.font->height()/2;
+	} else {
+	  snippet.font = Font::headingFont();
+	  h += snippet.font->height();
+	}
+      } else if (tag.tag() == "P") {
+	newline = true;
+      } else if (tag.tag() == "LI") {
+	newline = true;
+	x += margin;
+      } else if (tag.tag() == "IMG") {
+      }
+      //fprintf(stderr,"skip %d chars \n",f+1-e);
+      e = f + 1;
+    }
+
+    if (newline) {
+      //line break;
+      int len = p - m_snippets[l].textoff;
+      if (len > 0) {
+	m_snippets[l].textlen = len > 0 ? len : 0;
+	m_snippets[l].pos.y = y;
+	snippet.textoff = e;
+	m_snippets.append(snippet);
+	//fprintf(stderr,"new line %d w=%d, \"%s\"\n", y, x+wordmetrics.x,
+	// m_text.substr(m_snippets[l].textoff,m_snippets[l].textlen).c_str());
+	y += m_snippets[l].font->height();
+	l++;
+	x = margin + indent;
+	h = 0;
+      } else {
+	m_snippets[l] = snippet;
+	m_snippets[l].textoff = e;
+	m_snippets[l].pos.x = x;
+      }
+    }
+
+    p=e;
+    if (p==std::string::npos) {
+      m_snippets[l].textlen = m_text.length() - m_snippets[l].textoff;
+      m_snippets[l].pos = Vec2(0,y);
+      y += m_snippets[l].font->height();
+      //fprintf(stderr,"last line %d \"%s\"\n", y,
+      //      m_text.substr(m_snippets[l].textoff,m_snippets[l].textlen).c_str());
+    } else {
+      while (m_text[p] == ' '
+	     || m_text[p] == '\n'
+	     || m_text[p] == '\r'
+	     || m_text[p] == '\t') {
+	//eat whitespace
+	if (p==m_snippets[l].textoff) {
+	  m_snippets[l].textoff++;
+	}
+	p++;
+      }
+    }
+    
+  }
+  return y;
+}
+
+////////////////////////////////////////////////////////////////
+
+
 Draggable::Draggable()
   : m_dragMaybe(false),
     m_dragging(false),
-    m_step(2,2)
+    m_step(2,2),
+    m_delta(0,0),
+    m_internalEvent(false)
 {
   setEventMap(UI_DRAGGABLE_MAP);
 }
 
-bool Draggable::onEvent( Event& ev )
+bool Draggable::processEvent( SDL_Event& ev )
+{
+  // get in before our children
+  if (!m_internalEvent && m_eventMap) { 
+    Event e = m_eventMap->process(ev);
+    if (e.code != Event::NOP) {
+      return onPreEvent(e);
+    }
+  }
+  // normal processing
+  return Container::processEvent(ev);
+}
+
+bool Draggable::onPreEvent( Event& ev )
 {
   //fprintf(stderr,"draggable event %d %d,%d\n",ev.code,ev.x,ev.y);      
   switch (ev.code) {
   case Event::MOVEBEGIN:
     m_dragMaybe = true;
     m_dragOrg = Vec2(ev.x,ev.y);
-    break;
-  case Event::MOVEEND:
-    if (m_dragging) {
-      m_dragMaybe = false;
-      m_dragging = false;
-      return true;
-    }
-    break;
+    return true;
   case Event::MOVEMORE:
     if (m_dragMaybe && !m_dragging
 	&& ( Abs(ev.x-m_dragOrg.x) >= CLICK_TOLERANCE
@@ -323,21 +529,49 @@ bool Draggable::onEvent( Event& ev )
       m_dragging = true;
     }
     if (m_dragging) {
-      Vec2 delta = Vec2(ev.x,ev.y)-m_dragOrg;
-      delta.x = m_step.x ? delta.x : 0;
-      delta.y = m_step.y ? delta.y : 0;
-      move( delta );
+      m_delta = Vec2(ev.x,ev.y)-m_dragOrg;
+      m_delta.x = m_step.x ? m_delta.x : 0;
+      m_delta.y = m_step.y ? m_delta.y : 0;
+      move( m_delta );
       m_dragOrg = Vec2(ev.x,ev.y);
       return true;
     }
     break;
+  case Event::MOVEEND:
+    if (m_dragging) {
+      m_dragMaybe = false;
+      m_dragging = false;
+      return true;
+    } else {
+      //translate into a raw click
+      SDL_Event sdlEv;
+      sdlEv.type = SDL_MOUSEBUTTONDOWN;
+      sdlEv.button.button = SDL_BUTTON_LEFT;
+      sdlEv.button.x = ev.x;
+      sdlEv.button.y = ev.y;
+      m_internalEvent = true;
+      processEvent(sdlEv);
+      sdlEv.type = SDL_MOUSEBUTTONUP;
+      bool result = processEvent(sdlEv);
+      m_internalEvent = false;
+      return result;
+    }
+    break;
+  }
+  return false;
+}
+
+bool Draggable::onEvent( Event& ev )
+{
+  //fprintf(stderr,"draggable event %d %d,%d\n",ev.code,ev.x,ev.y);      
+  switch (ev.code) {
   case Event::UP:
     m_dragging = m_dragMaybe = false;
-    move(Vec2(0,-m_step.y));
+    move(Vec2(0,m_step.y));
     return true;
   case Event::DOWN:
     m_dragging = m_dragMaybe = false;
-    move(Vec2(0,m_step.y));
+    move(Vec2(0,-m_step.y));
     return true;
   case Event::LEFT:
     m_dragging = m_dragMaybe = false;
@@ -350,6 +584,16 @@ bool Draggable::onEvent( Event& ev )
   default: break;
   }
   return Panel::onEvent(ev);
+}
+
+
+void Draggable::onTick( int tick )
+{
+  if (!m_dragging && (m_delta.x != 0 || m_delta.y != 0)) {
+    //fprintf(stderr, "Draggable::onTick glide %d, %d\n",m_delta.x,m_delta.y);
+    move(m_delta);
+    m_delta = m_delta * 7 / 8;
+  }
 }
 
 
@@ -396,7 +640,7 @@ void ScrollArea::draw( Canvas& screen, const Rect& area )
   if (cpos.tl.y > m_pos.tl.y) {
     m_contents->moveTo(Vec2(cpos.tl.x,m_pos.tl.y));
   }
-  if (cpos.br.y < m_pos.br.y) {
+  if (cpos.br.y < m_pos.br.y && cpos.height() > m_pos.height()) {
     m_contents->moveTo(Vec2(cpos.tl.x,m_pos.br.y - cpos.size().y));
   }
 #if 1
@@ -427,6 +671,7 @@ void ScrollArea::empty()
 {
   m_contents->empty();
 }
+
 
 
 ////////////////////////////////////////////////////////////////
@@ -635,8 +880,10 @@ void Box::remove( Widget* w )
 void Menu::addItems(const MenuItem* item)
 {
   while (item && item->event.code != Event::NOP) {
-    addItem(*item++);
+    m_items.append(new MenuItem(item->text,item->event));
+    item++;
   }
+  layout();
 }
 
 void Menu::addItem(const MenuItem& item)
@@ -730,12 +977,13 @@ void TabBook::selectTab( int t )
 Dialog::Dialog( const std::string &title, Event left, Event right )
 {
   setEventMap(UI_DIALOG_MAP);
-  m_transparent = false;
+  alpha(100);
   m_greedyMouse = true;
   m_title = new Label(title,Font::titleFont());
-  m_title->transparent(false);
+  m_title->alpha(100);
   m_content = new Panel();
   m_left = m_right = NULL;
+  m_closeRequested = false;
   VBox *all = new VBox();
   if (title.length() > 0) {
     HBox *bar = new HBox();
@@ -759,10 +1007,14 @@ Dialog::Dialog( const std::string &title, Event left, Event right )
 }
 
 
-void Dialog::onTick( int )
+void Dialog::onTick( int tick )
 {
-  const int RATE = 3;
+  if (m_closeRequested) {
+    m_parent->remove(this);
+    return;
+  }
   if (m_pos.tl != m_targetPos) {
+    const int RATE = 3;
     //fprintf(stderr,"Dialog::onTick target %d,%d\n",m_targetPos.x,m_targetPos.y);
     Vec2 diff = m_targetPos - m_pos.tl;
     //fprintf(stderr,"Dialog::onTick diff %d,%d\n",diff.x,diff.y);
@@ -773,18 +1025,19 @@ void Dialog::onTick( int )
     }
     //fprintf(stderr,"Dialog::onTick moveTo %d,%d\n",m_pos.tl.x,m_pos.tl.y);
   }
+  Panel::onTick(tick);
 }
 
 bool Dialog::processEvent( SDL_Event& ev )
 {
-  if (ev.type == SDL_MOUSEBUTTONDOWN
+  if (ev.type == SDL_MOUSEBUTTONUP
       && !m_pos.contains(Vec2(ev.button.x,ev.button.y))) {
     // click outside the dialog to close
     Event closeEvent(Event::CLOSE);
     return onEvent(closeEvent);
   }
   // dialogs eat all raw events...
-  Draggable::processEvent(ev);
+  Panel::processEvent(ev);
   return true;
 }
 
@@ -795,14 +1048,14 @@ bool Dialog::onEvent( Event& ev )
     close();
     return true;
   }
-  return Draggable::onEvent(ev);
+  return Panel::onEvent(ev);
 }
 
 bool Dialog::close()
 {
   if (m_parent) {
     //fprintf(stderr,"close dialog\n");    
-    m_parent->remove(this);
+    m_closeRequested = true;
   }
 }
 
@@ -873,4 +1126,19 @@ void MenuDialog::layout()
   int h = (m_items.size()+m_columns-1)/m_columns
     * (m_buttonDim.y+BUTTON_SPACING) + DIALOG_TITLE_HEIGHT + 20;
   sizeTo( Vec2(m_pos.width(), h) );
+}
+
+
+
+////////////////////////////////////////////////////////////////
+
+
+MessageBox::MessageBox( const std::string& text )
+{
+  Box * vbox = new VBox();
+  RichText *rt = new RichText(text);
+  vbox->add( rt, 100, 100 );
+  content()->add( vbox, 0, 0 );
+  sizeTo(Vec2(300,150));
+  m_targetPos = Vec2(250,100);
 }

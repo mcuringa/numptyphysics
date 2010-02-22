@@ -77,7 +77,7 @@ public:
   {
     setEventMap(Os::get()->getEventMap(GAME_MAP));
     sizeTo(Vec2(width,height));
-    m_transparent = true; //don't clear
+    transparent(true); //don't clear
     m_greedyMouse = true; //get mouse clicks outside the window!
 
     m_jointInd.scale( 12.0f / (float32)m_jointInd.bbox().width() );
@@ -86,7 +86,6 @@ public:
     configureScreenTransform( width, height );
     m_levels = levels;
     gotoLevel(0);
-
     //add( new Button("O",Event::OPTION), Rect(800-32,0,32,32) );
   }
 
@@ -133,6 +132,7 @@ public:
       p = file;
     } else {
       p = Config::userDataDir() + Os::pathSep + "L99_saved.nph";
+      file = "L99_saved.nph";
     }
     if ( m_scene.save( p ) ) {
       m_levels->addPath( p.c_str() );
@@ -141,6 +141,7 @@ public:
 	m_level = l;
 	//m_window.setSubName( p.c_str() );
       }
+      showMessage(std::string("saved to<P>")+file);
       return true;
     }
     return false;
@@ -169,6 +170,43 @@ public:
     return false;
   }
 
+  void saveDemo()
+  {
+    std::string demoname = m_levels->levelName(m_level,false);
+    size_t sep = demoname.rfind(Os::pathSep);
+    if (sep != std::string::npos) {
+      demoname = demoname.substr(sep);
+    }
+    if (demoname.substr(demoname.length()-4) == ".nph") {
+      demoname.resize(demoname.length()-4);
+    }
+    int c = m_levels->collectionFromLevel(m_level);
+    std::string path = Config::userDataDir() + Os::pathSep
+      + "Recordings" + Os::pathSep
+      + m_levels->collectionName(c,false);
+    if (path.substr(path.length()-4) == ".npz") {
+      path.resize(path.length()-4);
+    }
+    OS->ensurePath(path);
+    demoname = path + Os::pathSep + demoname + ".npd";
+    fprintf(stderr,"saving demo of level %d to %s\n",
+	    m_level, demoname.c_str());
+    m_scene.save(demoname, true);
+  }
+
+  void clickMode(int cm)
+  {
+    if (cm != m_clickMode) {
+      fprintf(stderr,"clickMode=%d!\n",cm);
+      m_clickMode = cm;
+      switch (cm) {
+      case 1: setEventMap(Os::get()->getEventMap(GAME_MOVE_MAP)); break;
+      case 2: setEventMap(Os::get()->getEventMap(GAME_ERASE_MAP)); break;
+      default: setEventMap(Os::get()->getEventMap(GAME_MAP)); break;
+      }
+    }
+  }
+
   void setTool( int t )
   {
     m_colour = t;
@@ -181,8 +219,8 @@ public:
 
   void showMessage( const std::string& msg )
   {
-    //todo
     printf("showMessage \"%s\"\n",msg.c_str());
+    add( new MessageBox(msg) );
   }
 
   void togglePause()
@@ -306,6 +344,7 @@ public:
 		m_stats.pausedStrokes, m_stats.undoCount);
 	m_completedDialog = createNextLevelDialog(this);
 	add( m_completedDialog );
+	saveDemo();
       } else if (m_completedDialog) {
 	remove( m_completedDialog );
 	m_completedDialog = NULL;
@@ -313,7 +352,6 @@ public:
     }
 
     if ( m_os ) {
-      m_os->poll();      
       for ( char *f = m_os->getLaunchFile(); f; f=m_os->getLaunchFile() ) {
 	if ( strstr(f,".npz") ) {
 	  //m_levels->empty();
@@ -356,7 +394,6 @@ public:
     Event opt1Event(Event::OPTION,1);
     Event opt2Event(Event::OPTION,2);
     if (ev.type==SDL_MOUSEBUTTONDOWN) {
-      printf("clicky: %d,%d\n",ev.button.x,ev.button.y);
       if (ev.button.x < 10
 	  && dispatchEvent(opt1Event)) {
 	return true;
@@ -370,14 +407,6 @@ public:
 
   virtual bool onEvent( Event& ev )
   {
-
-    static MenuItem editStyleOpts[] = {
-      MenuItem("GROUND",Event(Event::SELECT,2,0)),
-      MenuItem("SLEEPY",Event(Event::SELECT,2,1)),
-      MenuItem("DECOR",Event(Event::SELECT,2,2)),
-      MenuItem("",Event::NOP)
-    };
-
     bool used = true;
     switch (ev.code) {
     case Event::MENU:
@@ -425,7 +454,7 @@ public:
       case 1:
 	switch (ev.y) {
 	case -1:
-	  add( createColourDialog(NUM_BRUSHES, brushColours) ); 
+	  add( createColourDialog(this, NUM_BRUSHES, brushColours) ); 
 	  break;
 	default:
 	  fprintf(stderr,"SetTool %d\n",ev.y);
@@ -436,20 +465,17 @@ public:
       case 2:
 	switch (ev.y) {
 	case -1:
-	  add( createIconDialog("Edit Style",editStyleOpts) ); 
+	  add( createToolDialog(this) );
 	  break;
-	default:
-	  switch (ev.y) {
-	  case 0: m_strokeFixed = !m_strokeFixed; break;
-	  case 1: m_strokeSleep = !m_strokeSleep; break;
-	  case 2: m_strokeDecor = !m_strokeDecor; break;
-	  }
 	}	    
 	break;
       }
       break;
     case Event::EDIT:
       edit( !m_edit );
+      if (m_edit && !m_paused) {
+	togglePause();
+      }
       break;
     case Event::RESET:
       gotoLevel( m_level );
@@ -461,11 +487,14 @@ public:
       gotoLevel( m_level-1 );
       break;
     case Event::REPLAY:
-      gotoLevel( m_level, true );
+      gotoLevel( ev.x, true );
+      break;
+    case Event::PLAY:
+      gotoLevel( ev.x );
       break;
     case Event::DRAWBEGIN:
       if ( !m_replaying && !m_createStroke ) {
-	int attrib;
+	int attrib = 0;
 	if ( m_strokeFixed ) attrib |= ATTRIB_GROUND;
 	if ( m_strokeSleep ) attrib |= ATTRIB_SLEEPING;
 	if ( m_strokeDecor ) attrib |= ATTRIB_DECOR;
@@ -492,6 +521,7 @@ public:
       }
       break;
     case Event::MOVEBEGIN:
+      fprintf(stderr,"MOVING!\n");
       if ( !m_replaying && !m_moveStroke ) {
 	m_moveStroke = m_scene.strokeAtPoint( mousePoint(ev),
 					      SELECT_TOLERANCE );
@@ -499,6 +529,7 @@ public:
       break;
     case Event::MOVEMORE:
       if ( m_moveStroke ) {
+	fprintf(stderr,"MOVING MORE!\n");
 	m_scene.moveStroke( m_moveStroke, mousePoint(ev) );
       }
       break;
@@ -506,6 +537,7 @@ public:
       m_moveStroke = NULL;
       break;
     case Event::DELETE:
+      fprintf(stderr,"DELETEING!\n");
       m_scene.deleteStroke( m_scene.strokeAtPoint( mousePoint(ev),
 						   SELECT_TOLERANCE ) );
       m_refresh = true;

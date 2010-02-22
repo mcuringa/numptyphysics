@@ -66,6 +66,11 @@ std::string nameFromPath(const std::string& path)
   if (path[i] == '_') i++;
   size_t e = path.rfind('.');
   name = path.substr(i,e-i);
+  for (i=0; i<name.size(); i++) {
+    if (name[i]=='-' || name[i]=='_' || name[i]=='.') {
+      name[i] = ' ';
+    }
+  }
   return name;
 }
 
@@ -145,7 +150,7 @@ Levels::Collection* Levels::getCollection( const std::string& file )
   Collection *c = new Collection();
   //fprintf(stderr,"New Collection %s\n",file.c_str());
   c->file = file;
-  c->name = nameFromPath(file);
+  c->name = file;
   c->rank = rankFromPath(file);
   for (int i=0; i<m_collections.size(); i++) {
     if (m_collections[i]->rank > c->rank) { 
@@ -160,11 +165,15 @@ Levels::Collection* Levels::getCollection( const std::string& file )
 
 bool Levels::scanCollection( const std::string& file, int rank )
 {
-  ZipFile zf(file);
-  Collection *collection = getCollection(file);
-  //printf("found collection %s with %d levels\n",file.c_str(),zf.numEntries());
-  for ( int i=0; i<zf.numEntries(); i++ ) {
-    addLevel( collection, file, rankFromPath(zf.entryName(i),rank), i );
+  try {
+    ZipFile zf(file);
+    Collection *collection = getCollection(file);
+    //printf("found collection %s with %d levels\n",file.c_str(),zf.numEntries());
+    for ( int i=0; i<zf.numEntries(); i++ ) {
+      addLevel( collection, file, rankFromPath(zf.entryName(i),rank), i );
+    }
+  } catch (...) {
+    fprintf(stderr,"invalid collection %s\n",file.c_str());
   }
   return false;
 }
@@ -203,7 +212,7 @@ int Levels::load( int i, unsigned char* buf, int bufLen )
   throw "invalid level index";  
 }
 
-std::string Levels::levelName( int i )
+std::string Levels::levelName( int i, bool pretty )
 {
   std::string s = "end";
   LevelDesc *lev = findLevel(i);
@@ -217,7 +226,7 @@ std::string Levels::levelName( int i )
   } else {
     s = "err";
   }
-  return nameFromPath(s);
+  return pretty ? nameFromPath(s) : s;
 }
 
 
@@ -226,10 +235,28 @@ int Levels::numCollections()
   return m_collections.size();
 }
 
-std::string Levels::collectionName( int i )
+int Levels::collectionFromLevel( int i, int *indexInCol )
+{
+  if (i < m_numLevels) {
+    for ( int c=0; c<m_collections.size(); c++ ) {
+      if ( i >= m_collections[c]->levels.size() ) {
+	i -= m_collections[c]->levels.size();
+      } else {
+	if (indexInCol) *indexInCol = i;
+	return c;
+      }
+    }
+  }
+}
+
+std::string Levels::collectionName( int i, bool pretty )
 {
   if (i>=0 && i<numCollections()) {
-    return m_collections[i]->name;
+    if (pretty) {
+      return nameFromPath(m_collections[i]->name);
+    } else {
+      return m_collections[i]->name;
+    }
   }
   return "Bad Collection ID";
 }

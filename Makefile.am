@@ -2,8 +2,6 @@ bin_PROGRAMS = numptyphysics
 noinst_LIBRARIES = libbox2d.a
 INCLUDES = -IBox2D/Include
 
-numptyphysicsdir = $(datadir)/numptyphysics
-
 desktopentry_DATA = data/numptyphysics.desktop
 serviceentry_DATA = data/numptyphysics.service
 icon_26x26_DATA = data/icon26/numptyphysics.png 
@@ -45,7 +43,11 @@ numptyphysics_DATA = \
 	data/L99_Gravity_Test.nph \
 	data/edit.png \
 	data/next.png \
-	data/paper.png \
+	data/paper.jpg \
+	data/pen.png \
+	data/tick.png \
+	data/blank.png \
+	data/share.png \
 	data/pause.png \
 	data/play.png \
 	data/reset.png \

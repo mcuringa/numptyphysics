@@ -29,11 +29,12 @@ class Levels
   bool addLevel( const std::string& file, int rank=-1, int index=-1 );
   int  numLevels();
   int load( int i, unsigned char* buf, int bufLen );
-  std::string levelName( int i );
+  std::string levelName( int i, bool pretty=true );
   int findLevel( const char *file );
 
   int  numCollections();
-  std::string collectionName( int i );
+  int  collectionFromLevel( int l, int *indexInCol=NULL );
+  std::string collectionName( int i, bool pretty=true );
   int  collectionSize(int c);
   int  collectionLevel(int c, int i);
 

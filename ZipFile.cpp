@@ -112,18 +112,21 @@ ZipFile::ZipFile(const std::string& fn)
   m_temp = NULL;
   m_fd=open(fn.c_str(), O_RDONLY);
   struct stat stat;
-  fstat(m_fd, &stat);	  
-  m_dataLen = stat.st_size;
-  // TODO - win32
-  m_data = (unsigned char*)mmap(NULL,m_dataLen,PROT_READ,MAP_PRIVATE, m_fd, 0);
-  if ( !m_data ) throw "mmap failed";
-  if ( *(int*)&m_data[0] != 0x04034b50 ) throw "bad zip magic";
-  m_eoc = (zip_eoc*)&m_data[m_dataLen-sizeof(zip_eoc)];
-  m_firstcd = (zip_cd*)&m_data[m_eoc->zipeofst];
-  if ( m_eoc && m_firstcd ) {
-    m_entries = m_eoc->zipenum;
+  if (fstat(m_fd, &stat)==0 && S_ISREG(stat.st_mode)) {
+    m_dataLen = stat.st_size;
+    // TODO - win32
+    m_data = (unsigned char*)mmap(NULL,m_dataLen,PROT_READ,MAP_PRIVATE, m_fd, 0);
+    if ( !m_data ) throw "mmap failed";
+    if ( *(int*)&m_data[0] != 0x04034b50 ) throw "bad zip magic";
+    m_eoc = (zip_eoc*)&m_data[m_dataLen-sizeof(zip_eoc)];
+    m_firstcd = (zip_cd*)&m_data[m_eoc->zipeofst];
+    if ( m_eoc && m_firstcd ) {
+      m_entries = m_eoc->zipenum;
+    } else {
+      m_entries = 0;
+    }
   } else {
-    m_entries = 0;
+    throw "invalid zip file";
   }
 }
 
