@@ -163,14 +163,16 @@ public:
     Widget *w = new Button("<<",Event::PREVIOUS);
     w->border(false);
     hbox->add( w, BUTTON_WIDTH, 0 );
+    hbox->add( new Spacer(), 10, 0 );
     Label *title = new Label(m_levels->collectionName(c));
     title->font(Font::headingFont());
     title->alpha(100);
     hbox->add( title, BUTTON_WIDTH, 4 );
     w= new Button(">>",Event::NEXT);
     w->border(false);    
+    hbox->add( new Spacer(), 10, 0 );
     hbox->add( w, BUTTON_WIDTH, 0 );
-    vbox->add( hbox, 40, 0 );
+    vbox->add( hbox, 64, 0 );
     vbox->add( new Spacer(),  10, 0 );
 
     hbox = new HBox();
@@ -185,7 +187,7 @@ public:
 	hbox->add( new Spacer(),  0, 1 );
 	accumw = SCREEN_WIDTH / ICON_SCALE_FACTOR;
       }
-      m_thumbs[i] = new IconButton("--","",Event(Event::SELECT,
+      m_thumbs[i] = new IconButton("--","",Event(Event::PLAY, //SELECT,
 						 m_levels->collectionLevel(c,i)));
       m_thumbs[i]->font(Font::blurbFont());
       m_thumbs[i]->setBg(SELECTED_BG);
@@ -419,8 +421,8 @@ static const MenuItem editNormalOpts[] = {
 static const MenuItem editDoneOpts[] = {
   MenuItem("menu:close.png",Event::MENU),
   MenuItem("reset:reset.png",Event::RESET),
-  MenuItem("done:tick.png",Event::SAVE),
-  MenuItem("test:undo.png",Event::RESET),
+  MenuItem("done:share.png",Event::SAVE),
+  //MenuItem("test:undo.png",Event::RESET),
   MenuItem("",Event::NOP)
 };
 

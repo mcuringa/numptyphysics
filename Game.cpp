@@ -231,7 +231,7 @@ public:
 	m_pauseLabel->setBg(0xff0000);
 	m_pauseLabel->setFg(0x000000);
       }
-      add( m_pauseLabel, Rect(0,0,100,32) );
+      add( m_pauseLabel, Rect(0,0,128,32) );
       m_paused = true;
     } else {
       remove( m_pauseLabel );
@@ -251,11 +251,11 @@ public:
       m_edit = doEdit;
       if ( m_edit ) {	
 	if ( !m_editLabel ) {
- 	  m_editLabel = new Button("EDIT",Event::OPTION);
+ 	  m_editLabel = new Button("EDIT",Event::SAVE);
 	  m_editLabel->setBg(0xff0000);
 	  m_editLabel->setFg(0x000000);
  	}
-	add(m_editLabel, Rect(0,0,100,32));
+	add(m_editLabel, Rect(SCREEN_WIDTH-128,0,SCREEN_WIDTH,32));
 	m_scene.protect(0);
       } else {
 	remove(m_editLabel);
