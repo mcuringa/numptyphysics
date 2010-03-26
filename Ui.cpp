@@ -346,10 +346,17 @@ void RichText::draw( Canvas& screen, const Rect& area )
       Vec2 pos = m_pos.tl + m_snippets[l].pos;
       Vec2 posnext = l==m_snippets.size()-1 ? pos:m_pos.tl+m_snippets[l+1].pos;
       if (pos.y < area.br.y && posnext.y >= area.tl.y ) {
-	m_snippets[l].font->drawLeft( &screen, pos,
-				   m_text.substr(m_snippets[l].textoff,
-						 m_snippets[l].textlen),
-				   m_fg);
+	std::string sniptext = m_text.substr(m_snippets[l].textoff,
+					     m_snippets[l].textlen);
+	switch (m_snippets[l].align) {
+	case 1:
+	  pos.x += (m_pos.width()-20-m_snippets[l].font->metrics(sniptext).x)/2;
+	  break;
+	case 2:
+	  pos.x += m_pos.width()-20-m_snippets[l].font->metrics(sniptext).x;
+	  break;
+	}
+	m_snippets[l].font->drawLeft( &screen, pos, sniptext,	m_fg);
       }
     }
   }
@@ -366,8 +373,25 @@ int RichText::layout(int w)
       if (str[m_begin]=='/') {m_closed=true; m_begin++;}
       if (str[m_end]=='/') {m_closed=true; m_end--;}
       m_tag = m_str.substr(m_begin,m_str.find_first_of(" \t/>",m_begin)-m_begin);
+      fprintf(stderr,"tag = [%s]\n", m_tag.c_str());
     }
-    const std::string& tag() {return m_tag;}
+    const std::string& tag() {
+      return m_tag;
+    }
+    std::string prop(const std::string& name) {
+      std::string mark(" ");
+      std::string value;
+      mark += name + '=';
+      if (m_str.find(mark) != std::string::npos) {
+	char term = ' ';
+	const char *p = m_str.c_str() + m_str.find(mark) + mark.length();
+	if (term==' ' && (*p=='\'' || *p=='"')) { term = *p++; }
+	while (term!=' ' ? (*p != term) : (*p!='/' && *p!='>')) {
+	  value += *p++;
+	}
+      }
+      return value;
+    }
     bool closed() { return m_closed; }
     const std::string& m_str;
     bool m_closed;
@@ -380,7 +404,7 @@ int RichText::layout(int w)
   int x = margin, y = 0, l = 0, h = 0;
   size_t p=0;
   int spacewidth = m_font->metrics(" ").x;
-  Snippet snippet = {Vec2(x,y),0,0,m_font};
+  Snippet snippet = {Vec2(x,y),0,0,0,m_font};
   Vec2 wordmetrics;
   m_snippets.empty();
   m_snippets.append(snippet);
@@ -432,8 +456,14 @@ int RichText::layout(int w)
 	  snippet.font = Font::headingFont();
 	  h += snippet.font->height();
 	}
+      } else if (tag.tag() == "BR") {
+	newline = true;
       } else if (tag.tag() == "P") {
 	newline = true;
+	std::string align = tag.prop("align");
+	if (align=="center") snippet.align=1;
+	else if (align=="right") snippet.align=2;
+	else snippet.align=0;
       } else if (tag.tag() == "LI") {
 	newline = true;
 	x += margin;

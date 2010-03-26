@@ -161,6 +161,7 @@ class RichText : public Label
     Vec2 pos;
     int textoff;
     int textlen;
+    int align;
     const Font* font;
   };
   Array<Snippet> m_snippets;
