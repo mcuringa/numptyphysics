@@ -32,6 +32,8 @@
 #endif
 #undef Window
 
+//#define FORCE_16BPP
+
 // zoomer.cpp
 extern SDL_Surface *zoomSurface(SDL_Surface * src, double zoomx, double zoomy);
 
@@ -219,12 +221,17 @@ Canvas::Canvas( int w, int h )
   switch (SDL_GetVideoInfo()->vfmt->BitsPerPixel) {
   case 16:
   case 32:
+#ifdef FORCE_16BPP
+    m_state = SDL_CreateRGBSurface( SDL_SWSURFACE, w, h, 16,
+				    0xF100, 0x07e0, 0x001F, 0x0 );
+#else
     m_state = SDL_CreateRGBSurface( SDL_SWSURFACE, w, h, 
 				    SDL_GetVideoInfo()->vfmt->BitsPerPixel,
 				    SDL_GetVideoInfo()->vfmt->Rmask,
 				    SDL_GetVideoInfo()->vfmt->Gmask,
 				    SDL_GetVideoInfo()->vfmt->Bmask,
 				    SDL_GetVideoInfo()->vfmt->Amask );
+#endif
     break;
   default:
     // eg: dummy vid driver reports 8bpp
@@ -354,15 +361,39 @@ Canvas* Canvas::scale( int factor ) const
           uint16 p = 0;
 	  uint16_t *srow = (uint16_t*)SURFACE(this)->pixels
   	                    + (y*spitch+x)*factor;
-	  for ( int yy=0;yy<factor;yy++ ) {
+	  for ( int yy=0;yy<4;yy++ ) {
             uint16 q = 0;
-	    for ( int xx=0;xx<factor;xx++ ) {
+	    for ( int xx=0;xx<4;xx++ ) {
 	      q += (srow[xx]&MASK2LSB)>>2;
 	    }
             p += (q&MASK2LSB)>>2;
             srow += spitch;
 	  }
           drow[x] = p;
+	}
+	drow += dpitch;
+      }
+    } else if (SURFACE(this)->format->BytesPerPixel==2 ) {
+      int dpitch = SURFACE(c)->pitch / sizeof(uint16_t);
+      int spitch = SURFACE(this)->pitch / sizeof(uint16_t);
+      uint16_t *drow = (uint16_t*)SURFACE(c)->pixels;
+      for ( int y=0;y<c->height();y++ ) {
+	for ( int x=0;x<c->width();x++ ) {
+	  uint16_t *srow = (uint16_t*)SURFACE(this)->pixels
+  	                    + (y*spitch+x)*factor;
+	  uint32_t r=0,g=0,b=0;
+	  for ( int yy=0;yy<factor;yy++ ) {
+	    for ( int xx=0;xx<factor;xx++ ) {
+	      r += srow[xx] & 0xF800;
+	      g += srow[xx] & 0x07e0;
+	      b += srow[xx] & 0x001F;
+	    }
+            srow += spitch;
+	  }
+	  r /= factor*factor;
+	  g /= factor*factor;
+	  b /= factor*factor;
+          drow[x] = (r&0xF800)|(g&0x07e0)|(b&0x001F);
 	}
 	drow += dpitch;
       }
@@ -595,7 +626,11 @@ Window::Window( int w, int h, const char* title, const char* winclass, bool full
 #endif
   SDL_ShowCursor( SDL_DISABLE );
 #else
+# ifdef FORCE_16BPP
+  m_state = SDL_SetVideoMode( w, h, 16, SDL_SWSURFACE | ((fullscreen==true)?(SDL_FULLSCREEN):(0)));
+# else
   m_state = SDL_SetVideoMode( w, h, 32, SDL_SWSURFACE | ((fullscreen==true)?(SDL_FULLSCREEN):(0)));
+# endif
 #endif
   if ( SURFACE(this) == NULL ) {
     throw "Unable to set video mode";
