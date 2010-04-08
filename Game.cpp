@@ -138,10 +138,11 @@ public:
       m_levels->addPath( p.c_str() );
       int l = m_levels->findLevel( p.c_str() );
       if ( l >= 0 ) {
+	fprintf(stderr,"setting level to saved index to %d\n", l);
 	m_level = l;
 	//m_window.setSubName( p.c_str() );
       }
-      showMessage(std::string("saved to<P>")+file);
+      showMessage(std::string("<P align=center>saved to<BR>")+file);
       return true;
     }
     return false;
@@ -251,7 +252,7 @@ public:
       m_edit = doEdit;
       if ( m_edit ) {	
 	if ( !m_editLabel ) {
- 	  m_editLabel = new Button("EDIT",Event::SAVE);
+ 	  m_editLabel = new Button("EDIT",Event::DONE);
 	  m_editLabel->setBg(0xff0000);
 	  m_editLabel->setFg(0x000000);
  	}
@@ -475,6 +476,11 @@ public:
       edit( !m_edit );
       if (m_edit && !m_paused) {
 	togglePause();
+      }
+      break;
+    case Event::DONE:
+      if (m_edit) {
+	add( createEditDoneDialog(this) );
       }
       break;
     case Event::RESET:

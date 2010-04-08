@@ -37,6 +37,7 @@ struct Event
     CANCEL,
     OPTION,
     CLOSE,
+    DONE,
     QUIT,
     EDIT,
     MENU,

@@ -303,12 +303,14 @@ Levels::LevelDesc* Levels::findLevel( int i )
 
 int Levels::findLevel( const char *file )
 {
+  int index = 0;
   for ( int c=0; c<m_collections.size(); c++ ) {
     for ( int i=0; i<m_collections[c]->levels.size(); i++ ) {
       if ( m_collections[c]->levels[i]->file == file ) {
-	return i;
+	return index + i;
       }
     }
+    index += m_collections[c]->levels.size();
   }
   return -1;
 }

@@ -414,6 +414,7 @@ Widget* createPlayOpts(GameControl* game )
 static const MenuItem editNormalOpts[] = {
   MenuItem("menu:close.png",Event::MENU),
   MenuItem("reset:reset.png",Event::RESET),
+  MenuItem("skip:forward.png",Event::NEXT),
   MenuItem("edit:share.png",Event::EDIT),
   MenuItem("",Event::NOP)
 };
@@ -421,8 +422,7 @@ static const MenuItem editNormalOpts[] = {
 static const MenuItem editDoneOpts[] = {
   MenuItem("menu:close.png",Event::MENU),
   MenuItem("reset:reset.png",Event::RESET),
-  MenuItem("done:share.png",Event::SAVE),
-  //MenuItem("test:undo.png",Event::RESET),
+  MenuItem("done:share.png",Event::DONE),
   MenuItem("",Event::NOP)
 };
 
@@ -691,3 +691,48 @@ Widget *createNextLevelDialog( GameControl* game )
 {
   return new NextLevelDialog(game);
 }
+
+
+////////////////////////////////////////////////////////////////
+
+class EditDoneDialog : public Dialog
+{
+  GameControl* m_game;
+public:
+  EditDoneDialog(GameControl* game)
+    : Dialog("Exit Editor",Event::NOP,Event::CLOSE),
+      m_game(game)
+  {
+    Box *vbox = new VBox();
+    vbox->add(new Spacer(),10,1);
+    vbox->add(new Label("Save level?"),20,0);
+    vbox->add(new Spacer(),10,1);
+ 
+    Box *hbox2 = new HBox();
+    hbox2->add(new Spacer(),20,0);
+    hbox2->add(new Button("cancel",Event::CLOSE),BUTTON_WIDTH,0);
+    hbox2->add(new Spacer(),1,1);
+    hbox2->add(new Button("exit",Event::EDIT),BUTTON_WIDTH,0);
+    hbox2->add(new Spacer(),1,1);
+    hbox2->add(new Button("save",Event::SAVE),BUTTON_WIDTH,0);
+    hbox2->add(new Spacer(),20,0);
+    vbox->add(hbox2,BUTTON_HEIGHT,0);
+
+    vbox->add(new Spacer(),10,0);
+    content()->add(vbox,0,0);
+    m_targetPos = Vec2( 150, 70);
+    sizeTo(Vec2(500,240));
+  }
+  bool onEvent( Event& ev )
+  {
+    close();
+    return false;
+  }
+};
+
+
+Widget *createEditDoneDialog( GameControl* game )
+{
+  return new EditDoneDialog(game);
+}
+

@@ -319,6 +319,7 @@ numptyphysics_DATA = \
 	data/pause.png \
 	data/play.png \
 	data/reset.png \
+	data/forward.png \
 	data/help.png \
 	data/choose.png \
 	data/undo.png \
