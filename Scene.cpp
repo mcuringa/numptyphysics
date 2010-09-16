@@ -527,19 +527,13 @@ Scene::Scene( bool noWorld )
   : m_world( NULL ),
     m_bgImage( NULL ),
     m_protect( 0 ),
-    m_gravity(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf),
+    m_gravity(0.0f, 0.0f),
     m_dynamicGravity(false),
     m_accelerometer(Os::get()->getAccelerometer()),
     m_dirtyArea(false)
 {
   if ( !noWorld ) {
-    b2AABB worldAABB;
-    worldAABB.lowerBound.Set(-100.0f, -100.0f);
-    worldAABB.upperBound.Set(100.0f, 100.0f);
-    
-    bool doSleep = true;
-    m_world = new b2World(worldAABB, m_gravity, doSleep);
-    m_world->SetContactListener( this );
+    resetWorld();
   }
 }
 
@@ -550,6 +544,20 @@ Scene::~Scene()
     step();
     delete m_world;
   }
+}
+
+void Scene::resetWorld()
+{
+  const b2Vec2 gravity(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf);
+  delete m_world;
+
+  b2AABB worldAABB;
+  worldAABB.lowerBound.Set(-100.0f, -100.0f);
+  worldAABB.upperBound.Set(100.0f, 100.0f);
+    
+  bool doSleep = true;
+  m_world = new b2World(worldAABB, gravity, doSleep);
+  m_world->SetContactListener( this );
 }
 
 Stroke* Scene::newStroke( const Path& p, int colour, int attribs ) {
@@ -722,7 +730,7 @@ void Scene::Add(const b2ContactPoint* point)
     if ( s1->hasAttribute(ATTRIB_TOKEN) 
 	   && s2->hasAttribute(ATTRIB_GOAL) ) {
 	s2->setAttribute(ATTRIB_DELETED);
-	m_recorder.mark(1);
+	m_recorder.goal(1);
     }
   }
 }
@@ -880,8 +888,8 @@ bool Scene::load( const std::string& file )
 bool Scene::load( std::istream& in )
 {
   clear();
+  resetWorld();
   m_dynamicGravity = false;
-  setGravity( b2Vec2(0.0f, GRAVITY_ACCELf*PIXELS_PER_METREf/GRAVITY_FUDGEf) );
   if ( g_bgImage==NULL ) {
     g_bgImage = new Image("paper.jpg");
     g_bgImage->scale( SCREEN_WIDTH, SCREEN_HEIGHT );

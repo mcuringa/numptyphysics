@@ -33,7 +33,7 @@ ScriptEntry::ScriptEntry( const std::string& str )
     case 'm': op = OP_MOVE; break;
     case 'a': op = OP_ACTIVATE; break;
     case 'p': op = OP_PAUSE; break;
-    case 'g': op = OP_MARKER; break;
+    case 'g': op = OP_GOAL; break;
     default:
       fprintf(stderr,"bad script op\n");
     }
@@ -45,7 +45,7 @@ ScriptEntry::ScriptEntry( const std::string& str )
 
 std::string ScriptEntry::asString()
 {
-  static const char opcodes[] = "ndemap";
+  static const char opcodes[] = "ndemapg";
   std::stringstream s;
   s << t << "," << opcodes[op] << ","
     << stroke << "," << arg1 << "," << arg2 << ","
@@ -144,10 +144,10 @@ void ScriptRecorder::activateStroke( int index )
     m_log->append( m_lastTick, ScriptEntry::OP_ACTIVATE, index );
 }
 
-void ScriptRecorder::mark( int goal )
+void ScriptRecorder::goal( int goalNum )
 {
   if ( m_running )
-    m_log->append( m_lastTick, ScriptEntry::OP_MARKER, goal );
+    m_log->append( m_lastTick, ScriptEntry::OP_GOAL, goalNum );
 }
 
 

@@ -356,7 +356,7 @@ void RichText::draw( Canvas& screen, const Rect& area )
 	  pos.x += m_pos.width()-20-m_snippets[l].font->metrics(sniptext).x;
 	  break;
 	}
-	m_snippets[l].font->drawLeft( &screen, pos, sniptext,	m_fg);
+	m_snippets[l].font->drawLeft( &screen, pos, sniptext, m_fg);
       }
     }
   }

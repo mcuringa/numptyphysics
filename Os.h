@@ -36,6 +36,7 @@ class Os
   virtual EventMap* getEventMap( EventMapType type );
   virtual void decorateGame( WidgetParent* game ) {}
   bool ensurePath(const std::string& path);
+  bool exists(const std::string& file);
   static Os* get();
   static const char pathSep;
 };

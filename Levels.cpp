@@ -20,6 +20,7 @@
 
 #include "Levels.h"
 #include "ZipFile.h"
+#include "Config.h"
 #include "Os.h"
 
 using namespace std;
@@ -282,6 +283,37 @@ int Levels::collectionLevel(int c, int i)
     }
   }
   return 0;
+}
+
+
+std::string Levels::demoPath(int l)
+{
+  int c = collectionFromLevel(l);
+  std::string path = Config::userDataDir() + Os::pathSep
+    + "Recordings" + Os::pathSep
+    + collectionName(c,false);
+  if (path.substr(path.length()-4) == ".npz") {
+    path.resize(path.length()-4);
+  }
+  return path;
+}
+
+std::string Levels::demoName(int l)
+{
+  std::string name = levelName(l,false);
+  size_t sep = name.rfind(Os::pathSep);
+  if (sep != std::string::npos) {
+    name = name.substr(sep);
+  }
+  if (name.substr(name.length()-4) == ".nph") {
+    name.resize(name.length()-4);
+  }
+  return demoPath(l) + Os::pathSep + name + ".npd";
+}
+
+bool Levels::hasDemo(int l)
+{
+  return OS->exists(demoName(l));
 }
 
 

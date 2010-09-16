@@ -38,6 +38,10 @@ class Levels
   int  collectionSize(int c);
   int  collectionLevel(int c, int i);
 
+  std::string demoPath(int l);
+  std::string demoName(int l);
+  bool hasDemo(int l);
+
  private:
 
   struct LevelDesc

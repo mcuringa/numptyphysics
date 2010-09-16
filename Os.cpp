@@ -163,5 +163,12 @@ bool Os::ensurePath(const std::string& path)
       return true;
     }
   } 
+  return true;
 }
 
+
+bool Os::exists(const std::string& file)
+{
+  struct stat st;
+  return stat(file.c_str(),&st)==0;
+}

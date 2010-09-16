@@ -173,26 +173,12 @@ public:
 
   void saveDemo()
   {
-    std::string demoname = m_levels->levelName(m_level,false);
-    size_t sep = demoname.rfind(Os::pathSep);
-    if (sep != std::string::npos) {
-      demoname = demoname.substr(sep);
-    }
-    if (demoname.substr(demoname.length()-4) == ".nph") {
-      demoname.resize(demoname.length()-4);
-    }
-    int c = m_levels->collectionFromLevel(m_level);
-    std::string path = Config::userDataDir() + Os::pathSep
-      + "Recordings" + Os::pathSep
-      + m_levels->collectionName(c,false);
-    if (path.substr(path.length()-4) == ".npz") {
-      path.resize(path.length()-4);
-    }
+    std::string path = m_levels->demoPath(m_level);
     OS->ensurePath(path);
-    demoname = path + Os::pathSep + demoname + ".npd";
+    path = m_levels->demoName(m_level);
     fprintf(stderr,"saving demo of level %d to %s\n",
-	    m_level, demoname.c_str());
-    m_scene.save(demoname, true);
+	    m_level, path.c_str());
+    m_scene.save(path, true);
   }
 
   void clickMode(int cm)
@@ -487,7 +473,16 @@ public:
       gotoLevel( m_level );
       break;
     case Event::NEXT:
-      gotoLevel( m_level+1 );
+      if (m_level==0 && m_isCompleted) {
+	// from title try to find the first uncompleted level
+	while (m_level < m_levels->numLevels()
+	       && m_os->exists(m_levels->demoName(m_level))) {
+	  m_level++;
+	}
+	gotoLevel( m_level );	
+      } else {
+	gotoLevel( m_level+1 );
+      }
       break;
     case Event::PREVIOUS:
       gotoLevel( m_level-1 );

@@ -60,8 +60,8 @@ const char * const HELP_TEXT =
   "<H2>Game Options</H2>"
   "<LI>Menu -- access the Main Menu.<P>"
   "<LI>Reset -- reset the level to its original state.<P>"
-  "<LI>Share -- share your modified level (unimplemented).<P>"
-  "<LI>Save -- save your modified level (unimplemented). <P>"
+  "<LI>Skip -- skip to the next level.<P>"
+  "<LI>Edit -- edit this level or create a new level.<P>"
   ;
 
 

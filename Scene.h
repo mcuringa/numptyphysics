@@ -84,6 +84,7 @@ public:
   ScriptLog* getLog() { return &m_log; }
   const ScriptPlayer* replay() { return &m_player; }
 private:
+  void resetWorld();
   bool activate( Stroke *s );
   void activateAll();
   void createJoints( Stroke *s );
