@@ -16,7 +16,7 @@
 #ifndef ACCELEROMETER_H
 #define ACCELEROMETER_H
 
-#include <Common.h>
+#include "Common.h"
 
 class Accelerometer
 {
