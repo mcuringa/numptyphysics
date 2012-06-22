@@ -25,6 +25,7 @@
 
 #define Window X11Window //oops
 #define Font X11Font //oops
+#include "Swipe.h"
 #include <SDL/SDL_syswm.h>
 #ifndef WIN32
 #include <X11/X.h>
@@ -656,6 +657,11 @@ Window::Window( int w, int h, const char* title, const char* winclass, bool full
   if ( title ) {
     SDL_WM_SetCaption( title, title );
   }
+
+  memset(&(Swipe::m_syswminfo), 0, sizeof(SDL_SysWMinfo));
+  SDL_VERSION(&(Swipe::m_syswminfo.version));
+  SDL_GetWMInfo(&(Swipe::m_syswminfo));
+  Swipe::lock(true);
 
 #ifdef USE_HILDON
   SDL_SysWMinfo sys;

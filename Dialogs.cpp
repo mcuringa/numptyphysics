@@ -23,6 +23,12 @@
 #include "Scene.h"
 
 
+/* See Swipe.h */
+class Swipe {
+    public:
+        static void lock(bool locked);
+};
+
 
 const char * const HELP_TEXT = 
   "<H1>What To Do?</H1>"
@@ -291,13 +297,17 @@ class MainMenu : public Dialog
   int          m_chosenLevel;
 public:
   MainMenu(GameControl* game)
-    : Dialog("NUMPTY PHYSICS",Event::UNDO,Event::QUIT),
+    : Dialog("NUMPTY PHYSICS",Event::NOP,Event::NOP),
       m_game(game),
       m_chosenLevel(game->m_level)
   {
+    Swipe::lock(false);
     content()->add(new FrontPage());
     m_targetPos = Vec2( 0, 0 );
     sizeTo(Vec2(SCREEN_WIDTH,SCREEN_HEIGHT));
+  }
+  ~MainMenu() {
+    Swipe::lock(true);
   }
   bool onEvent( Event& ev )
   {
