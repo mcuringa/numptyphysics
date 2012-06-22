@@ -1,12 +1,17 @@
 
 APP = numptyphysics
 
+DESTDIR ?=
+PREFIX = /opt/numptyphysics
+
+CXXFLAGS += -DINSTALL_BASE_PATH=\"$(PREFIX)/data\"
+
 SOURCES = $(wildcard *.cpp)
 
 all: $(APP)
 
 # Required modules (uses pkg-config)
-PKGS = sdl SDL_mixer SDL_image
+PKGS = sdl SDL_image
 
 CXXFLAGS += $(shell pkg-config --cflags $(PKGS))
 LIBS += $(shell pkg-config --libs $(PKGS))
@@ -49,6 +54,13 @@ clean:
 
 distclean: clean
 	rm -f $(APP)
+
+install: $(APP)
+	mkdir -p $(DESTDIR)/$(PREFIX)/bin
+	install -m 755 $(APP) $(DESTDIR)/$(PREFIX)/bin/
+	mkdir -p $(DESTDIR)/usr/share/applications
+	install -m 644 $(APP).desktop $(DESTDIR)/usr/share/applications/
+	cp -rpv data $(DESTDIR)/$(PREFIX)/
 
 
 .PHONY: all clean distclean
