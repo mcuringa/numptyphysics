@@ -258,7 +258,7 @@ class MainMenu : public Dialog
   int          m_chosenLevel;
 public:
   MainMenu(GameControl* game)
-    : Dialog("NUMPTY PHYSICS",Event::NOP,Event::NOP),
+    : Dialog("NUMPTY PHYSICS",Event::NOP,Event::QUIT),
       m_game(game),
       m_chosenLevel(game->m_level)
   {
