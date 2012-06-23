@@ -118,8 +118,6 @@ extern const int NUM_BRUSHES;
 #define MENU_COLUMNS 1
 
 
-class Font;
-
 class Config
 {
  public:
@@ -134,7 +132,6 @@ class Config
     return d;
   }
   static std::string findFile( const std::string& name );
-  static Font* font();
 };
 
 #endif //CONFIG_H

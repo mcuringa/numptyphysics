@@ -15,7 +15,6 @@
  */
 
 #include "Config.h"
-#include "Font.h"
 
 
 Rect FULLSCREEN_RECT( 0, 0, WORLD_WIDTH-1, WORLD_HEIGHT-1 );
@@ -57,8 +56,3 @@ std::string Config::findFile( const std::string& name )
   return name;
 }
 
-Font* Config::font()
-{
-  static Font f("font.npf");
-  return &f;
-}
