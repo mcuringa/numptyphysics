@@ -317,8 +317,10 @@ public:
       case 1:
 	content()->empty();	
 	content()->add(new LevelSelector(m_game, m_chosenLevel));
-	rightControl()->text("<--");
-	rightControl()->event(Event::CANCEL);
+        if (rightControl()) {
+            rightControl()->text("<--");
+            rightControl()->event(Event::CANCEL);
+        }
 	break;
       case 2:
 	close();
@@ -326,8 +328,10 @@ public:
       case 3: 
 	content()->empty();
 	content()->add(new HelpPage());
-	rightControl()->text("<--");
-	rightControl()->event(Event::CANCEL);
+        if (rightControl()) {
+            rightControl()->text("<--");
+            rightControl()->event(Event::CANCEL);
+        }
 	break;
       }
       return true;
@@ -336,14 +340,18 @@ public:
       m_chosenLevel = ev.x;
       content()->empty();
       content()->add(new LevelLauncher(m_chosenLevel,NULL));
-      rightControl()->text("<--");
-      rightControl()->event(Event(Event::MENU,1));
+      if (rightControl()) {
+          rightControl()->text("<--");
+          rightControl()->event(Event(Event::MENU,1));
+      }
       return true;
     case Event::CANCEL:
       content()->empty();
       content()->add(new FrontPage());
-      rightControl()->text("X");
-      rightControl()->event(Event::QUIT);
+      if (rightControl()) {
+          rightControl()->text("X");
+          rightControl()->event(Event::QUIT);
+      }
       return true;
     case Event::PLAY:
     case Event::REPLAY:

@@ -541,7 +541,6 @@ Scene::~Scene()
 {
   clear();
   if ( m_world ) {
-    step();
     delete m_world;
   }
 }
