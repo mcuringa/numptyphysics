@@ -153,6 +153,7 @@ class RichText : public Label
 {
  public:
   RichText(const std::string& s, const Font* f=NULL);
+  RichText(unsigned char *s, size_t len, const Font* f=NULL);
   virtual void text( const std::string& s );
   virtual void draw( Canvas& screen, const Rect& area );
   int layout(int w);

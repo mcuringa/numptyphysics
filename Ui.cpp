@@ -327,6 +327,11 @@ RichText::RichText(const std::string& s, const Font* f)
     m_layoutRequired(true)
 {}
 
+RichText::RichText(unsigned char *s, size_t len, const Font* f)
+  : Label(std::string((const char*)s, len),f),
+    m_layoutRequired(true)
+{}
+
 void RichText::text( const std::string& s )
 {
   Label::text(s);
@@ -373,7 +378,6 @@ int RichText::layout(int w)
       if (str[m_begin]=='/') {m_closed=true; m_begin++;}
       if (str[m_end]=='/') {m_closed=true; m_end--;}
       m_tag = m_str.substr(m_begin,m_str.find_first_of(" \t/>",m_begin)-m_begin);
-      fprintf(stderr,"tag = [%s]\n", m_tag.c_str());
     }
     const std::string& tag() {
       return m_tag;
@@ -622,7 +626,7 @@ void Draggable::onTick( int tick )
   if (!m_dragging && (m_delta.x != 0 || m_delta.y != 0)) {
     //fprintf(stderr, "Draggable::onTick glide %d, %d\n",m_delta.x,m_delta.y);
     move(m_delta);
-    m_delta = m_delta * 7 / 8;
+    m_delta = m_delta * 50 / 51;
   }
 }
 

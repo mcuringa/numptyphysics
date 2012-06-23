@@ -42,6 +42,10 @@ CXXFLAGS += -I.
 
 OBJECTS = $(SOURCES:.cpp=.o)
 
+Dialogs.cpp: help_text_html.h
+
+%_html.h: %.html
+	xxd -i $< $@
 
 $(APP): $(OBJECTS) $(BOX2D_SOURCE)/$(BOX2D_LIBRARY)
 	$(CXX) -o $@ $^ $(LIBS)
@@ -50,6 +54,7 @@ $(APP): $(OBJECTS) $(BOX2D_SOURCE)/$(BOX2D_LIBRARY)
 clean:
 	rm -f $(OBJECTS)
 	rm -f $(DEPENDENCIES)
+	rm -f help_text_html.h
 	$(MAKE) -C Box2D/Source clean
 
 distclean: clean
