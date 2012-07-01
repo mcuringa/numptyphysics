@@ -1,3 +1,9 @@
+numptyphysics (0.3.2) harmattan; urgency=low
+
+  * Fix some crasher bugs
+
+ -- Thomas Perl <m@thp.io>  Sun, 01 Jul 2012 10:02:19 +0200
+
 numptyphysics (0.3.1) harmattan; urgency=low
 
   * Build for Harmattan
