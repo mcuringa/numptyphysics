@@ -114,7 +114,6 @@ bool Http::get( const char* uri,
   }
 
   fclose ( m_file );
-  free( host );
   return m_size > 0;
 }
 
