@@ -174,11 +174,15 @@ public:
   void saveDemo()
   {
     std::string path = m_levels->demoPath(m_level);
-    OS->ensurePath(path);
-    path = m_levels->demoName(m_level);
-    fprintf(stderr,"saving demo of level %d to %s\n",
-	    m_level, path.c_str());
-    m_scene.save(path, true);
+    if (path != "") {
+      OS->ensurePath(path);
+      path = m_levels->demoName(m_level);
+      fprintf(stderr,"saving demo of level %d to %s\n",
+              m_level, path.c_str());
+      m_scene.save(path, true);
+    } else {
+      fprintf(stderr,"not saving demo of demo\n");
+    }
   }
 
   void clickMode(int cm)

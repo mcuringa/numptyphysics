@@ -26,11 +26,14 @@
 using namespace std;
 
 static const char MISC_COLLECTION[] = "My Levels";
+static const char DEMO_COLLECTION[] = "My Solutions";
 
 static int rankFromPath( const string& p, int defaultrank=9999 )
 {
   if (p==MISC_COLLECTION) {
     return 10000;
+  } else if (p==DEMO_COLLECTION) {
+    return 20000;
   }
   const char *c = p.data();
   size_t i = p.rfind(Os::pathSep);
@@ -114,7 +117,11 @@ bool Levels::addPath( const char* path )
 
 bool Levels::addLevel( const string& file, int rank, int index )
 {
-  addLevel( getCollection(MISC_COLLECTION), file, rank, index );
+  if (file.substr(file.length()-4) == ".npd") {
+    addLevel( getCollection(DEMO_COLLECTION), file, rank, index );
+  } else {
+    addLevel( getCollection(MISC_COLLECTION), file, rank, index );
+  }
 }
 
 bool Levels::addLevel( Collection* collection,
@@ -288,6 +295,14 @@ int Levels::collectionLevel(int c, int i)
 
 std::string Levels::demoPath(int l)
 {
+  std::string name = levelName(l,false);
+  if (name.substr(name.length()-4) == ".npd") {
+    /* Kludge: If the level from which we want to save a demo is
+     * already a demo file, return an empty string to signal
+     * "don't have this demo" - see Game.cpp */
+    return "";
+  }
+
   int c = collectionFromLevel(l);
   std::string path = Config::userDataDir() + Os::pathSep
     + "Recordings" + Os::pathSep
