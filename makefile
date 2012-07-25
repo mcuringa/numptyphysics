@@ -30,15 +30,14 @@ $(BOX2D_SOURCE)/$(BOX2D_LIBRARY):
 	$(MAKE) -C $(BOX2D_SOURCE) $(BOX2D_LIBRARY)
 
 
+# Pick the right OS-specific module here
+SOURCES += os/OsFreeDesktop.cpp
+CXXFLAGS += -I.
+
 # Dependency tracking
 DEPENDENCIES = $(SOURCES:.cpp=.d)
 CXXFLAGS += -MD
 -include $(DEPENDENCIES)
-
-
-# Pick the right OS-specific module here
-SOURCES += os/OsFreeDesktop.cpp
-CXXFLAGS += -I.
 
 OBJECTS = $(SOURCES:.cpp=.o)
 
@@ -65,7 +64,8 @@ install: $(APP)
 	install -m 755 $(APP) $(DESTDIR)/$(PREFIX)/bin/
 	mkdir -p $(DESTDIR)/usr/share/applications
 	install -m 644 $(APP).desktop $(DESTDIR)/usr/share/applications/
-	cp -rpv data $(DESTDIR)/$(PREFIX)/
+	mkdir -p $(DESTDIR)/$(PREFIX)/data
+	cp -rpv data/*.png data/*.ttf data/*.npz $(DESTDIR)/$(PREFIX)/data/
 
 
 .PHONY: all clean distclean
