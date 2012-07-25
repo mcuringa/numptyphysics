@@ -788,6 +788,21 @@ void Container::draw( Canvas& screen, const Rect& area )
 
 bool Container::processEvent( SDL_Event& ev )
 {
+  if (ev.type == SDL_MOUSEBUTTONUP ||
+          ev.type == SDL_MOUSEBUTTONDOWN ||
+          ev.type == SDL_MOUSEMOTION) {
+    if (ev.button.which != 0) {
+        /**
+         * Ignore button events for multi-touch fingers if it
+         * isn't the first finger (which == 0). This prevents
+         * "cool" drawing effects on Harmattan.
+         *
+         * TODO: Make it cool by allowing multiple lines to be
+         * drawn simultaneously (like NuMTyPYsics ;)
+         **/
+        return true;
+    }
+  }
 
   switch( ev.type ) {      
   case SDL_MOUSEBUTTONDOWN:
