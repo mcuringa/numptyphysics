@@ -1,3 +1,19 @@
+numptyphysics (0.3.3) harmattan; urgency=low
+
+  * Add missing build-dependency for xxd
+  * Fix compiler warning in Http.cpp
+  * Levels: Separate collection for solutions
+  * Levels: No demo-of-demo recording/saving
+  * Only install level collections to /opt
+  * Multi-touch: Ignore fingers with index != 0
+  * Various packaging-related fixes, new icon
+  * Add swipe (menu) info to title screen
+  * Single instance application for Harmattan
+  * Pause game engine when app is in background
+  * Artwork and screenshots for publishing
+
+ -- Thomas Perl <m@thp.io>  Fri, 31 Aug 2012 22:56:20 +0200
+
 numptyphysics (0.3.2) harmattan; urgency=low
 
   * Fix some crasher bugs
