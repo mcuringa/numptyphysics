@@ -219,7 +219,6 @@ private:
 
   void waitActive()
   {
-#if MAEMO_VERSION >= 4
     SDL_Event ev;
     while ( SDL_WaitEvent(&ev) ) {
       OS->poll();
@@ -234,7 +233,6 @@ private:
 	break;
       }
     }
-#endif
   }
 
   bool processEvent( SDL_Event &ev )
