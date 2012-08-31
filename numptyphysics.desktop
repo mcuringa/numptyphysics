@@ -4,6 +4,6 @@ Version=1.0
 Type=Application
 Name=Numpty
 Categories=Game;LogicGame;
-Exec=/opt/numptyphysics/bin/numptyphysics
+Exec=invoker --single-instance --type=e /opt/numptyphysics/bin/numptyphysics
 Icon=/opt/numptyphysics/data/numptyphysics.png
 
