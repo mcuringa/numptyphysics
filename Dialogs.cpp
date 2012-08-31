@@ -219,13 +219,13 @@ public:
     text->alpha(100);
     scroll->add(text,0,0);
     vbox->add( scroll, 0, 1 );
-    vbox->add( new Button("http://numptyphysics.garage.maemo.org",Event::SELECT), 36, 0 );
+    vbox->add( new Button(PROJECT_HOMEPAGE,Event::SELECT), 36, 0 );
     m_content->add(vbox,0,0);
   }
   bool onEvent(Event& ev)
   {
     if (ev.code == Event::SELECT) {
-      OS->openBrowser("http://numptyphysics.garage.maemo.org");
+      OS->openBrowser(PROJECT_HOMEPAGE);
       return true;
     }
     return Panel::onEvent(ev);

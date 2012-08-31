@@ -21,6 +21,8 @@
 #include "Common.h"
 #include "Os.h"
 
+#define PROJECT_HOMEPAGE "http://github.com/harmattan/numptyphysics"
+
 #define WORLD_WIDTH  800
 #define WORLD_HEIGHT 480
 #define PIXELS_PER_METREf 10.0f

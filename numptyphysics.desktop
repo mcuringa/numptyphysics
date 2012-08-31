@@ -2,7 +2,7 @@
 Encoding=UTF-8
 Version=1.0
 Type=Application
-Name=NumptyPhys.
+Name=Numpty
 Categories=Game;LogicGame;
 Exec=/opt/numptyphysics/bin/numptyphysics
 Icon=/opt/numptyphysics/data/numptyphysics.png
