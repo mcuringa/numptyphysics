@@ -11,13 +11,13 @@ SOURCES = $(wildcard *.cpp)
 all: $(APP)
 
 # Required modules (uses pkg-config)
-PKGS = sdl SDL_image zlib x11
+PKGS = sdl SDL_image x11
 
 CXXFLAGS += $(shell pkg-config --cflags $(PKGS))
 LIBS += $(shell pkg-config --libs $(PKGS))
 
-# There's no pkg-config module for SDL_ttf?
-LIBS += -lSDL_ttf
+# No pkg-config module for SDL_ttf and zlib (on some systems)
+LIBS += -lSDL_ttf -lz
 
 
 # Box2D Library
