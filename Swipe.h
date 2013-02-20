@@ -1,7 +1,7 @@
 #ifndef SWIPE_H
 #define SWIPE_H
 
-#include <SDL_syswm.h>
+#include <SDL/SDL_syswm.h>
 
 class Swipe {
     public:
